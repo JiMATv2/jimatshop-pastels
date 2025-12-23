@@ -52,3 +52,12 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+
+// Override the generated Capacitor compileOptions if needed.
+// Keeping this at Java 17 avoids "invalid source release" issues when JDK 17 is used.
+android {
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
