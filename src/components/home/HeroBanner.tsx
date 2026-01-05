@@ -9,12 +9,12 @@ export const HeroBanner = () => {
           🎉 Limited Time Offer
         </span>
         <h2 className="text-2xl font-bold text-foreground mb-2">
-          Fresh Groceries
+          Fresh Groceries - To your doorstep
           <br />
-          <span className="text-primary">Up to 30% OFF</span>
+          <span className="text-primary">Up to 100% OFF</span>
         </h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Get fresh produce delivered to your doorstep
+          Get fresh produce collect from stores
         </p>
         <Button className="group">
           Shop Now

@@ -13,6 +13,10 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  optimizeDeps: {
+    // jeep-sqlite (Stencil) + sql.js (WASM) can break when pre-bundled by Vite.
+    exclude: ["jeep-sqlite"],
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
