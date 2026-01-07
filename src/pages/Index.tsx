@@ -4,6 +4,7 @@ import { HeroBanner } from "@/components/home/HeroBanner";
 import { CategoryGrid } from "@/components/home/CategoryGrid";
 import { ProductSection } from "@/components/home/ProductSection";
 import { PromoBanner } from "@/components/home/PromoBanner";
+import { ShopperWidgets } from "@/components/home/ShopperWidgets";
 
 const Index = () => {
   return (
@@ -11,6 +12,7 @@ const Index = () => {
       <Header />
       
       <main>
+        <ShopperWidgets />
         <HeroBanner />
         <CategoryGrid />
         <PromoBanner />
