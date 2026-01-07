@@ -194,10 +194,19 @@ export const Header = () => {
           console.warn("[auth] Google Identity Services failed, using OAuth redirect fallback", gsiError);
         }
 
+        // Use configured app URL for OAuth redirect, or fall back to current origin
+        const appUrl = import.meta.env.VITE_APP_URL as string | undefined;
+        const redirectTo = appUrl || `${window.location.origin}${window.location.pathname}`;
+        
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.log("[auth] OAuth redirect URL:", redirectTo);
+        }
+        
         const { error: oauthError } = await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo: `${window.location.origin}${window.location.pathname}`,
+            redirectTo,
           },
         });
 
