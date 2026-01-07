@@ -1,6 +1,9 @@
 import { Search, ShoppingCart, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getGoogleIdToken } from "@/lib/auth/googleIdentity";
 import { getOAuthRedirectUrl, isMobilePlatform, signInWithOAuthMobile } from "@/lib/auth/mobileAuth";
@@ -8,11 +11,15 @@ import { supabase } from "@/lib/supabase/client";
 import { shopLoginWithGoogleIdToken } from "@/lib/api/jimatshopSession";
 import { getCurrentLocation } from "@/lib/geolocation/geolocation";
 import { toast } from "@/components/ui/sonner";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const Header = () => {
   const { user, loading, signOut } = useAuth();
   const hasProcessedOAuthLogin = useRef(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   // Reset flag when user logs out
   useEffect(() => {
@@ -78,7 +85,27 @@ export const Header = () => {
     }
   }, [user, loading]);
 
-  const onLogin = async () => {
+  const onEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthSubmitting(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      toast.success("Signed in");
+      setAuthOpen(false);
+      setPassword("");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Sign-in failed";
+      // eslint-disable-next-line no-console
+      console.error("[auth] email sign-in failed", e);
+      toast.error(msg);
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const onGoogleLogin = async () => {
+    setAuthSubmitting(true);
     try {
       // On mobile platforms, skip Google Identity Services (doesn't work well in WebView)
       // and use OAuth redirect with Browser plugin directly
@@ -97,6 +124,7 @@ export const Header = () => {
         // eslint-disable-next-line no-console
         console.log("[auth] Using mobile OAuth flow (Browser.open)");
         toast.info("Opening Google sign-in...");
+        setAuthOpen(false);
         await signInWithOAuthMobile("google");
         
         // Wait for AuthProvider to update (onAuthStateChange should fire)
@@ -186,6 +214,7 @@ export const Header = () => {
 
       try {
         // Try Google Identity Services first (One Tap / button flow)
+        setAuthOpen(false);
         idToken = await getGoogleIdToken();
       } catch (gsiError) {
         // If Google Identity Services fails, fall back to Supabase OAuth redirect
@@ -280,6 +309,8 @@ export const Header = () => {
       // eslint-disable-next-line no-console
       console.error("[auth] sign-in failed", e);
       toast.error(msg);
+    } finally {
+      setAuthSubmitting(false);
     }
   };
 
@@ -302,9 +333,68 @@ export const Header = () => {
           </div>
           <div className="flex items-center gap-2">
             {!loading && !user ? (
-              <Button variant="secondary" size="sm" onClick={onLogin}>
-                Sign in
-              </Button>
+              <>
+                <Button variant="secondary" size="sm" onClick={() => setAuthOpen(true)}>
+                  Sign in
+                </Button>
+                <Dialog open={authOpen} onOpenChange={setAuthOpen}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Sign in</DialogTitle>
+                      <DialogDescription>Use email/password or continue with Google.</DialogDescription>
+                    </DialogHeader>
+
+                    <form className="space-y-4" onSubmit={onEmailLogin}>
+                      <div className="space-y-2">
+                        <Label htmlFor="auth-email">Email</Label>
+                        <Input
+                          id="auth-email"
+                          type="email"
+                          autoComplete="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="you@example.com"
+                          disabled={authSubmitting}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="auth-password">Password</Label>
+                        <Input
+                          id="auth-password"
+                          type="password"
+                          autoComplete="current-password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          disabled={authSubmitting}
+                          required
+                        />
+                      </div>
+                      <Button className="w-full" type="submit" disabled={authSubmitting}>
+                        {authSubmitting ? "Signing in..." : "Sign in with email"}
+                      </Button>
+                    </form>
+
+                    <div className="relative py-2">
+                      <Separator />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="bg-background px-2 text-xs text-muted-foreground">Or</span>
+                      </div>
+                    </div>
+
+                    <Button
+                      className="w-full"
+                      type="button"
+                      variant="secondary"
+                      onClick={onGoogleLogin}
+                      disabled={authSubmitting}
+                    >
+                      Continue with Google
+                    </Button>
+                  </DialogContent>
+                </Dialog>
+              </>
             ) : null}
             {!loading && user ? (
               <Button variant="ghost" size="sm" onClick={signOut}>
