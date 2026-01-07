@@ -9,6 +9,7 @@ type Widget = {
   subtitle?: string;
   Icon: ComponentType<{ className?: string }>;
   accentClassName: string;
+  valueClassName?: string;
 };
 
 const formatMYR = (amount: number) =>
@@ -59,6 +60,7 @@ export function ShopperWidgets() {
       subtitle: user ? "Kemaskini terakhir" : "Log masuk untuk data sebenar",
       Icon: Truck,
       accentClassName: "bg-muted",
+      valueClassName: "text-base",
     },
   ];
 
@@ -69,15 +71,22 @@ export function ShopperWidgets() {
         {!user ? <span className="text-xs text-muted-foreground">Log masuk untuk statistik</span> : null}
       </div>
 
-      <div className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-1">
-        {widgets.map((w) => (
-          <div key={w.title} className="jimat-card min-w-[240px] flex-shrink-0 p-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        {widgets.map((w, idx) => (
+          <div
+            key={w.title}
+            className={cn(
+              "jimat-card p-4",
+              idx === widgets.length - 1 ? "col-span-2 md:col-span-2 xl:col-span-1" : "",
+            )}
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">{w.title}</p>
                 <p
                   className={cn(
                     "mt-1 text-lg font-bold text-foreground leading-tight break-words",
+                    w.valueClassName,
                     !user && "text-muted-foreground",
                   )}
                 >
