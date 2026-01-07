@@ -122,7 +122,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       // Listen for app URL opens (when app is opened via deep link)
-      const urlListener = App.addListener("appUrlOpen", handleAppUrl);
+      let urlListenerHandle: { remove: () => void } | null = null;
+      App.addListener("appUrlOpen", handleAppUrl).then((l) => {
+        urlListenerHandle = l;
+      });
 
       // Also check initial URL if app was opened via deep link
       App.getLaunchUrl().then((result) => {
@@ -134,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return () => {
         mounted = false;
         sub.subscription.unsubscribe();
-        urlListener.remove();
+        urlListenerHandle?.remove();
       };
     }
 

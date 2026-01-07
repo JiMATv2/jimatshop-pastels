@@ -15,16 +15,20 @@ export function CapacitorBackHandler() {
   useEffect(() => {
     if (Capacitor.getPlatform() !== "android") return;
 
-    const sub = CapacitorApp.addListener("backButton", () => {
+    let listener: { remove: () => void } | null = null;
+    
+    CapacitorApp.addListener("backButton", () => {
       if (location.pathname !== "/") {
         navigate(-1);
         return;
       }
       CapacitorApp.exitApp();
+    }).then((l) => {
+      listener = l;
     });
 
     return () => {
-      sub.remove();
+      listener?.remove();
     };
   }, [location.pathname, navigate]);
 

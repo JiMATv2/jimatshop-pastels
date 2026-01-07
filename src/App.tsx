@@ -8,6 +8,7 @@ import Products from "./pages/Products";
 import Profile from "./pages/Profile";
 import Orders from "./pages/Orders";
 import OrderDetails from "./pages/OrderDetails";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import { CapacitorBackHandler } from "@/components/layout/CapacitorBackHandler";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
@@ -24,6 +25,7 @@ const App = () => (
           <CapacitorBackHandler />
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/products" element={<Products />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/orders/:orderId" element={<OrderDetails />} />
