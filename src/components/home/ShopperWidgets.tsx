@@ -1,7 +1,9 @@
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { fetchShopperSummary } from "@/lib/api/shopperSummary";
 import { cn } from "@/lib/utils";
 import { Clock, ShoppingBag, Ticket, Truck, Wallet } from "lucide-react";
 import type { ComponentType } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 type Widget = {
   title: string;
@@ -9,6 +11,7 @@ type Widget = {
   subtitle?: string;
   Icon: ComponentType<{ className?: string }>;
   accentClassName: string;
+  valueClassName?: string;
 };
 
 const formatMYR = (amount: number) =>
@@ -17,12 +20,21 @@ const formatMYR = (amount: number) =>
 export function ShopperWidgets() {
   const { user } = useAuth();
 
-  // TODO: replace with real data (Supabase / API) once endpoints are ready.
-  const totalOrders = 0;
-  const totalSpend = 0;
-  const processingOrders = 0;
-  const availableVouchers = 0;
-  const latestShippingStatus = "Tiada penghantaran aktif";
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["shopper-summary", user?.id],
+    queryFn: async () => {
+      if (!user) throw new Error("Not signed in");
+      return await fetchShopperSummary(user.id);
+    },
+    enabled: Boolean(user),
+    staleTime: 30_000,
+  });
+
+  const totalOrders = data?.totalOrders ?? 0;
+  const totalSpend = data?.totalSpend ?? 0;
+  const processingOrders = data?.processingOrders ?? 0;
+  const availableVouchers = data?.availableVouchers ?? 0;
+  const latestShippingStatus = data?.latestShippingStatus ?? "Tiada penghantaran aktif";
 
   const widgets: Widget[] = [
     {
@@ -59,6 +71,7 @@ export function ShopperWidgets() {
       subtitle: user ? "Kemaskini terakhir" : "Log masuk untuk data sebenar",
       Icon: Truck,
       accentClassName: "bg-muted",
+      valueClassName: "text-base",
     },
   ];
 
@@ -66,18 +79,31 @@ export function ShopperWidgets() {
     <section className="px-4 py-4">
       <div className="flex items-baseline justify-between gap-3 mb-3">
         <h3 className="text-lg font-semibold text-foreground">Ringkasan</h3>
-        {!user ? <span className="text-xs text-muted-foreground">Log masuk untuk statistik</span> : null}
+        {!user ? (
+          <span className="text-xs text-muted-foreground">Log masuk untuk statistik</span>
+        ) : isLoading ? (
+          <span className="text-xs text-muted-foreground">Memuatkan...</span>
+        ) : isError ? (
+          <span className="text-xs text-muted-foreground">Gagal memuat</span>
+        ) : null}
       </div>
 
-      <div className="-mx-4 px-4 flex gap-3 overflow-x-auto pb-1">
-        {widgets.map((w) => (
-          <div key={w.title} className="jimat-card min-w-[240px] flex-shrink-0 p-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        {widgets.map((w, idx) => (
+          <div
+            key={w.title}
+            className={cn(
+              "jimat-card p-4",
+              idx === widgets.length - 1 ? "col-span-2 md:col-span-2 xl:col-span-1" : "",
+            )}
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">{w.title}</p>
                 <p
                   className={cn(
                     "mt-1 text-lg font-bold text-foreground leading-tight break-words",
+                    w.valueClassName,
                     !user && "text-muted-foreground",
                   )}
                 >
