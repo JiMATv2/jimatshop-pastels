@@ -1,4 +1,4 @@
-package com.yithanglee.jimatshoppastels;
+package com.jimatbiz.shop3;
 
 import com.getcapacitor.BridgeActivity;
 

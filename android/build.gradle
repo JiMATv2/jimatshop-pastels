@@ -7,7 +7,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.7.2'
+        classpath 'com.android.tools.build:gradle:8.9.1'
         classpath 'com.google.gms:google-services:4.4.2'
 
         // NOTE: Do not place your application dependencies here; they belong
@@ -22,10 +22,51 @@ allprojects {
         google()
         mavenCentral()
     }
+    
+    // Configure Kotlin JVM target early for all projects
+    // This ensures it applies before tasks are configured
+    afterEvaluate { p ->
+        try {
+            def kotlinCompileClass = Class.forName('org.jetbrains.kotlin.gradle.tasks.KotlinCompile')
+            p.tasks.withType(kotlinCompileClass).configureEach {
+                it.kotlinOptions.jvmTarget = "17"
+            }
+        } catch (ClassNotFoundException e) {
+            // Kotlin plugin not available, skip
+        }
+    }
 }
 
 task clean(type: Delete) {
     delete rootProject.buildDir
+}
+
+// Configure Kotlin JVM target after all projects are evaluated
+// This ensures it runs after all plugins (including Kotlin) have been applied
+gradle.projectsEvaluated {
+    subprojects { p ->
+        try {
+            def kotlinCompileClass = Class.forName('org.jetbrains.kotlin.gradle.tasks.KotlinCompile')
+            p.tasks.withType(kotlinCompileClass).configureEach {
+                it.kotlinOptions.jvmTarget = "17"
+            }
+        } catch (Exception e) {
+            // Kotlin plugin not available or class not found, skip
+        }
+    }
+}
+
+// Also catch Kotlin tasks as they're added to ensure we configure them early
+allprojects {
+    tasks.whenTaskAdded { task ->
+        if (task.class.name.contains('KotlinCompile')) {
+            try {
+                task.kotlinOptions.jvmTarget = "17"
+            } catch (Exception e) {
+                // Task might not have kotlinOptions yet, will be configured in afterEvaluate
+            }
+        }
+    }
 }
 
 // Force all Android modules (including Capacitor's) to use Java 17 for compilation.
@@ -38,6 +79,48 @@ subprojects { p ->
                     sourceCompatibility JavaVersion.VERSION_17
                     targetCompatibility JavaVersion.VERSION_17
                 }
+                
+                // Configure Kotlin JVM target in Android block if Kotlin plugin is applied
+                if (p.plugins.hasPlugin('org.jetbrains.kotlin.android')) {
+                    compileOptions {
+                        // Already set above, but ensure consistency
+                    }
+                }
+            }
+        }
+        
+        // Configure Kotlin extension and tasks to use JVM target 17 for ALL projects
+        // This fixes the inconsistency between Java (17) and Kotlin (21) JVM targets
+        // Do this for all projects, including Capacitor plugins
+        try {
+            // Try to configure via Kotlin extension first (if Kotlin Android plugin is used)
+            if (p.extensions.findByName('kotlin')) {
+                p.extensions.kotlin.jvmTarget = "17"
+            }
+            
+            // Also configure all Kotlin compile tasks
+            def kotlinCompileClass = Class.forName('org.jetbrains.kotlin.gradle.tasks.KotlinCompile')
+            p.tasks.withType(kotlinCompileClass).configureEach {
+                it.kotlinOptions.jvmTarget = "17"
+            }
+        } catch (ClassNotFoundException e) {
+            // Kotlin plugin not available, use task name matching as fallback
+            p.tasks.matching { 
+                it.name.contains('Kotlin') && it.name.contains('Compile') 
+            }.configureEach { task ->
+                if (task.hasProperty('kotlinOptions')) {
+                    task.kotlinOptions.jvmTarget = "17"
+                }
+            }
+        } catch (Exception e) {
+            // Extension might not exist, continue with task configuration
+            try {
+                def kotlinCompileClass = Class.forName('org.jetbrains.kotlin.gradle.tasks.KotlinCompile')
+                p.tasks.withType(kotlinCompileClass).configureEach {
+                    it.kotlinOptions.jvmTarget = "17"
+                }
+            } catch (Exception e2) {
+                // Skip if Kotlin not available
             }
         }
     }

@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.yithanglee.jimatshoppastels"
+    namespace "com.jimatbiz.shop3"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.yithanglee.jimatshoppastels"
+        applicationId "com.jimatbiz.shop3"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

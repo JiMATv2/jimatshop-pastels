@@ -57,14 +57,36 @@ function loadGoogleIdentityScript(): Promise<void> {
 }
 
 /**
+ * Get the appropriate Google Client ID based on platform
+ */
+function getGoogleClientId(): string {
+  // Check if we're on Android and have an Android-specific client ID
+  const isAndroid = typeof window !== "undefined" && 
+    (window.navigator.userAgent.includes("Android") || 
+     (window as any).Capacitor?.getPlatform?.() === "android");
+  
+  const androidClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID_ANDROID as string | undefined;
+  const webClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+  
+  // Prefer Android client ID on Android platform
+  if (isAndroid && androidClientId) {
+    return androidClientId;
+  }
+  
+  // Fall back to web client ID
+  if (webClientId) {
+    return webClientId;
+  }
+  
+  throw new Error("Missing VITE_GOOGLE_CLIENT_ID (or VITE_GOOGLE_CLIENT_ID_ANDROID for Android)");
+}
+
+/**
  * Get Google ID token using Google Identity Services.
  * Attempts to use One Tap prompt, with graceful fallback handling.
  */
 export async function getGoogleIdToken(): Promise<string> {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-  if (!clientId) {
-    throw new Error("Missing VITE_GOOGLE_CLIENT_ID");
-  }
+  const clientId = getGoogleClientId();
 
   await loadGoogleIdentityScript();
 

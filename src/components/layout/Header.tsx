@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getGoogleIdToken } from "@/lib/auth/googleIdentity";
+import { isMobilePlatform, signInWithOAuthMobile } from "@/lib/auth/mobileAuth";
 import { supabase } from "@/lib/supabase/client";
 import { shopLoginWithGoogleIdToken } from "@/lib/api/jimatshopSession";
+import { getCurrentLocation } from "@/lib/geolocation/geolocation";
 import { toast } from "@/components/ui/sonner";
 import { useEffect, useRef } from "react";
 
@@ -46,6 +48,22 @@ export const Header = () => {
         // for legacy API token. This would need to be handled server-side or
         // via a different mechanism if required.
 
+        // Get user's current geolocation after sign-in
+        try {
+          const location = await getCurrentLocation();
+          // eslint-disable-next-line no-console
+          console.log("[auth] User location after sign-in", {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracy: location.accuracy,
+          });
+          // TODO: Store location in user profile or use for location-based features
+        } catch (locationError) {
+          // Don't block sign-in if geolocation fails
+          // eslint-disable-next-line no-console
+          console.warn("[auth] Failed to get location after sign-in", locationError);
+        }
+
         hasProcessedOAuthLogin.current = true;
       } catch (e) {
         // eslint-disable-next-line no-console
@@ -62,6 +80,106 @@ export const Header = () => {
 
   const onLogin = async () => {
     try {
+      // On mobile platforms, skip Google Identity Services (doesn't work well in WebView)
+      // and use OAuth redirect with Browser plugin directly
+      const isMobile = isMobilePlatform();
+      
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] Platform check:", {
+          isMobile,
+          platform: typeof window !== "undefined" ? (window as any).Capacitor?.getPlatform?.() : "unknown",
+          userAgent: typeof window !== "undefined" ? window.navigator.userAgent : "unknown",
+        });
+      }
+      
+      if (isMobile) {
+        // eslint-disable-next-line no-console
+        console.log("[auth] Using mobile OAuth flow (Browser.open)");
+        toast.info("Opening Google sign-in...");
+        await signInWithOAuthMobile("google");
+        
+        // Wait for AuthProvider to update (onAuthStateChange should fire)
+        // Poll for session update with timeout
+        let attempts = 0;
+        const maxAttempts = 20; // 2 seconds total (20 * 100ms)
+        let sessionVerified = false;
+        
+        while (attempts < maxAttempts && !sessionVerified) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          
+          const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            // eslint-disable-next-line no-console
+            console.error("[auth] Error getting session after OAuth:", sessionError);
+            throw new Error("Failed to get session after sign-in");
+          }
+          
+          if (sessionData.session) {
+            sessionVerified = true;
+            if (import.meta.env.DEV) {
+              // eslint-disable-next-line no-console
+              console.log("[auth] Session verified after OAuth:", {
+                userId: sessionData.session.user.id,
+                email: sessionData.session.user.email,
+                attempts: attempts + 1,
+              });
+            }
+            break;
+          }
+          
+          attempts++;
+        }
+        
+        if (!sessionVerified) {
+          // eslint-disable-next-line no-console
+          console.error("[auth] Session not found after OAuth completion (timeout)");
+          throw new Error("Sign-in was cancelled or failed - session not set");
+        }
+
+        const user = sessionData.session.user;
+        const userEmail = user.email ?? undefined;
+        const userName =
+          (user.user_metadata?.full_name as string | undefined) ||
+          (user.user_metadata?.name as string | undefined) ||
+          undefined;
+
+        // Link / upsert shopper profile in Supabase (server-side RPC).
+        const { error: shopperUpsertError } = await supabase.rpc("upsert_shopper_for_auth_user", {
+          first_name:
+            (user.user_metadata?.given_name as string | undefined) ||
+            (user.user_metadata?.full_name as string | undefined) ||
+            (user.user_metadata?.name as string | undefined) ||
+            "",
+          last_name: (user.user_metadata?.family_name as string | undefined) || null,
+          email: userEmail || null,
+          phone: user.phone || null,
+        });
+        if (shopperUpsertError) {
+          // eslint-disable-next-line no-console
+          console.warn("[auth] upsert_shopper_for_auth_user failed", shopperUpsertError);
+        }
+
+        // Get user's current geolocation after sign-in
+        try {
+          const location = await getCurrentLocation();
+          // eslint-disable-next-line no-console
+          console.log("[auth] User location after sign-in", {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            accuracy: location.accuracy,
+          });
+        } catch (locationError) {
+          // eslint-disable-next-line no-console
+          console.warn("[auth] Failed to get location after sign-in", locationError);
+        }
+
+        toast.success("Signed in");
+        return;
+      }
+
+      // Web platform: Try Google Identity Services first
       let idToken: string;
       let userEmail: string | undefined;
       let userName: string | undefined;
@@ -130,6 +248,22 @@ export const Header = () => {
         localStorage.setItem("jimatshop_api_token", apiToken);
       } catch {
         // If the API URL isn't configured, skip legacy token exchange.
+      }
+
+      // Get user's current geolocation after sign-in
+      try {
+        const location = await getCurrentLocation();
+        // eslint-disable-next-line no-console
+        console.log("[auth] User location after sign-in", {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          accuracy: location.accuracy,
+        });
+        // TODO: Store location in user profile or use for location-based features
+      } catch (locationError) {
+        // Don't block sign-in if geolocation fails
+        // eslint-disable-next-line no-console
+        console.warn("[auth] Failed to get location after sign-in", locationError);
       }
 
       toast.success("Signed in");
