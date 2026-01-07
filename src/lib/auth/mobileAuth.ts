@@ -28,14 +28,18 @@ export function getOAuthRedirectUrl(): string {
     // Fallback: use deep link (won't work for web OAuth flows)
     return "com.jimatbiz.shop3://oauth-callback";
   }
-  // For web, use the configured app URL or fall back to current origin
+  // For web:
+  // - Prefer the current origin/path for localhost + dev to avoid accidentally
+  //   redirecting to production domains (e.g. v2.jimatbiz.com) from a local build.
+  // - In production, prefer the configured app URL if provided.
+  const currentUrl = `${window.location.origin}${window.location.pathname}`;
   const appUrl = import.meta.env.VITE_APP_URL as string | undefined;
-  if (appUrl) {
-    // Use configured app URL - ensures OAuth redirects to the correct domain
-    return appUrl;
-  }
-  // Fallback: use current origin (may redirect to wrong domain if not configured)
-  return `${window.location.origin}${window.location.pathname}`;
+  const isLocalhost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+  if (import.meta.env.DEV || isLocalhost) return currentUrl;
+  return appUrl || currentUrl;
 }
 
 /**

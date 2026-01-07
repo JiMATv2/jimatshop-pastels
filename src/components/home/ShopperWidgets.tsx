@@ -24,7 +24,7 @@ export function ShopperWidgets() {
     queryKey: ["shopper-summary", user?.id],
     queryFn: async () => {
       if (!user) throw new Error("Not signed in");
-      return await fetchShopperSummary(user.id);
+      return await fetchShopperSummary({ authUserId: user.id, email: user.email });
     },
     enabled: Boolean(user),
     staleTime: 30_000,

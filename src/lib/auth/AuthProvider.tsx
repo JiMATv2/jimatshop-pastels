@@ -16,6 +16,14 @@ const AuthContext = React.createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(true);
   const [session, setSession] = React.useState<Session | null>(null);
+  const hasUpsertedShopper = React.useRef(false);
+
+  React.useEffect(() => {
+    // Reset upsert guard when user logs out
+    if (!session?.user) {
+      hasUpsertedShopper.current = false;
+    }
+  }, [session?.user]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -135,6 +143,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sub.subscription.unsubscribe();
     };
   }, []);
+
+  // Ensure shopper profile is linked for any authenticated user (covers mobile deep-link cold starts).
+  React.useEffect(() => {
+    const u = session?.user;
+    if (!u || loading || hasUpsertedShopper.current) return;
+
+    const run = async () => {
+      try {
+        const { error } = await supabase.rpc("upsert_shopper_for_auth_user", {
+          first_name:
+            (u.user_metadata?.given_name as string | undefined) ||
+            (u.user_metadata?.full_name as string | undefined) ||
+            (u.user_metadata?.name as string | undefined) ||
+            "",
+          last_name: (u.user_metadata?.family_name as string | undefined) || null,
+          email: u.email || null,
+          phone: u.phone || null,
+        });
+        if (error) {
+          // eslint-disable-next-line no-console
+          console.warn("[auth][AuthProvider] upsert_shopper_for_auth_user failed", error);
+        }
+      } finally {
+        hasUpsertedShopper.current = true;
+      }
+    };
+
+    run();
+  }, [session?.user, loading]);
 
   const signOut = React.useCallback(async () => {
     await supabase.auth.signOut();

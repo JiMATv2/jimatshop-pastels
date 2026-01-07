@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getGoogleIdToken } from "@/lib/auth/googleIdentity";
-import { isMobilePlatform, signInWithOAuthMobile } from "@/lib/auth/mobileAuth";
+import { getOAuthRedirectUrl, isMobilePlatform, signInWithOAuthMobile } from "@/lib/auth/mobileAuth";
 import { supabase } from "@/lib/supabase/client";
 import { shopLoginWithGoogleIdToken } from "@/lib/api/jimatshopSession";
 import { getCurrentLocation } from "@/lib/geolocation/geolocation";
@@ -194,9 +194,8 @@ export const Header = () => {
           console.warn("[auth] Google Identity Services failed, using OAuth redirect fallback", gsiError);
         }
 
-        // Use configured app URL for OAuth redirect, or fall back to current origin
-        const appUrl = import.meta.env.VITE_APP_URL as string | undefined;
-        const redirectTo = appUrl || `${window.location.origin}${window.location.pathname}`;
+        // Use shared redirect URL logic (prefers localhost/dev current origin)
+        const redirectTo = getOAuthRedirectUrl();
         
         if (import.meta.env.DEV) {
           // eslint-disable-next-line no-console

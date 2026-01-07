@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import { resolveShopperId } from "@/lib/api/shopper";
 
 export type ShopperSummary = {
   totalOrders: number;
@@ -17,18 +18,14 @@ function asNumber(v: unknown): number {
   return 0;
 }
 
-export async function fetchShopperSummary(authUserId: string): Promise<ShopperSummary> {
-  // Map auth user -> shopper_id
-  const { data: shopper, error: shopperErr } = await supabase
-    .from("shoppers")
-    .select("id")
-    .eq("user_id", authUserId)
-    .maybeSingle();
-
-  if (shopperErr) throw shopperErr;
+export async function fetchShopperSummary(args: {
+  authUserId: string;
+  email?: string | null;
+}): Promise<ShopperSummary> {
+  const shopperId = await resolveShopperId({ authUserId: args.authUserId, email: args.email });
 
   // If shopper profile isn't linked yet, keep safe zeros.
-  if (!shopper?.id) {
+  if (!shopperId) {
     return {
       totalOrders: 0,
       totalSpend: 0,
@@ -37,8 +34,6 @@ export async function fetchShopperSummary(authUserId: string): Promise<ShopperSu
       latestShippingStatus: "Tiada penghantaran aktif",
     };
   }
-
-  const shopperId = shopper.id as string;
 
   // Fetch shopper orders (simple client-side aggregate; OK for now, can be replaced with a RPC later).
   const { data: orders, error: ordersErr } = await supabase
