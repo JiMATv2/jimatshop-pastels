@@ -1,7 +1,7 @@
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { fetchShopperSummary } from "@/lib/api/shopperSummary";
 import { cn } from "@/lib/utils";
-import { Clock, ShoppingBag, Ticket, Truck, Wallet } from "lucide-react";
+import { Clock, ShoppingBag, Ticket, Truck, Wallet, ChevronRight } from "lucide-react";
 import type { ComponentType } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -10,8 +10,8 @@ type Widget = {
   value: string;
   subtitle?: string;
   Icon: ComponentType<{ className?: string }>;
-  accentClassName: string;
-  valueClassName?: string;
+  gradient: string;
+  iconBg: string;
 };
 
 const formatMYR = (amount: number) =>
@@ -38,89 +38,120 @@ export function ShopperWidgets() {
 
   const widgets: Widget[] = [
     {
-      title: "Bilangan pesanan keseluruhan",
+      title: "Pesanan",
       value: `${totalOrders}`,
-      subtitle: user ? "Jumlah pesanan anda" : "Log masuk untuk data sebenar",
+      subtitle: "jumlah pesanan",
       Icon: ShoppingBag,
-      accentClassName: "bg-jimat-pastelsage",
+      gradient: "from-jimat-green/20 to-jimat-lightgreen/30",
+      iconBg: "bg-jimat-green",
     },
     {
-      title: "Nilai pembelian terkumpul",
+      title: "Pembelian",
       value: formatMYR(totalSpend),
-      subtitle: user ? "Jumlah pembelian anda" : "Log masuk untuk data sebenar",
+      subtitle: "nilai terkumpul",
       Icon: Wallet,
-      accentClassName: "bg-jimat-pastelpeach",
+      gradient: "from-orange-100 to-amber-100",
+      iconBg: "bg-orange-500",
     },
     {
-      title: "Pesanan yang sedang diproses",
+      title: "Diproses",
       value: `${processingOrders}`,
-      subtitle: user ? "Dalam proses / disediakan" : "Log masuk untuk data sebenar",
+      subtitle: "pesanan aktif",
       Icon: Clock,
-      accentClassName: "bg-jimat-pastelblue",
+      gradient: "from-blue-100 to-sky-100",
+      iconBg: "bg-blue-500",
     },
     {
-      title: "Baucar atau kupon tersedia",
+      title: "Baucar",
       value: `${availableVouchers}`,
-      subtitle: user ? "Boleh digunakan semasa checkout" : "Log masuk untuk data sebenar",
+      subtitle: "boleh ditebus",
       Icon: Ticket,
-      accentClassName: "bg-jimat-pastellavender",
-    },
-    {
-      title: "Status penghantaran terkini",
-      value: latestShippingStatus,
-      subtitle: user ? "Kemaskini terakhir" : "Log masuk untuk data sebenar",
-      Icon: Truck,
-      accentClassName: "bg-muted",
-      valueClassName: "text-base",
+      gradient: "from-purple-100 to-violet-100",
+      iconBg: "bg-purple-500",
     },
   ];
+
+  const shippingWidget: Widget = {
+    title: "Penghantaran",
+    value: latestShippingStatus,
+    subtitle: "status terkini",
+    Icon: Truck,
+    gradient: "from-jimat-pastelsage to-jimat-pastelblue/50",
+    iconBg: "bg-jimat-darkgreen",
+  };
+
+  if (!user) {
+    return (
+      <section className="px-4 py-4">
+        <div className="bg-gradient-to-r from-jimat-green to-jimat-darkgreen rounded-2xl p-5 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold mb-1">Selamat Datang!</h3>
+              <p className="text-sm text-white/80">
+                Log masuk untuk lihat ringkasan pembelian anda
+              </p>
+            </div>
+            <ChevronRight className="w-6 h-6 text-white/60" />
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="px-4 py-4">
       <div className="flex items-baseline justify-between gap-3 mb-3">
         <h3 className="text-lg font-semibold text-foreground">Ringkasan</h3>
-        {!user ? (
-          <span className="text-xs text-muted-foreground">Log masuk untuk statistik</span>
-        ) : isLoading ? (
+        {isLoading ? (
           <span className="text-xs text-muted-foreground">Memuatkan...</span>
         ) : isError ? (
-          <span className="text-xs text-muted-foreground">Gagal memuat</span>
+          <span className="text-xs text-destructive">Gagal memuat</span>
         ) : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        {widgets.map((w, idx) => (
+      {/* Main 4 widgets in 2x2 grid */}
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        {widgets.map((w) => (
           <div
             key={w.title}
             className={cn(
-              "jimat-card p-4",
-              idx === widgets.length - 1 ? "col-span-2 md:col-span-2 xl:col-span-1" : "",
+              "relative overflow-hidden rounded-2xl p-4 bg-gradient-to-br",
+              w.gradient
             )}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">{w.title}</p>
-                <p
-                  className={cn(
-                    "mt-1 text-lg font-bold text-foreground leading-tight break-words",
-                    w.valueClassName,
-                    !user && "text-muted-foreground",
-                  )}
-                >
-                  {w.value}
-                </p>
-                {w.subtitle ? <p className="mt-1 text-xs text-muted-foreground">{w.subtitle}</p> : null}
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-muted-foreground mb-1">{w.title}</p>
+                <p className="text-xl font-bold text-foreground truncate">{w.value}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{w.subtitle}</p>
               </div>
-
-              <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center", w.accentClassName)}>
-                <w.Icon className="w-5 h-5 text-primary" />
+              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-sm", w.iconBg)}>
+                <w.Icon className="w-5 h-5 text-white" />
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Shipping status - full width */}
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-2xl p-4 bg-gradient-to-br",
+          shippingWidget.gradient
+        )}
+      >
+        <div className="flex items-center gap-4">
+          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shadow-sm", shippingWidget.iconBg)}>
+            <shippingWidget.Icon className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-muted-foreground mb-0.5">{shippingWidget.title}</p>
+            <p className="text-base font-semibold text-foreground truncate">{shippingWidget.value}</p>
+            <p className="text-xs text-muted-foreground">{shippingWidget.subtitle}</p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-muted-foreground" />
+        </div>
+      </div>
     </section>
   );
 }
-
-

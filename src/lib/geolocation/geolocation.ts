@@ -60,43 +60,44 @@ export async function getCurrentLocation(): Promise<LocationCoordinates> {
  * @param callback Function called with location updates
  * @returns Function to stop watching location
  */
-export function watchLocation(
+export async function watchLocation(
   callback: (location: LocationCoordinates) => void,
-): () => void {
+): Promise<() => void> {
   let watchId: string | null = null;
 
-  Geolocation.checkPermissions()
-    .then((permissionStatus) => {
-      if (permissionStatus.location !== "granted") {
-        return Geolocation.requestPermissions();
+  try {
+    const permissionStatus = await Geolocation.checkPermissions();
+    
+    if (permissionStatus.location !== "granted") {
+      const result = await Geolocation.requestPermissions();
+      if (result.location !== "granted") {
+        throw new Error("Location permission denied");
       }
-      return permissionStatus;
-    })
-    .then((result) => {
-      if (result.location === "granted") {
-        watchId = Geolocation.watchPosition(
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-          },
-          (position) => {
-            callback({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              accuracy: position.coords.accuracy,
-              altitude: position.coords.altitude ?? null,
-              altitudeAccuracy: position.coords.altitudeAccuracy ?? null,
-              heading: position.coords.heading ?? null,
-              speed: position.coords.speed ?? null,
-            });
-          },
-        );
-      }
-    })
-    .catch((error) => {
-      // eslint-disable-next-line no-console
-      console.error("[geolocation] Failed to watch location", error);
-    });
+    }
+
+    watchId = await Geolocation.watchPosition(
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+      },
+      (position) => {
+        if (position) {
+          callback({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            altitude: position.coords.altitude ?? null,
+            altitudeAccuracy: position.coords.altitudeAccuracy ?? null,
+            heading: position.coords.heading ?? null,
+            speed: position.coords.speed ?? null,
+          });
+        }
+      },
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("[geolocation] Failed to watch location", error);
+  }
 
   return () => {
     if (watchId) {

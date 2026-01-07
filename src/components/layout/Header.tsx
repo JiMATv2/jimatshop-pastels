@@ -136,7 +136,7 @@ export const Header = () => {
         while (attempts < maxAttempts && !sessionVerified) {
           await new Promise((resolve) => setTimeout(resolve, 100));
           
-          const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+          const { data: polledSession, error: sessionError } = await supabase.auth.getSession();
           
           if (sessionError) {
             // eslint-disable-next-line no-console
@@ -144,13 +144,13 @@ export const Header = () => {
             throw new Error("Failed to get session after sign-in");
           }
           
-          if (sessionData.session) {
+          if (polledSession.session) {
             sessionVerified = true;
             if (import.meta.env.DEV) {
               // eslint-disable-next-line no-console
               console.log("[auth] Session verified after OAuth:", {
-                userId: sessionData.session.user.id,
-                email: sessionData.session.user.email,
+                userId: polledSession.session.user.id,
+                email: polledSession.session.user.email,
                 attempts: attempts + 1,
               });
             }
@@ -160,29 +160,32 @@ export const Header = () => {
           attempts++;
         }
         
-        if (!sessionVerified) {
+        // Get fresh session after verification
+        const { data: finalSession } = await supabase.auth.getSession();
+        
+        if (!sessionVerified || !finalSession.session) {
           // eslint-disable-next-line no-console
           console.error("[auth] Session not found after OAuth completion (timeout)");
           throw new Error("Sign-in was cancelled or failed - session not set");
         }
 
-        const user = sessionData.session.user;
-        const userEmail = user.email ?? undefined;
+        const oauthUser = finalSession.session.user;
+        const userEmail = oauthUser.email ?? undefined;
         const userName =
-          (user.user_metadata?.full_name as string | undefined) ||
-          (user.user_metadata?.name as string | undefined) ||
+          (oauthUser.user_metadata?.full_name as string | undefined) ||
+          (oauthUser.user_metadata?.name as string | undefined) ||
           undefined;
 
         // Link / upsert shopper profile in Supabase (server-side RPC).
         const { error: shopperUpsertError } = await supabase.rpc("upsert_shopper_for_auth_user", {
           first_name:
-            (user.user_metadata?.given_name as string | undefined) ||
-            (user.user_metadata?.full_name as string | undefined) ||
-            (user.user_metadata?.name as string | undefined) ||
+            (oauthUser.user_metadata?.given_name as string | undefined) ||
+            (oauthUser.user_metadata?.full_name as string | undefined) ||
+            (oauthUser.user_metadata?.name as string | undefined) ||
             "",
-          last_name: (user.user_metadata?.family_name as string | undefined) || null,
+          last_name: (oauthUser.user_metadata?.family_name as string | undefined) || null,
           email: userEmail || null,
-          phone: user.phone || null,
+          phone: oauthUser.phone || null,
         });
         if (shopperUpsertError) {
           // eslint-disable-next-line no-console
