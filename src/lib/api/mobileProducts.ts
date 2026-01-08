@@ -83,7 +83,7 @@ export function getMobileProductsClientConfig(): MobileProductsClientConfig {
   const baseUrl = normalizeBaseUrl(
     import.meta.env.VITE_EX_SUPABASE_API_URL || "https://ex_supabase.jimatbiz.com",
   );
-  const apiToken = import.meta.env.VITE_SUPABASE_API_TOKEN as string | undefined;
+  const apiToken = import.meta.env.VITE_SUPABASE_API_TOKEN as string || "jimat_supabase_secret_2025_changeme";
 
   // Helpful for debugging config issues without leaking the actual token.
   if (import.meta.env.DEV) {
