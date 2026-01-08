@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +29,7 @@ const slides = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const { markOnboardingSeen } = useOnboarding();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -37,6 +38,14 @@ export default function Onboarding() {
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Allow direct navigation to the login "splash" (skip slides), e.g. after logout.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("login") === "1") {
+      setShowLogin(true);
+    }
+  }, [location.search]);
 
   // Redirect if already logged in
   useEffect(() => {

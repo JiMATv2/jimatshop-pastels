@@ -12,8 +12,10 @@ import { shopLoginWithGoogleIdToken } from "@/lib/api/jimatshopSession";
 import { getCurrentLocation } from "@/lib/geolocation/geolocation";
 import { toast } from "@/components/ui/sonner";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export const Header = () => {
+  const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
   const hasProcessedOAuthLogin = useRef(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -317,6 +319,15 @@ export const Header = () => {
     }
   };
 
+  const onLogout = async () => {
+    try {
+      await signOut();
+    } finally {
+      // Send users back to the splash/login screen after logout.
+      navigate("/onboarding?login=1", { replace: true });
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border safe-area-top">
       <div className="container mx-auto px-4 py-3">
@@ -400,7 +411,7 @@ export const Header = () => {
               </>
             ) : null}
             {!loading && user ? (
-              <Button variant="ghost" size="sm" onClick={signOut}>
+              <Button variant="ghost" size="sm" onClick={onLogout}>
                 Logout
               </Button>
             ) : null}
