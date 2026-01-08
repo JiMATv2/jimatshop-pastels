@@ -8,6 +8,7 @@ import { ProductSection } from "@/components/home/ProductSection";
 import { PromoBanner } from "@/components/home/PromoBanner";
 import { ShopperWidgets } from "@/components/home/ShopperWidgets";
 import { useOnboarding } from "@/hooks/useOnboarding";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -36,6 +37,20 @@ const Index = () => {
       
       <main>
         <ShopperWidgets />
+        <section className="px-4">
+          <Link
+            to="/shops"
+            className="block jimat-card p-4 bg-gradient-to-r from-jimat-green/10 to-jimat-pastelblue/20"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold text-foreground">Browse Buyer Shops</div>
+                <div className="text-xs text-muted-foreground">Select a shop to start shopping</div>
+              </div>
+              <span className="text-xs font-medium text-primary">See all</span>
+            </div>
+          </Link>
+        </section>
         <HeroBanner />
         <CategoryGrid />
         <PromoBanner />

@@ -57,6 +57,12 @@ export interface MobileProductsRequest {
   buyer_city?: string | null;
   use_semantic_search?: boolean;
   semantic_threshold?: number;
+  // ex_supabase extension: choose data source
+  source?: "marketplace" | "buyer_inventory";
+  // when source="buyer_inventory"
+  buyer_id?: string | null;
+  buyer_user_id?: string | null;
+  auto_import_from_orders?: boolean;
 }
 
 export type MobileProductsClientConfig = {

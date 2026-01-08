@@ -11,12 +11,14 @@ import { supabase } from "@/lib/supabase/client";
 import { shopLoginWithGoogleIdToken } from "@/lib/api/jimatshopSession";
 import { getCurrentLocation } from "@/lib/geolocation/geolocation";
 import { toast } from "@/components/ui/sonner";
+import { useCart } from "@/lib/cart/CartProvider";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export const Header = () => {
   const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
+  const { itemCount } = useCart();
   const hasProcessedOAuthLogin = useRef(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authSubmitting, setAuthSubmitting] = useState(false);
@@ -415,11 +417,19 @@ export const Header = () => {
                 Logout
               </Button>
             ) : null}
-            <Button variant="ghost" size="icon" className="relative" aria-label="Cart">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              aria-label="Cart"
+              onClick={() => navigate("/checkout")}
+            >
               <ShoppingCart className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                3
-              </span>
+              {itemCount > 0 ? (
+                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                  {itemCount > 99 ? "99+" : itemCount}
+                </span>
+              ) : null}
             </Button>
           </div>
         </div>

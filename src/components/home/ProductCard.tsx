@@ -1,6 +1,7 @@
 import { Plus, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/lib/cart/CartProvider";
 
 interface ProductCardProps {
   id: string;
@@ -14,6 +15,7 @@ interface ProductCardProps {
 }
 
 export const ProductCard = ({
+  id,
   name,
   price,
   originalPrice,
@@ -22,6 +24,7 @@ export const ProductCard = ({
   badge,
   delay = 0,
 }: ProductCardProps) => {
+  const { addItem } = useCart();
   const discount = originalPrice
     ? Math.round(((originalPrice - price) / originalPrice) * 100)
     : 0;
@@ -80,7 +83,23 @@ export const ProductCard = ({
                 </span>
               )}
             </div>
-            <Button size="icon" className="h-8 w-8 rounded-full">
+            <Button
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              onClick={() =>
+                addItem(
+                  {
+                    productId: id,
+                    name,
+                    image,
+                    unitLabel: unit,
+                    unitPrice: price,
+                  },
+                  1,
+                )
+              }
+              aria-label={`Add ${name} to cart`}
+            >
               <Plus className="w-4 h-4" />
             </Button>
           </div>

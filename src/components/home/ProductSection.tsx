@@ -8,6 +8,7 @@ import {
   getMobileProductsClientConfig,
   type MobileProduct,
 } from "@/lib/api/mobileProducts";
+import { useSelectedBuyerShop } from "@/lib/shop/selectedBuyerShop";
 
 interface Product {
   id: string;
@@ -43,8 +44,9 @@ function toUiProduct(p: MobileProduct): Product {
 
 export const ProductSection = ({ title, products }: ProductSectionProps) => {
   const cfg = getMobileProductsClientConfig();
+  const { buyerId } = useSelectedBuyerShop();
   const { data: productList = [], isLoading, error } = useQuery({
-    queryKey: ["mobile-products", products],
+    queryKey: ["mobile-products", products, buyerId ?? null],
     queryFn: async () => {
       const loadLocal = async () => {
         const rows = await getProductsBySection(products);
@@ -59,6 +61,8 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
 
       // If token isn't configured, keep local seed catalog behavior (offline/dev friendly).
       if (!cfg.apiToken) return loadLocal();
+      // Buyer-inventory requires a selected buyer shop to browse.
+      if (!buyerId) return loadLocal();
 
       try {
         const resp = await fetchMobileProducts(
@@ -71,6 +75,8 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
             brand_filter: "All Brands",
             use_semantic_search: true,
             semantic_threshold: 0.2,
+            source: "buyer_inventory",
+            buyer_id: buyerId,
           },
           cfg,
         );
