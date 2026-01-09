@@ -40,6 +40,13 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    
+    // Add Kotlin coroutines dependency required by Capacitor Geolocation plugin
+    // This fixes NoClassDefFoundError for kotlin.coroutines.jvm.internal.SpillingKt
+    // Using Kotlin 1.9.22 and coroutines 1.7.3 for compatibility
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinxCoroutinesVersion"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinxCoroutinesVersion"
 }
 
 apply from: 'capacitor.build.gradle'

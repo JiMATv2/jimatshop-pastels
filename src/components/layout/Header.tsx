@@ -13,10 +13,15 @@ import { getCurrentLocation } from "@/lib/geolocation/geolocation";
 import { toast } from "@/components/ui/sonner";
 import { useCart } from "@/lib/cart/CartProvider";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { getSavedLocation } from "@/pages/LocationSearch";
+import type { SavedLocation } from "@/pages/LocationSearch";
+import { useLatestLocation } from "@/lib/location/useLocation";
+import { saveCurrentLocation } from "@/lib/location/storage";
 
 export const Header = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading, signOut } = useAuth();
   const { itemCount } = useCart();
   const hasProcessedOAuthLogin = useRef(false);
@@ -24,6 +29,16 @@ export const Header = () => {
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { location: sqliteLocation, refresh: refreshLocation } = useLatestLocation();
+  const refreshLocationRef = useRef(refreshLocation);
+  const [currentLocation, setCurrentLocation] = useState<SavedLocation | null>(
+    sqliteLocation || getSavedLocation()
+  );
+
+  // Keep ref updated with latest refresh function
+  useEffect(() => {
+    refreshLocationRef.current = refreshLocation;
+  }, [refreshLocation]);
 
   // Reset flag when user logs out
   useEffect(() => {
@@ -31,6 +46,63 @@ export const Header = () => {
       hasProcessedOAuthLogin.current = false;
     }
   }, [user]);
+
+  // Update location when SQLite location changes
+  useEffect(() => {
+    if (sqliteLocation) {
+      setCurrentLocation((prev) => {
+        // Only update if location actually changed
+        if (prev?.coordinates?.latitude === sqliteLocation.coordinates?.latitude &&
+            prev?.coordinates?.longitude === sqliteLocation.coordinates?.longitude) {
+          return prev;
+        }
+        return sqliteLocation;
+      });
+    }
+  }, [sqliteLocation]);
+
+  // Update location when returning from location search page
+  useEffect(() => {
+    // Only refresh if we're coming from location search page
+    if (location.pathname === "/location-search") {
+      return; // Don't refresh while on the page
+    }
+    
+    // Refresh location when navigating away from location search
+    const timer = setTimeout(() => {
+      refreshLocationRef.current();
+      setCurrentLocation(getSavedLocation());
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [location.pathname]); // Removed refreshLocation from deps
+
+  // Also listen for storage changes (for cross-tab updates)
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "jimatshop_selected_location") {
+        // Clear any pending timeout
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        // Debounce to prevent rapid updates
+        timeoutId = setTimeout(() => {
+          refreshLocationRef.current();
+          setCurrentLocation(getSavedLocation());
+        }, 100);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []); // Empty deps - using ref for refreshLocation
 
   // Handle post-OAuth login tasks (when user returns from OAuth redirect)
   useEffect(() => {
@@ -68,7 +140,16 @@ export const Header = () => {
             longitude: location.longitude,
             accuracy: location.accuracy,
           });
-          // TODO: Store location in user profile or use for location-based features
+          
+          // Save location to SQLite
+          try {
+            await saveCurrentLocation(location);
+            console.log("[auth] Location saved to SQLite");
+            // Refresh location in header
+            refreshLocationRef.current();
+          } catch (saveError) {
+            console.warn("[auth] Failed to save location to SQLite:", saveError);
+          }
         } catch (locationError) {
           // Don't block sign-in if geolocation fails
           // eslint-disable-next-line no-console
@@ -205,6 +286,15 @@ export const Header = () => {
             longitude: location.longitude,
             accuracy: location.accuracy,
           });
+          
+          // Save location to SQLite
+          try {
+            await saveCurrentLocation(location);
+            console.log("[auth] Location saved to SQLite");
+            refreshLocationRef.current();
+          } catch (saveError) {
+            console.warn("[auth] Failed to save location to SQLite:", saveError);
+          }
         } catch (locationError) {
           // eslint-disable-next-line no-console
           console.warn("[auth] Failed to get location after sign-in", locationError);
@@ -303,7 +393,15 @@ export const Header = () => {
           longitude: location.longitude,
           accuracy: location.accuracy,
         });
-        // TODO: Store location in user profile or use for location-based features
+        
+        // Save location to SQLite
+        try {
+          await saveCurrentLocation(location);
+          console.log("[auth] Location saved to SQLite");
+          refreshLocationRef.current();
+        } catch (saveError) {
+          console.warn("[auth] Failed to save location to SQLite:", saveError);
+        }
       } catch (locationError) {
         // Don't block sign-in if geolocation fails
         // eslint-disable-next-line no-console
@@ -341,10 +439,14 @@ export const Header = () => {
             </div>
             <div>
               <h1 className="text-lg font-bold text-foreground">JimatShop</h1>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Button
+                variant="ghost"
+                className="h-auto p-0 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => navigate("/location-search")}
+              >
                 <MapPin className="w-3 h-3" />
-                <span>Kuala Lumpur</span>
-              </div>
+                <span>{currentLocation?.name || "Kuala Lumpur"}</span>
+              </Button>
             </div>
           </div>
           <div className="flex items-center gap-2">

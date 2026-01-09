@@ -19,3 +19,9 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Keep Kotlin coroutines classes required by Capacitor Geolocation plugin
+-keep class kotlin.coroutines.jvm.internal.** { *; }
+-keep class kotlinx.coroutines.** { *; }
+-dontwarn kotlin.coroutines.jvm.internal.**
+-dontwarn kotlinx.coroutines.**

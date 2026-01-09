@@ -1,7 +1,6 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-    
     repositories {
         google()
         mavenCentral()
@@ -9,6 +8,8 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:8.9.1'
         classpath 'com.google.gms:google-services:4.4.2'
+        // Kotlin version will be set from variables.gradle
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22"
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
@@ -87,6 +88,26 @@ subprojects { p ->
                     }
                 }
             }
+            
+            // Add Kotlin coroutines dependency to all Android modules that use Kotlin
+            // This ensures Capacitor plugins (like Geolocation) have access to required classes
+            // Check if project uses Kotlin (either via plugin or has Kotlin files)
+            def hasKotlinPlugin = p.plugins.hasPlugin('org.jetbrains.kotlin.android') || 
+                                  p.plugins.findPlugin('org.jetbrains.kotlin.android') != null ||
+                                  p.plugins.hasPlugin('kotlin-android')
+            
+            if (hasKotlinPlugin) {
+                p.dependencies {
+                    // Use versions from variables.gradle (Kotlin 1.9.22, coroutines 1.7.3)
+                    def kotlinVer = rootProject.ext.hasProperty('kotlin_version') ? 
+                                   rootProject.ext.kotlin_version : '1.9.22'
+                    def coroutinesVer = rootProject.ext.hasProperty('kotlinxCoroutinesVersion') ? 
+                                      rootProject.ext.kotlinxCoroutinesVersion : '1.7.3'
+                    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVer"
+                    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVer"
+                    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVer"
+                }
+            }
         }
         
         // Configure Kotlin extension and tasks to use JVM target 17 for ALL projects
@@ -126,20 +147,18 @@ subprojects { p ->
     }
 }
 
-// Fix duplicate Kotlin stdlib classes caused by old transitive deps pulling
-// kotlin-stdlib-jdk7/jdk8 1.6.x alongside kotlin-stdlib 1.8.x.
-// Force all kotlin-stdlib artifacts to the same version so only one set of classes ends up on the classpath.
+// Force Kotlin and coroutines versions across all projects
+// This ensures SpillingKt class is included and versions are consistent
 allprojects { proj ->
-    configurations.configureEach { cfg ->
-        cfg.resolutionStrategy.eachDependency { details ->
-            if (details.requested.group == "org.jetbrains.kotlin" &&
-                    (details.requested.name == "kotlin-stdlib" ||
-                     details.requested.name == "kotlin-stdlib-common" ||
-                     details.requested.name == "kotlin-stdlib-jdk7" ||
-                     details.requested.name == "kotlin-stdlib-jdk8")) {
-                details.useVersion("1.8.22")
-                details.because("Avoid duplicate Kotlin stdlib classes (mix of 1.6.x jdk7/jdk8 with 1.8.x stdlib)")
-            }
+    configurations.all {
+        resolutionStrategy {
+            def kotlinVer = rootProject.ext.hasProperty('kotlin_version') ? 
+                           rootProject.ext.kotlin_version : '1.9.22'
+            def coroutinesVer = rootProject.ext.hasProperty('kotlinxCoroutinesVersion') ? 
+                               rootProject.ext.kotlinxCoroutinesVersion : '1.7.3'
+            force "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVer"
+            force "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVer"
+            force "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVer"
         }
     }
 }

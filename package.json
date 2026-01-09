@@ -12,7 +12,11 @@
     "postinstall": "node scripts/copy-sql-wasm.mjs",
     "cap:sync": "npx cap sync",
     "cap:open:android": "npx cap open android",
-    "cap:run:android": "npm run build && npx cap sync android && npx cap run android"
+    "cap:run:android": "npm run build && npx cap sync android && npx cap run android",
+    "android:logs": "adb logcat | grep -i 'jimatshop\\|capacitor\\|chromium'",
+    "android:logs:all": "adb logcat",
+    "android:logs:errors": "adb logcat *:E *:W",
+    "android:logs:clear": "adb logcat -c"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^7.0.2",

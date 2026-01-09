@@ -13,4 +13,8 @@ ext {
     androidxJunitVersion = '1.2.1'
     androidxEspressoCoreVersion = '3.6.1'
     cordovaAndroidVersion = '10.1.1'
+    // Kotlin coroutines version - using 1.7.3 for compatibility
+    kotlinxCoroutinesVersion = '1.7.3'
+    // Kotlin compiler version - using 1.9.22 for compatibility with SpillingKt
+    kotlin_version = '1.9.22'
 }

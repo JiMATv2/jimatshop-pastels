@@ -76,7 +76,15 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/c
 export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
 export ANDROID_HOME="$ANDROID_SDK_ROOT"
 export PATH="$PATH:$ANDROID_SDK_ROOT/platform-tools"
-
+npx cap run android -l --host 10.0.2.2 --port 8080 --target Medium_Phone_API_36.1
 npm run build
 npx cap sync android
 npx cap run android --target Medium_Phone_API_36.1
+
+
+
+ 1960  export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
+ 1961  export ANDROID_HOME="$ANDROID_SDK_ROOT"
+ 1962  export PATH="$PATH:$ANDROID_SDK_ROOT/platform-tools"
+ 1963  npm run cap:run:android -- --target Medium_Phone_API_36.1
+ 1964  npx cap run android -l --host 10.0.2.2 --port 8080 --target Medium_Phone_API_36.1
