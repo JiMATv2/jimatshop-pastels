@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -14,7 +14,7 @@ import {
   requestLocationPermission,
   type PermissionStatus
 } from "@/lib/geolocation/geolocation";
-import { geoNearbyOutlets } from "@/lib/api/geoLocation";
+import { geoAutocomplete, geoNearbyOutlets, geoPlace, type GeoAutocompleteItem } from "@/lib/api/geoLocation";
 import { toast } from "@/components/ui/sonner";
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
@@ -47,12 +47,59 @@ const LocationSearch = () => {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [savedLocation, setSavedLocation] = useState<SavedLocation | null>(getSavedLocation());
   const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>("prompt");
+  const [autoCompleteResults, setAutoCompleteResults] = useState<GeoAutocompleteItem[]>([]);
+  const [autoCompleteLoading, setAutoCompleteLoading] = useState(false);
+  const [autoCompleteError, setAutoCompleteError] = useState<string | null>(null);
+  const autoCompleteAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setSavedLocation(getSavedLocation());
     // Check permission status on mount
     checkLocationPermission().then(setPermissionStatus);
   }, []);
+
+  // Debounce location autocomplete (3 seconds after user stops typing)
+  useEffect(() => {
+    const q = searchQuery.trim();
+
+    // Reset results if query is too short
+    if (q.length < 3) {
+      setAutoCompleteResults([]);
+      setAutoCompleteError(null);
+      setAutoCompleteLoading(false);
+      if (autoCompleteAbortRef.current) {
+        autoCompleteAbortRef.current.abort();
+        autoCompleteAbortRef.current = null;
+      }
+      return;
+    }
+
+    setAutoCompleteLoading(true);
+    setAutoCompleteError(null);
+
+    const timer = window.setTimeout(async () => {
+      // Cancel any in-flight request
+      if (autoCompleteAbortRef.current) autoCompleteAbortRef.current.abort();
+      const ac = new AbortController();
+      autoCompleteAbortRef.current = ac;
+
+      try {
+        const res = await geoAutocomplete(q, undefined, { signal: ac.signal });
+        setAutoCompleteResults(res);
+      } catch (e) {
+        if (ac.signal.aborted) return;
+        const msg = e instanceof Error ? e.message : "Failed to autocomplete location";
+        setAutoCompleteError(msg);
+        setAutoCompleteResults([]);
+      } finally {
+        if (!ac.signal.aborted) setAutoCompleteLoading(false);
+      }
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [searchQuery]);
 
   const handleRequestPermission = async () => {
     try {
@@ -280,14 +327,45 @@ const LocationSearch = () => {
     navigate(-1);
   };
 
-  // Common locations (can be expanded with actual location data)
-  const commonLocations: SavedLocation[] = [
-    { name: "Kuala Lumpur", address: "Kuala Lumpur, Malaysia" },
-    { name: "Petaling Jaya", address: "Petaling Jaya, Selangor, Malaysia" },
-    { name: "Shah Alam", address: "Shah Alam, Selangor, Malaysia" },
-    { name: "Subang Jaya", address: "Subang Jaya, Selangor, Malaysia" },
-    { name: "Klang", address: "Klang, Selangor, Malaysia" },
-  ];
+  const handleSelectAutocomplete = async (item: GeoAutocompleteItem) => {
+    try {
+      const place = await geoPlace(item.place_id);
+      const coords = place.lnglat;
+      if (!coords || typeof coords.lat !== "number" || typeof coords.lng !== "number") {
+        throw new Error("Invalid coordinates returned by place lookup");
+      }
+
+      const newLocation: SavedLocation = {
+        name:_attachName(item),
+        address: [item.main_text, item.secondary_text].filter(Boolean).join(", "),
+        coordinates: {
+          latitude: coords.lat,
+          longitude: coords.lng,
+        },
+      };
+
+      // Persist to SQLite so the rest of the app (useLatestLocation) picks it up as the current location.
+      await saveCurrentLocation({
+        latitude: coords.lat,
+        longitude: coords.lng,
+      });
+
+      saveLocation(newLocation);
+      setSavedLocation(newLocation);
+      toast.success(`Location set to "${newLocation.name}"`);
+      navigate(-1);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to set location";
+      toast.error(msg);
+    }
+  };
+
+  function _attachName(item: GeoAutocompleteItem) {
+    // Prefer a short user-friendly label
+    if (item.area && item.city) return `${item.area}, ${item.city}`;
+    if (item.main_text) return item.main_text;
+    return item.secondary_text || "Selected Location";
+  }
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -411,26 +489,40 @@ const LocationSearch = () => {
         {/* Common Locations */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Popular Locations</CardTitle>
-            <CardDescription>Quick select from common locations</CardDescription>
+            <CardTitle className="text-lg">Location Results</CardTitle>
+            <CardDescription>
+              {autoCompleteLoading
+                ? "Searching…"
+                : autoCompleteError
+                ? "Search failed"
+                : "Type 3+ characters and wait 3 seconds"}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {commonLocations.map((location, index) => (
-              <Button
-                key={index}
-                variant="ghost"
-                className="w-full justify-start gap-3 h-auto py-3"
-                onClick={() => handleSelectSavedLocation(location)}
-              >
-                <MapPin className="h-5 w-5 text-muted-foreground" />
-                <div className="flex-1 text-left">
-                  <p className="font-medium text-foreground">{location.name}</p>
-                  {location.address && (
-                    <p className="text-xs text-muted-foreground">{location.address}</p>
-                  )}
-                </div>
-              </Button>
-            ))}
+            {autoCompleteError ? (
+              <div className="text-sm text-destructive">{autoCompleteError}</div>
+            ) : autoCompleteLoading ? (
+              <div className="text-sm text-muted-foreground">Searching locations…</div>
+            ) : autoCompleteResults.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No results.</div>
+            ) : (
+              autoCompleteResults.slice(0, 8).map((item) => (
+                <Button
+                  key={item.place_id}
+                  variant="ghost"
+                  className="w-full justify-start gap-3 h-auto py-3"
+                  onClick={() => handleSelectAutocomplete(item)}
+                >
+                  <MapPin className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex-1 text-left">
+                    <p className="font-medium text-foreground">{item.main_text}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {[item.area, item.city, item.secondary_text].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                </Button>
+              ))
+            )}
           </CardContent>
         </Card>
       </main>

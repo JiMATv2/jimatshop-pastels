@@ -63,11 +63,47 @@ export async function saveCurrentLocation(
     true,
   );
 
-  // Fetch the inserted record
-  const insertedId = result.changes?.lastId;
+  // Fetch the inserted record.
+  // Note: some adapters (e.g. sql.js on web) don't return `changes.lastId`.
+  // Fall back to SQLite's last_insert_rowid() and then to "latest row".
+  let insertedId = result.changes?.lastId;
   if (!insertedId) {
-    throw new Error("Failed to save location: no ID returned");
+    try {
+      const idRes = await db.query("select last_insert_rowid() as id;");
+      const row = (idRes.values?.[0] as any) ?? null;
+      const idVal = row?.id;
+      const parsed =
+        typeof idVal === "number"
+          ? idVal
+          : typeof idVal === "string"
+            ? Number.parseInt(idVal, 10)
+            : null;
+      if (parsed && Number.isFinite(parsed)) insertedId = parsed;
+    } catch {
+      // ignore and try final fallback below
+    }
   }
+
+  if (!insertedId) {
+    try {
+      const latest = await db.query(
+        "select id from historical_current_location order by created_at desc limit 1;",
+      );
+      const row = (latest.values?.[0] as any) ?? null;
+      const idVal = row?.id;
+      const parsed =
+        typeof idVal === "number"
+          ? idVal
+          : typeof idVal === "string"
+            ? Number.parseInt(idVal, 10)
+            : null;
+      if (parsed && Number.isFinite(parsed)) insertedId = parsed;
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!insertedId) throw new Error("Failed to save location: no ID returned");
 
   const location = await getLocationById(insertedId);
   if (!location) {

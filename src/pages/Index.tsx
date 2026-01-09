@@ -7,6 +7,7 @@ import { CategoryGrid } from "@/components/home/CategoryGrid";
 import { ProductSection } from "@/components/home/ProductSection";
 import { PromoBanner } from "@/components/home/PromoBanner";
 import { ShopperWidgets } from "@/components/home/ShopperWidgets";
+import { NearbyOutlets } from "@/components/home/NearbyOutlets";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { Link } from "react-router-dom";
 
@@ -37,6 +38,7 @@ const Index = () => {
       
       <main>
         <ShopperWidgets />
+        <NearbyOutlets />
         <section className="px-4">
           <Link
             to="/shops"
