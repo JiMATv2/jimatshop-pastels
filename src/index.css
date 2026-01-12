@@ -15,11 +15,11 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 20%;
 
-    --primary: 122 39% 49%;
+    --primary: 119 61% 33%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 88 76% 94%;
-    --secondary-foreground: 123 46% 34%;
+    --secondary: 119 40% 92%;
+    --secondary-foreground: 119 61% 25%;
 
     --muted: 210 17% 98%;
     --muted-foreground: 0 0% 45%;
@@ -32,15 +32,15 @@
 
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 122 39% 49%;
+    --ring: 119 61% 33%;
 
     --radius: 0.75rem;
 
     /* Jimat custom colors */
-    --jimat-green: 122 39% 49%;
-    --jimat-lightgreen: 122 38% 74%;
-    --jimat-darkgreen: 123 46% 34%;
-    --jimat-pastelsage: 88 76% 94%;
+    --jimat-green: 119 61% 33%;
+    --jimat-lightgreen: 119 45% 55%;
+    --jimat-darkgreen: 119 61% 25%;
+    --jimat-pastelsage: 119 40% 92%;
     --jimat-pastelpeach: 18 92% 91%;
     --jimat-pastelblue: 213 92% 91%;
     --jimat-pastellavender: 252 100% 94%;
@@ -50,12 +50,12 @@
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 0 0% 20%;
-    --sidebar-primary: 122 39% 49%;
+    --sidebar-primary: 119 61% 33%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 88 76% 94%;
-    --sidebar-accent-foreground: 123 46% 34%;
+    --sidebar-accent: 119 40% 92%;
+    --sidebar-accent-foreground: 119 61% 25%;
     --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 122 39% 49%;
+    --sidebar-ring: 119 61% 33%;
   }
 
   .dark {
@@ -68,11 +68,11 @@
     --popover: 0 0% 12%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 122 39% 49%;
+    --primary: 119 61% 33%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 123 46% 20%;
-    --secondary-foreground: 122 38% 74%;
+    --secondary: 119 50% 18%;
+    --secondary-foreground: 119 45% 70%;
 
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 65%;
@@ -85,12 +85,12 @@
 
     --border: 0 0% 20%;
     --input: 0 0% 20%;
-    --ring: 122 39% 49%;
+    --ring: 119 61% 33%;
 
-    --jimat-green: 122 39% 49%;
-    --jimat-lightgreen: 122 38% 74%;
-    --jimat-darkgreen: 123 46% 34%;
-    --jimat-pastelsage: 88 76% 94%;
+    --jimat-green: 119 61% 33%;
+    --jimat-lightgreen: 119 45% 55%;
+    --jimat-darkgreen: 119 61% 25%;
+    --jimat-pastelsage: 119 40% 92%;
     --jimat-pastelpeach: 18 92% 91%;
     --jimat-pastelblue: 213 92% 91%;
     --jimat-pastellavender: 252 100% 94%;
@@ -100,12 +100,12 @@
 
     --sidebar-background: 0 0% 10%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 122 39% 49%;
+    --sidebar-primary: 119 61% 33%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 18%;
     --sidebar-accent-foreground: 0 0% 95%;
     --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 122 39% 49%;
+    --sidebar-ring: 119 61% 33%;
   }
 }
 
