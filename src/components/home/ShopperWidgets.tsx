@@ -42,32 +42,32 @@ export function ShopperWidgets() {
       value: `${totalOrders}`,
       subtitle: "jumlah pesanan",
       Icon: ShoppingBag,
-      gradient: "from-jimat-green/20 to-jimat-lightgreen/30",
-      iconBg: "bg-jimat-green",
+      gradient: "",
+      iconBg: "bg-primary",
     },
     {
       title: "Pembelian",
       value: formatMYR(totalSpend),
       subtitle: "nilai terkumpul",
       Icon: Wallet,
-      gradient: "from-orange-100 to-amber-100",
-      iconBg: "bg-orange-500",
+      gradient: "",
+      iconBg: "bg-primary",
     },
     {
       title: "Diproses",
       value: `${processingOrders}`,
       subtitle: "pesanan aktif",
       Icon: Clock,
-      gradient: "from-blue-100 to-sky-100",
-      iconBg: "bg-blue-500",
+      gradient: "",
+      iconBg: "bg-primary",
     },
     {
       title: "Baucar",
       value: `${availableVouchers}`,
       subtitle: "boleh ditebus",
       Icon: Ticket,
-      gradient: "from-purple-100 to-violet-100",
-      iconBg: "bg-purple-500",
+      gradient: "",
+      iconBg: "bg-primary",
     },
   ];
 
@@ -76,8 +76,8 @@ export function ShopperWidgets() {
     value: latestShippingStatus,
     subtitle: "status terkini",
     Icon: Truck,
-    gradient: "from-jimat-pastelsage to-jimat-pastelblue/50",
-    iconBg: "bg-jimat-darkgreen",
+    gradient: "",
+    iconBg: "bg-primary",
   };
 
   if (!user) {
@@ -115,7 +115,7 @@ export function ShopperWidgets() {
           <div
             key={w.title}
             className={cn(
-              "relative overflow-hidden rounded-2xl p-4 bg-gradient-to-br",
+              "relative overflow-hidden rounded-2xl p-4 bg-white border-2 border-primary",
               w.gradient
             )}
           >
@@ -136,7 +136,7 @@ export function ShopperWidgets() {
       {/* Shipping status - full width */}
       <div
         className={cn(
-          "relative overflow-hidden rounded-2xl p-4 bg-gradient-to-br",
+          "relative overflow-hidden rounded-2xl p-4 bg-white border-2 border-primary",
           shippingWidget.gradient
         )}
       >
