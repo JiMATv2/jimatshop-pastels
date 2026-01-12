@@ -42,7 +42,7 @@ const Index = () => {
         <section className="px-4">
           <Link
             to="/shops"
-            className="block jimat-card p-4 bg-gradient-to-r from-jimat-green/10 to-jimat-pastelblue/20"
+            className="block jimat-card p-4 bg-white border-2 border-primary"
           >
             <div className="flex items-center justify-between">
               <div>

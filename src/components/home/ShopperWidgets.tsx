@@ -83,15 +83,15 @@ export function ShopperWidgets() {
   if (!user) {
     return (
       <section className="px-4 py-4">
-        <div className="bg-gradient-to-r from-jimat-green to-jimat-darkgreen rounded-2xl p-5 text-white">
+        <div className="bg-white border-2 border-primary rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold mb-1">Selamat Datang!</h3>
-              <p className="text-sm text-white/80">
+              <h3 className="text-lg font-bold mb-1 text-foreground">Selamat Datang!</h3>
+              <p className="text-sm text-muted-foreground">
                 Log masuk untuk lihat ringkasan pembelian anda
               </p>
             </div>
-            <ChevronRight className="w-6 h-6 text-white/60" />
+            <ChevronRight className="w-6 h-6 text-primary" />
           </div>
         </div>
       </section>
