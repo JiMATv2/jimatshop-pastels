@@ -61,13 +61,29 @@ async function initWebSqlJsDb() {
   // Resolve WASM file path correctly for Vite
   // Vite serves public/ assets at root in dev, and respects base: "./" in production
   const getWasmPath = (file: string): string => {
+    // In development, Vite always serves from root regardless of base config
+    if (import.meta.env.DEV) {
+      return `/assets/${file}`;
+    }
+    
     const base = import.meta.env.BASE_URL || "/";
-    // In dev, Vite serves from root, so /assets/ works
-    // In production with base: "./", we need to resolve relative to base
+    // In production with absolute base, use absolute path
     if (base === "/") {
       return `/assets/${file}`;
     }
-    // For relative base, resolve using URL constructor
+    
+    // For relative base in production, resolve relative to current page
+    // If base is "./", we need to resolve from current location
+    if (base.startsWith("./")) {
+      // Get the directory of the current page
+      const currentPath = window.location.pathname;
+      const currentDir = currentPath.substring(0, currentPath.lastIndexOf("/") + 1);
+      // Resolve assets relative to base
+      const baseDir = base === "./" ? currentDir : base;
+      return `${baseDir}assets/${file}`;
+    }
+    
+    // Fallback: use URL constructor for other cases
     const baseUrl = new URL(base, window.location.href);
     const wasmUrl = new URL(`assets/${file}`, baseUrl);
     return wasmUrl.pathname;
@@ -75,6 +91,10 @@ async function initWebSqlJsDb() {
 
   let SQL;
   try {
+    // Log the resolved path for debugging
+    const wasmPath = getWasmPath("sql-wasm.wasm");
+    console.debug(`[sqlite] Loading WASM from: ${wasmPath} (base: ${import.meta.env.BASE_URL}, dev: ${import.meta.env.DEV})`);
+    
     SQL = await initSqlJs({
       locateFile: getWasmPath,
     });
@@ -83,7 +103,24 @@ async function initWebSqlJsDb() {
     console.error("Failed to initialize sql.js WASM:", error);
     const wasmPath = getWasmPath("sql-wasm.wasm");
     console.error(`Attempted to load WASM from: ${wasmPath}`);
+    console.error(`Base URL: ${import.meta.env.BASE_URL}, Dev mode: ${import.meta.env.DEV}`);
     console.error("Make sure sql-wasm.wasm exists in public/assets/");
+    
+    // Try to fetch the file to verify it's accessible
+    try {
+      const response = await fetch(wasmPath);
+      if (!response.ok) {
+        console.error(`WASM file fetch failed: ${response.status} ${response.statusText}`);
+        const text = await response.text();
+        console.error(`Response preview: ${text.substring(0, 200)}`);
+      } else {
+        const contentType = response.headers.get("content-type");
+        console.error(`WASM file fetch succeeded, content-type: ${contentType}`);
+      }
+    } catch (fetchError) {
+      console.error("Failed to fetch WASM file for verification:", fetchError);
+    }
+    
     throw new Error(
       `Failed to load SQLite WASM module: ${error?.message || String(error)}. ` +
       `Check that ${wasmPath} is accessible and is a valid WASM file.`
