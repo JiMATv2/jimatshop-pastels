@@ -86,29 +86,25 @@ export default function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
 
-  // Get product data (mock for now)
-  const product = productId ? MOCK_PRODUCTS[productId] : null;
+  // Get product data - fallback to default mock if not found
+  const DEFAULT_PRODUCT = {
+    id: productId || "default",
+    name: "Premium Mixed Nuts",
+    price: 18.90,
+    originalPrice: 24.90,
+    unit: "500g",
+    image: "https://images.unsplash.com/photo-1599599810769-bcde5a160d32?w=400",
+    badge: "sale" as const,
+    description: "A delicious assortment of premium roasted nuts including almonds, cashews, walnuts, and hazelnuts. Perfect for snacking, baking, or adding to your favorite recipes. High in protein and healthy fats.",
+    rating: 4.7,
+    reviews: 203,
+    inStock: true,
+    category: "Snacks"
+  };
 
-  if (!product) {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <Header />
-        <main className="px-4 py-6">
-          <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Product not found</p>
-            <Button className="mt-4" onClick={() => navigate("/products")}>
-              Browse Products
-            </Button>
-          </div>
-        </main>
-        <BottomNav />
-      </div>
-    );
-  }
+  const product = productId && MOCK_PRODUCTS[productId] 
+    ? MOCK_PRODUCTS[productId] 
+    : DEFAULT_PRODUCT;
 
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
