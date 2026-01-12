@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Products from "./pages/Products";
 import ProductDetails from "./pages/ProductDetails";
+import InventoryDetails from "./pages/InventoryDetails";
 import Profile from "./pages/Profile";
 import Orders from "./pages/Orders";
 import OrderDetails from "./pages/OrderDetails";
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/products" element={<Products />} />
               <Route path="/product/:productId" element={<ProductDetails />} />
+              <Route path="/inventory/:inventoryId" element={<InventoryDetails />} />
               <Route path="/shops" element={<Shops />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/orders" element={<Orders />} />

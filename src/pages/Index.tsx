@@ -47,7 +47,7 @@ const Index = () => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-semibold text-foreground">Browse Buyer Shops</div>
-                <div className="text-xs text-muted-foreground">Select a shop to start shopping</div>
+                <div className="text-xs text-muted-foreground">View all nearby shops</div>
               </div>
               <span className="text-xs font-medium text-primary">See all</span>
             </div>

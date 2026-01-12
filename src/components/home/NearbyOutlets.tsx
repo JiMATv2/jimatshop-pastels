@@ -20,7 +20,7 @@ export function NearbyOutlets() {
       return await geoNearbyOutlets({
         lat: coordinates.latitude,
         lng: coordinates.longitude,
-        km: 10,
+        km: 20,
       });
     },
     enabled: Boolean(coordinates?.latitude && coordinates?.longitude),
@@ -66,7 +66,7 @@ export function NearbyOutlets() {
         </div>
       ) : items.length === 0 ? (
         <div className="jimat-card p-4">
-          <div className="text-sm text-muted-foreground">No outlets found within 10 km.</div>
+          <div className="text-sm text-muted-foreground">No outlets found within 20 km.</div>
         </div>
       ) : (
         <div className="space-y-3">
@@ -91,6 +91,11 @@ export function NearbyOutlets() {
                     <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
                       {o.address || "—"}
                     </div>
+                    {typeof o.lat === "number" && typeof o.lng === "number" ? (
+                      <div className="text-[11px] text-muted-foreground mt-1">
+                        {o.lat.toFixed(6)}, {o.lng.toFixed(6)}
+                      </div>
+                    ) : null}
                     {o.map_url ? (
                       <a
                         href={o.map_url}

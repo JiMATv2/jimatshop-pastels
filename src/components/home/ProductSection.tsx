@@ -31,12 +31,18 @@ function toUiProduct(p: MobileProduct): Product {
   const badge: Product["badge"] =
     p.promotion_price != null ? "sale" : p.is_fast_moving ? "fast" : p.is_featured ? "new" : undefined;
 
+  const sold = (p.products_sold ?? 0) as number;
+  const stock = (p.stock_level ?? 0) as number;
+  const brand = p.brand_name ? String(p.brand_name) : null;
+  // Keep this as the `unit` line in ProductCard (small text). Show sold + stock for buyer-inventory browsing.
+  const unit = brand ? `${brand} · Sold: ${sold} · Stock: ${stock}` : `Sold: ${sold} · Stock: ${stock}`;
+
   return {
     id: p.id,
     name: p.name,
     price,
     originalPrice,
-    unit: p.brand_name ?? `Stock: ${p.stock_level}`,
+    unit,
     image: p.cover_image_url,
     badge,
   };

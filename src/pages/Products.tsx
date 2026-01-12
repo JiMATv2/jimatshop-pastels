@@ -1,53 +1,16 @@
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { ProductCard } from "@/components/home/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getProductsBySection } from "@/lib/catalog/seed";
-import {
-  fetchMobileProducts,
-  getMobileProductsClientConfig,
-  type MobileProduct,
-} from "@/lib/api/mobileProducts";
+import { getMobileProductsClientConfig } from "@/lib/api/mobileProducts";
+import { fetchMobileInventories, type MobileProduct } from "@/lib/api/mobileInventories";
+import { ProductCard } from "@/components/product/ProductCard";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useSelectedBuyerShop } from "@/lib/shop/selectedBuyerShop";
+import { useNearbyBuyerIds } from "@/lib/shop/useNearbyBuyerIds";
 
 type SectionKey = "featured" | "popular";
-
-type UiProduct = {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  unit: string;
-  image: string;
-  badge?: "sale" | "new" | "fast";
-};
-
-function toUiProduct(p: MobileProduct): UiProduct {
-  const price = p.promotion_price ?? p.normal_price;
-  const originalPrice = p.promotion_price ? p.normal_price : undefined;
-  const badge: UiProduct["badge"] =
-    p.promotion_price != null
-      ? "sale"
-      : p.is_fast_moving
-        ? "fast"
-        : p.is_featured
-          ? "new"
-          : undefined;
-
-  return {
-    id: p.id,
-    name: p.name,
-    price,
-    originalPrice,
-    unit: p.brand_name ?? `Stock: ${p.stock_level}`,
-    image: p.cover_image_url,
-    badge,
-  };
-}
 
 function parseSection(v: string | null): SectionKey {
   return v === "popular" ? "popular" : "featured";
@@ -59,70 +22,71 @@ export default function Products() {
     () => parseSection(searchParams.get("section")),
     [searchParams],
   );
-  const { buyerId } = useSelectedBuyerShop();
+  const buyerIdParam = searchParams.get("buyer_id"); // Single buyer ID from URL
+  const { buyerIds: nearbyBuyerIds, outlets, isLoading: buyerIdsLoading, hasLocation } = useNearbyBuyerIds();
+  
+  // Use buyer_id from URL if provided, otherwise use nearby buyer IDs
+  const buyerIds = buyerIdParam ? [buyerIdParam] : nearbyBuyerIds;
   const [page, setPage] = useState(1);
 
-  const title = section === "featured" ? "🔥 Hot Deals" : "⭐ Popular Items";
+  // Find the specific buyer outlet info if buyer_id is provided
+  const selectedBuyerOutlet = buyerIdParam 
+    ? outlets.find((o) => String(o.id) === buyerIdParam)
+    : null;
+
+  const title = buyerIdParam
+    ? selectedBuyerOutlet?.name 
+      ? `${selectedBuyerOutlet.name} Products`
+      : "Shop Products"
+    : section === "featured"
+    ? "🔥 Hot Deals (Nearby Inventories)"
+    : "⭐ Popular (Nearby Inventories)";
   const cfg = getMobileProductsClientConfig();
 
   useEffect(() => {
     setPage(1);
-  }, [section, buyerId]);
+  }, [section, buyerIds.join(",")]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["mobile-products-page", section, buyerId ?? null, page],
+    queryKey: ["mobile-inventories-page", section, buyerIds, page],
     queryFn: async () => {
-      const loadLocal = async () => {
-        const rows = await getProductsBySection(section);
-        return (rows as any[]).map((row) => ({
-          ...row,
-          originalPrice: row.originalPrice ?? undefined,
-          badge: row.badge ?? undefined,
-        })) as UiProduct[];
-      };
+      if (!cfg.apiToken) return { items: [] as MobileProduct[], pagination: undefined };
+      // If buyer_id is provided, don't require location
+      if (!buyerIdParam && (!hasLocation || buyerIds.length === 0))
+        return { items: [] as MobileProduct[], pagination: undefined };
 
-      if (!cfg.apiToken) return loadLocal();
-      // Buyer-inventory requires an authenticated user id to scope inventory.
-      if (!buyerId) return loadLocal();
+      // Debug: Log buyer IDs being sent
+      console.debug("[Products] Fetching inventories for buyer_ids:", buyerIds);
+      console.debug("[Products] Number of buyer IDs:", buyerIds.length);
+      console.debug("[Products] Nearby outlets count:", outlets.length);
+      console.debug("[Products] Buyer IDs array:", JSON.stringify(buyerIds));
+      
+      // Validation: Ensure we have multiple buyer IDs when not filtering by single buyer
+      if (!buyerIdParam && buyerIds.length === 1) {
+        console.warn("[Products] WARNING: Only 1 buyer ID found, expected multiple nearby buyers");
+      }
 
-      try {
-        const resp = await fetchMobileProducts(
+      const resp = await fetchMobileInventories(
           {
             page,
             limit_count: 12,
             search_query: "",
-            category_filter: "All Categories",
-            subcategory_filter: "All Subcategories",
-            brand_filter: "All Brands",
-            use_semantic_search: true,
-            semantic_threshold: 0.2,
-            source: "buyer_inventory",
-            buyer_id: buyerId,
+          buyer_ids: buyerIds,
           },
           cfg,
         );
 
-        const filtered =
-          section === "featured"
-            ? resp.data.filter((p) => p.is_featured)
-            : resp.data.filter((p) => p.is_fast_moving);
-        const picked = filtered.length ? filtered : resp.data;
-        return {
-          items: picked.map(toUiProduct),
-          pagination: resp.pagination,
-        };
-      } catch (e) {
-        console.warn("Mobile products API failed; falling back to local catalog", e);
-        return {
-          items: await loadLocal(),
-          pagination: undefined,
-        };
-      }
+      // Debug: Log products in response
+      console.debug("[Products] Products in response:", resp.data.length);
+
+      // Sorting is handled by backend (best-sellers from jimatshop_orders).
+      return { items: resp.data, pagination: resp.pagination };
     },
+    enabled: buyerIdParam ? true : !buyerIdsLoading, // Enable immediately if buyer_id is provided
     staleTime: 60_000,
   });
 
-  const items: UiProduct[] = Array.isArray(data) ? data : (data?.items ?? []);
+  const items: MobileProduct[] = (data?.items ?? []) as MobileProduct[];
   const pagination = Array.isArray(data) ? undefined : data?.pagination;
 
   return (
@@ -131,6 +95,76 @@ export default function Products() {
 
       <main className="px-4 py-4">
         <h2 className="text-lg font-semibold text-foreground mb-4">{title}</h2>
+
+        {buyerIdParam && selectedBuyerOutlet ? (
+          <section className="jimat-card p-3 mb-4">
+            <div className="text-sm font-semibold text-foreground">
+              {selectedBuyerOutlet.name || "Shop"}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1 truncate">
+              {selectedBuyerOutlet.address || "—"}
+            </div>
+            {typeof selectedBuyerOutlet.distance_in_km === "number" && (
+              <div className="text-xs font-medium text-primary mt-1">
+                {selectedBuyerOutlet.distance_in_km.toFixed(1)} km away
+              </div>
+            )}
+          </section>
+        ) : (
+          <section className="jimat-card p-3 mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-semibold text-foreground">
+                Nearby buyer outlets (20km)
+              </div>
+              {!buyerIdsLoading && buyerIds.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  {buyerIds.length} {buyerIds.length === 1 ? "outlet" : "outlets"}
+                </div>
+              )}
+            </div>
+            {!hasLocation ? (
+              <div className="text-xs text-muted-foreground mt-1">Location not set.</div>
+            ) : buyerIdsLoading ? (
+              <div className="text-xs text-muted-foreground mt-1">Finding nearby buyers…</div>
+            ) : outlets.length === 0 ? (
+              <div className="text-xs text-muted-foreground mt-1">
+                No buyers found within 20km.
+              </div>
+            ) : (
+              <>
+                <div className="mt-2 space-y-2">
+                  {outlets.slice(0, 6).map((o) => (
+                    <div key={String(o.id)} className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-foreground truncate">
+                          {o.name || "Buyer"}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {o.address || "—"}
+                        </div>
+                        {typeof o.lat === "number" && typeof o.lng === "number" ? (
+                          <div className="text-[11px] text-muted-foreground">
+                            {o.lat.toFixed(6)}, {o.lng.toFixed(6)}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="text-xs font-medium text-primary whitespace-nowrap">
+                        {typeof o.distance_in_km === "number" ? `${o.distance_in_km.toFixed(1)} km` : ""}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {items.length > 0 && (
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="text-xs text-muted-foreground">
+                      Showing {items.length} product{items.length !== 1 ? "s" : ""} from {buyerIds.length} {buyerIds.length === 1 ? "outlet" : "outlets"}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        )}
 
         <div className="grid grid-cols-3 gap-3">
           {isLoading ? (
@@ -143,14 +177,25 @@ export default function Products() {
                     <Skeleton className="h-3 w-2/5" />
                     <div className="flex items-center justify-between pt-2">
                       <Skeleton className="h-5 w-24" />
-                      <Skeleton className="h-8 w-8 rounded-full" />
                     </div>
                   </div>
                 </div>
               </div>
             ))
           ) : (
-            items.map((p, idx) => <ProductCard key={p.id} {...p} delay={idx * 25} />)
+            items.map((product, idx) => (
+              <ProductCard
+                key={product.product_id}
+                productId={product.product_id}
+                productName={product.product_name}
+                price={product.retail_price}
+                coverImageUrl={product.cover_image_url}
+                outletsWithStock={product.outlets_with_stock}
+                totalOutlets={product.total_outlets}
+                totalQuantitySold={product.total_quantity_sold}
+                delay={idx * 25}
+              />
+            ))
           )}
         </div>
 
@@ -180,13 +225,13 @@ export default function Products() {
 
         {error ? (
           <p className="mt-3 text-xs text-muted-foreground">
-            Failed to load from API. Showing offline fallback if available.
+            Failed to load inventories.
           </p>
         ) : null}
 
         {!cfg.apiToken ? (
           <p className="mt-2 text-xs text-muted-foreground">
-            API token not configured (VITE_SUPABASE_API_TOKEN) — using offline catalog.
+            API token not configured (VITE_SUPABASE_API_TOKEN).
           </p>
         ) : null}
       </main>

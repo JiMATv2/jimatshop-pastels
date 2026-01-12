@@ -134,4 +134,45 @@ export async function fetchMobileProducts(
   return json as MobileProductsResponse;
 }
 
+export interface MobileProductDetailsResponse {
+  success: boolean;
+  data: MobileProduct;
+  error?: string;
+  message?: string;
+}
+
+export async function fetchMobileProductById(
+  productId: string,
+  cfg: MobileProductsClientConfig = getMobileProductsClientConfig(),
+): Promise<MobileProductDetailsResponse> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (cfg.apiToken) {
+    headers["Authorization"] = `Bearer ${cfg.apiToken}`;
+  }
+
+  const res = await fetch(`${cfg.baseUrl}/product/${productId}`, {
+    method: "GET",
+    headers,
+  });
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    const message =
+      (json && (json.message || json.error)) ||
+      `Failed to fetch product (HTTP ${res.status})`;
+    throw new Error(message);
+  }
+
+  if (json && json.success === false) {
+    const message = (json.message || json.error) ?? "Failed to fetch product";
+    throw new Error(message);
+  }
+
+  return json as MobileProductDetailsResponse;
+}
+
 

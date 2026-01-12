@@ -10,6 +10,7 @@ export type MobileBuyerShop = {
   signboard_photo_url: string | null;
   activate_jimatshop: boolean;
   product_count: number;
+  distance_in_km?: number | null; // Distance from current location when latitude/longitude provided
 };
 
 export type MobileBuyersListRequest = {
@@ -19,6 +20,8 @@ export type MobileBuyersListRequest = {
   search_query?: string;
   only_activated?: boolean;
   min_product_count?: number;
+  latitude?: number | null; // Optional: current latitude for distance calculation
+  longitude?: number | null; // Optional: current longitude for distance calculation
 };
 
 export type MobilePaginationInfo = {

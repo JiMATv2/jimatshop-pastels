@@ -1,7 +1,6 @@
 import * as React from "react";
 import { toast } from "@/hooks/use-toast";
 import type { CartItem, CartStateV1 } from "./cartTypes";
-import { getSelectedBuyerShopId } from "@/lib/shop/selectedBuyerShop";
 
 type CartContextValue = {
   buyerId: string | null;
@@ -37,61 +36,38 @@ function normalizeQty(qty: number) {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [buyerId, setBuyerId] = React.useState<string | null>(() => getSelectedBuyerShopId());
+  // buyerId is now optional - will be determined from nearby buyers at checkout
+  const [buyerId] = React.useState<string | null>(null);
   const [items, setItems] = React.useState<CartItem[]>([]);
 
-  // Keep buyerId in sync with selection changes from other screens (localStorage write).
-  React.useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "jimatshop_selected_buyer_shop_id") {
-        setBuyerId(getSelectedBuyerShopId());
-      }
-    };
-    const onBuyerChanged = () => setBuyerId(getSelectedBuyerShopId());
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("jimatshop:selectedBuyerShopChanged", onBuyerChanged as EventListener);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("jimatshop:selectedBuyerShopChanged", onBuyerChanged as EventListener);
-    };
-  }, []);
-
-  // Load cart for current buyer when buyerId changes.
+  // Load cart on mount (no buyerId scoping - single cart for all nearby buyers)
   React.useEffect(() => {
     try {
-      const raw = localStorage.getItem(keyForBuyer(buyerId));
+      const raw = localStorage.getItem(keyForBuyer(null));
       const parsed = safeParse(raw);
       setItems(parsed?.items ?? []);
     } catch {
       setItems([]);
     }
-  }, [buyerId]);
+  }, []);
 
-  // Persist.
+  // Persist cart (no buyerId scoping)
   React.useEffect(() => {
     try {
       const state: CartStateV1 = {
         version: 1,
-        buyerId,
+        buyerId: null, // No buyer selection - determined at checkout
         items,
         updatedAt: new Date().toISOString(),
       };
-      localStorage.setItem(keyForBuyer(buyerId), JSON.stringify(state));
+      localStorage.setItem(keyForBuyer(null), JSON.stringify(state));
     } catch {
       // ignore
     }
-  }, [buyerId, items]);
+  }, [items]);
 
   const addItem = React.useCallback(
     (item: Omit<CartItem, "quantity">, qty: number = 1) => {
-      if (!buyerId) {
-        toast({
-          title: "Select a shop first",
-          description: "Please choose a shop before adding items to cart.",
-        });
-        return;
-      }
-
       const addQty = normalizeQty(qty);
 
       setItems((prev) => {
@@ -107,7 +83,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: `${item.name} ×${addQty}`,
       });
     },
-    [buyerId],
+    [],
   );
 
   const setQuantity = React.useCallback((productId: string, qty: number) => {

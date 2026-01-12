@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/lib/cart/CartProvider";
 import { toast } from "@/hooks/use-toast";
+import { fetchMobileProductById } from "@/lib/api/mobileProducts";
+import { fetchInventoriesForProduct, type MobileInventory } from "@/lib/api/mobileInventories";
+import { useNearbyBuyerIds } from "@/lib/shop/useNearbyBuyerIds";
+import { InventoryCard } from "@/components/inventory/InventoryCard";
 import { 
   ArrowLeft, 
   Heart, 
@@ -16,11 +20,11 @@ import {
   Star,
   Truck,
   Shield,
-  RotateCcw
+  RotateCcw,
+  Loader2
 } from "lucide-react";
 
-// Mock product data - in production this would come from your database
-const MOCK_PRODUCTS: Record<string, {
+interface Product {
   id: string;
   name: string;
   price: number;
@@ -33,48 +37,7 @@ const MOCK_PRODUCTS: Record<string, {
   reviews: number;
   inStock: boolean;
   category: string;
-}> = {
-  "1": {
-    id: "1",
-    name: "Fresh Red Apples",
-    price: 5.99,
-    originalPrice: 7.99,
-    unit: "1kg",
-    image: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400",
-    badge: "sale",
-    description: "Crisp and sweet red apples, perfect for snacking or baking. Sourced from local Malaysian orchards, these apples are hand-picked at peak ripeness to ensure the best flavor and freshness.",
-    rating: 4.8,
-    reviews: 124,
-    inStock: true,
-    category: "Fruits"
-  },
-  "2": {
-    id: "2",
-    name: "Organic Bananas",
-    price: 4.50,
-    unit: "1 bunch",
-    image: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400",
-    badge: "new",
-    description: "Naturally ripened organic bananas, rich in potassium and perfect for smoothies, baking, or eating fresh. No artificial ripening agents used.",
-    rating: 4.6,
-    reviews: 89,
-    inStock: true,
-    category: "Fruits"
-  },
-  "3": {
-    id: "3",
-    name: "Fresh Milk 1L",
-    price: 6.90,
-    unit: "1 litre",
-    image: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400",
-    badge: "fast",
-    description: "Farm-fresh pasteurized milk from grass-fed cows. High in calcium and protein, perfect for the whole family.",
-    rating: 4.9,
-    reviews: 256,
-    inStock: true,
-    category: "Dairy"
-  },
-};
+}
 
 const formatMYR = (amount: number) =>
   new Intl.NumberFormat("ms-MY", { style: "currency", currency: "MYR" }).format(amount);
@@ -85,26 +48,115 @@ export default function ProductDetails() {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [inventories, setInventories] = useState<MobileInventory[]>([]);
+  const [inventoriesLoading, setInventoriesLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { buyerIds } = useNearbyBuyerIds();
 
-  // Get product data - fallback to default mock if not found
-  const DEFAULT_PRODUCT = {
-    id: productId || "default",
-    name: "Premium Mixed Nuts",
-    price: 18.90,
-    originalPrice: 24.90,
-    unit: "500g",
-    image: "https://images.unsplash.com/photo-1599599810769-bcde5a160d32?w=400",
-    badge: "sale" as const,
-    description: "A delicious assortment of premium roasted nuts including almonds, cashews, walnuts, and hazelnuts. Perfect for snacking, baking, or adding to your favorite recipes. High in protein and healthy fats.",
-    rating: 4.7,
-    reviews: 203,
-    inStock: true,
-    category: "Snacks"
-  };
+  useEffect(() => {
+    if (!productId) {
+      setError("Product ID is required");
+      setLoading(false);
+      return;
+    }
 
-  const product = productId && MOCK_PRODUCTS[productId] 
-    ? MOCK_PRODUCTS[productId] 
-    : DEFAULT_PRODUCT;
+    const loadProduct = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetchMobileProductById(productId);
+        
+        if (response.success && response.data) {
+          const apiProduct = response.data;
+          
+          // Map API response to component's expected structure
+          const mappedProduct: Product = {
+            id: apiProduct.id,
+            name: apiProduct.name,
+            price: apiProduct.promotion_price ?? apiProduct.normal_price,
+            originalPrice: apiProduct.promotion_price ? apiProduct.normal_price : undefined,
+            unit: apiProduct.subcategory || "1 unit",
+            image: apiProduct.cover_image_url || "https://via.placeholder.com/400",
+            badge: apiProduct.is_fast_moving ? "fast" : apiProduct.promotion_price ? "sale" : undefined,
+            description: `${apiProduct.name} - ${apiProduct.category}${apiProduct.subcategory ? ` (${apiProduct.subcategory})` : ""}. ${apiProduct.seller_name ? `Sold by ${apiProduct.seller_name}.` : ""}`,
+            rating: 4.5, // Default rating since API doesn't provide this
+            reviews: apiProduct.total_orders || 0,
+            inStock: apiProduct.stock_level > 0,
+            category: apiProduct.category || "General"
+          };
+          
+          setProduct(mappedProduct);
+        } else {
+          setError("Product not found");
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to load product";
+        setError(errorMessage);
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProduct();
+  }, [productId]);
+
+  useEffect(() => {
+    if (!productId || buyerIds.length === 0) return;
+
+    const loadInventories = async () => {
+      try {
+        setInventoriesLoading(true);
+        const response = await fetchInventoriesForProduct(productId, buyerIds);
+        if (response.success) {
+          setInventories(response.data);
+        }
+      } catch (err) {
+        console.error("Failed to load inventories:", err);
+      } finally {
+        setInventoriesLoading(false);
+      }
+    };
+
+    loadInventories();
+  }, [productId, buyerIds.join(",")]);
+
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading product details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
+          <div className="flex items-center justify-between px-4 py-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 gap-4">
+          <p className="text-destructive text-center">{error || "Product not found"}</p>
+          <Button onClick={() => navigate(-1)}>Go Back</Button>
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
 
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
@@ -244,12 +296,50 @@ export default function ProductDetails() {
           </div>
         </div>
 
-        {/* Stock Status */}
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-500"}`} />
-          <span className={`text-sm ${product.inStock ? "text-green-600" : "text-red-600"}`}>
-            {product.inStock ? "In Stock" : "Out of Stock"}
-          </span>
+        {/* Available Outlets */}
+        <div className="space-y-3">
+          <h3 className="font-semibold text-foreground">Available at Outlets</h3>
+          {inventoriesLoading ? (
+            <div className="text-sm text-muted-foreground">Loading outlets...</div>
+          ) : inventories.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No outlets found</div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {inventories.map((inv) => (
+                <div
+                  key={inv.inventory_id}
+                  onClick={() => navigate(`/inventory/${inv.inventory_id}`)}
+                  className="jimat-card p-3 cursor-pointer transition-colors hover:bg-muted/50 active:bg-muted"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-foreground">{inv.buyer_name}</div>
+                      {inv.buyer_address && (
+                        <div className="text-xs text-muted-foreground mt-1 truncate">
+                          {inv.buyer_address}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className={`text-xs ${inv.stock_level > 0 ? "text-green-600" : "text-red-600"}`}>
+                          {inv.stock_level > 0 ? `Stock: ${inv.stock_level}` : "Out of Stock"}
+                        </span>
+                        {inv.total_quantity_sold > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            Sold: {inv.total_quantity_sold}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-base font-bold text-primary">
+                        {formatMYR(inv.retail_price)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
 

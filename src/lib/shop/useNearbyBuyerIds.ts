@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLatestLocation } from "@/lib/location/useLocation";
-import { geoNearbyOutlets } from "@/lib/api/geoLocation";
+import { geoNearbyOutlets, type GeoOutletItem } from "@/lib/api/geoLocation";
 
 /**
  * Hook to get buyer IDs from nearby outlets within 20km
@@ -9,11 +9,11 @@ import { geoNearbyOutlets } from "@/lib/api/geoLocation";
 export function useNearbyBuyerIds() {
   const { coordinates, isLoading: locationLoading } = useLatestLocation();
 
-  const { data: buyerIds = [], isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["nearby-buyer-ids", coordinates?.latitude, coordinates?.longitude],
     queryFn: async () => {
       if (!coordinates?.latitude || !coordinates?.longitude) {
-        return [];
+        return { buyerIds: [] as string[], outlets: [] as GeoOutletItem[] };
       }
 
       try {
@@ -22,6 +22,8 @@ export function useNearbyBuyerIds() {
           lng: coordinates.longitude,
           km: 20, // Limit to 20km as requested
         });
+
+        console.debug("[useNearbyBuyerIds] Nearby outlets response:", response.items.length, "outlets");
 
         // Extract buyer IDs from outlet items
         // The outlet id is the buyer_id in the Supabase schema
@@ -32,10 +34,22 @@ export function useNearbyBuyerIds() {
           })
           .filter((id) => id && id !== "");
 
-        return ids;
+        console.debug("[useNearbyBuyerIds] Extracted buyer IDs:", ids.length, "buyers");
+        console.debug("[useNearbyBuyerIds] Buyer IDs:", ids);
+        
+        // Check for duplicate buyer IDs
+        const uniqueIds = Array.from(new Set(ids));
+        if (uniqueIds.length !== ids.length) {
+          console.warn("[useNearbyBuyerIds] WARNING: Duplicate buyer IDs detected!", {
+            total: ids.length,
+            unique: uniqueIds.length,
+          });
+        }
+
+        return { buyerIds: uniqueIds, outlets: response.items };
       } catch (err) {
         console.warn("[useNearbyBuyerIds] Failed to fetch nearby outlets:", err);
-        return [];
+        return { buyerIds: [] as string[], outlets: [] as GeoOutletItem[] };
       }
     },
     enabled: Boolean(coordinates?.latitude && coordinates?.longitude),
@@ -43,7 +57,8 @@ export function useNearbyBuyerIds() {
   });
 
   return {
-    buyerIds,
+    buyerIds: data?.buyerIds ?? [],
+    outlets: data?.outlets ?? [],
     isLoading: locationLoading || isLoading,
     error,
     hasLocation: Boolean(coordinates?.latitude && coordinates?.longitude),

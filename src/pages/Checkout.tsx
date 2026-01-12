@@ -13,6 +13,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useNearbyBuyerIds } from "@/lib/shop/useNearbyBuyerIds";
 
 const formatMYR = (amount: number) =>
   new Intl.NumberFormat("ms-MY", { style: "currency", currency: "MYR" }).format(amount);
@@ -20,8 +21,12 @@ const formatMYR = (amount: number) =>
 export default function Checkout() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { buyerId, items, itemCount, subtotal, setQuantity, removeItem, clear } = useCart();
+  const { items, itemCount, subtotal, setQuantity, removeItem, clear } = useCart();
+  const { buyerIds, isLoading: buyerIdsLoading, hasLocation } = useNearbyBuyerIds();
   const [submitting, setSubmitting] = useState(false);
+  
+  // Use the first nearby buyer ID, or null if none available
+  const buyerId = buyerIds.length > 0 ? buyerIds[0] : null;
 
   const [notes, setNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"pay_in_store" | "jimatshop_coins">("pay_in_store");
@@ -61,6 +66,8 @@ export default function Checkout() {
     items.length > 0 &&
     Boolean(user) &&
     !submitting &&
+    !buyerIdsLoading &&
+    hasLocation &&
     (paymentMethod !== "jimatshop_coins" || coinsSufficient);
 
   const onCheckout = async () => {
@@ -68,8 +75,11 @@ export default function Checkout() {
       toast({ title: "Sign in required", description: "Please sign in to place an order." });
       return;
     }
-    if (!buyerId) {
-      toast({ title: "Select a shop", description: "Please choose a shop before checkout." });
+    if (!buyerId || !hasLocation) {
+      toast({ 
+        title: "Location required", 
+        description: "Please set your location to see nearby shops and checkout." 
+      });
       return;
     }
     if (items.length === 0) {
@@ -145,10 +155,16 @@ export default function Checkout() {
           </Button>
         </div>
 
-        {!buyerId ? (
+        {!hasLocation || buyerIdsLoading ? (
           <div className="jimat-card p-4">
             <p className="text-sm text-muted-foreground">
-              Please select a shop first (from Shops) before adding items to cart.
+              {buyerIdsLoading ? "Loading nearby shops..." : "Please set your location to checkout."}
+            </p>
+          </div>
+        ) : !buyerId ? (
+          <div className="jimat-card p-4">
+            <p className="text-sm text-muted-foreground">
+              No nearby shops found. Please update your location.
             </p>
           </div>
         ) : null}

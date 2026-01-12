@@ -85,6 +85,8 @@ export type GeoOutletItem = {
   map_url: string | null;
   enabled: boolean | null;
   pay_in_store: boolean | null;
+  lat?: number | null;
+  lng?: number | null;
   distance_in_km: number | null;
 };
 
