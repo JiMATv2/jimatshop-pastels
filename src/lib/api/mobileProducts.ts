@@ -60,7 +60,8 @@ export interface MobileProductsRequest {
   // ex_supabase extension: choose data source
   source?: "marketplace" | "buyer_inventory";
   // when source="buyer_inventory"
-  buyer_id?: string | null;
+  buyer_id?: string | null; // deprecated, use buyer_ids
+  buyer_ids?: string[]; // new: array of buyer IDs
   buyer_user_id?: string | null;
   auto_import_from_orders?: boolean;
 }

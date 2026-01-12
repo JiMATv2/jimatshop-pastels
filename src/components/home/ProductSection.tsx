@@ -8,7 +8,7 @@ import {
   getMobileProductsClientConfig,
   type MobileProduct,
 } from "@/lib/api/mobileProducts";
-import { useSelectedBuyerShop } from "@/lib/shop/selectedBuyerShop";
+import { useNearbyBuyerIds } from "@/lib/shop/useNearbyBuyerIds";
 
 interface Product {
   id: string;
@@ -44,9 +44,9 @@ function toUiProduct(p: MobileProduct): Product {
 
 export const ProductSection = ({ title, products }: ProductSectionProps) => {
   const cfg = getMobileProductsClientConfig();
-  const { buyerId } = useSelectedBuyerShop();
+  const { buyerIds, isLoading: buyerIdsLoading, hasLocation } = useNearbyBuyerIds();
   const { data: productList = [], isLoading, error } = useQuery({
-    queryKey: ["mobile-products", products, buyerId ?? null],
+    queryKey: ["mobile-products", products, buyerIds],
     queryFn: async () => {
       const loadLocal = async () => {
         const rows = await getProductsBySection(products);
@@ -61,10 +61,17 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
 
       // If token isn't configured, keep local seed catalog behavior (offline/dev friendly).
       if (!cfg.apiToken) return loadLocal();
-      // Buyer-inventory requires a selected buyer shop to browse.
-      if (!buyerId) return loadLocal();
+      // Buyer-inventory requires nearby buyer shops (from location).
+      if (!hasLocation || !buyerIds || buyerIds.length === 0) {
+        console.debug("[ProductSection] No nearby buyers, using local catalog", {
+          hasLocation,
+          buyerIdsCount: buyerIds?.length ?? 0,
+        });
+        return loadLocal();
+      }
 
       try {
+        console.debug("[ProductSection] Fetching products for buyer_ids:", buyerIds);
         const resp = await fetchMobileProducts(
           {
             page: 1,
@@ -76,7 +83,7 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
             use_semantic_search: true,
             semantic_threshold: 0.2,
             source: "buyer_inventory",
-            buyer_id: buyerId,
+            buyer_ids: buyerIds, // Use array of buyer IDs from nearby outlets
           },
           cfg,
         );
@@ -93,6 +100,7 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
         return loadLocal();
       }
     },
+    enabled: !buyerIdsLoading, // Wait for buyer IDs to load
     staleTime: 60_000,
   });
 
@@ -109,7 +117,7 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {isLoading ? (
+        {isLoading || buyerIdsLoading ? (
           Array.from({ length: 4 }).map((_, idx) => (
             <div key={idx} className="jimat-card">
               <div className="p-3 space-y-3">
