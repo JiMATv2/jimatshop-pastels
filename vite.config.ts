@@ -11,6 +11,16 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    middlewareMode: false,
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        // Ensure WASM files are served with correct MIME type
+        if (req.url?.endsWith(".wasm")) {
+          res.setHeader("Content-Type", "application/wasm");
+        }
+        next();
+      });
+    },
   },
   assetsInclude: ["**/*.wasm"],
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),

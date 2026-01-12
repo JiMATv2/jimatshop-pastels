@@ -61,10 +61,16 @@ async function initWebSqlJsDb() {
   // Resolve WASM file path correctly for Vite
   // Vite serves public/ assets at root in dev, and respects base: "./" in production
   const getWasmPath = (file: string): string => {
-    // Try to resolve relative to current location
     const base = import.meta.env.BASE_URL || "/";
-    const path = base === "/" ? `/assets/${file}` : `${base}assets/${file}`;
-    return path;
+    // In dev, Vite serves from root, so /assets/ works
+    // In production with base: "./", we need to resolve relative to base
+    if (base === "/") {
+      return `/assets/${file}`;
+    }
+    // For relative base, resolve using URL constructor
+    const baseUrl = new URL(base, window.location.href);
+    const wasmUrl = new URL(`assets/${file}`, baseUrl);
+    return wasmUrl.pathname;
   };
 
   let SQL;
