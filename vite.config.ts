@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  assetsInclude: ["**/*.wasm"],
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   optimizeDeps: {
     // jeep-sqlite (Stencil) + sql.js (WASM) can break when pre-bundled by Vite.

@@ -57,9 +57,33 @@ async function initWebSqlJsDb() {
     );
     throw new Error("sql.js init function not found");
   }
-  const SQL = await initSqlJs({
-    locateFile: (file: string) => `/assets/${file}`,
-  });
+  
+  // Resolve WASM file path correctly for Vite
+  // Vite serves public/ assets at root in dev, and respects base: "./" in production
+  const getWasmPath = (file: string): string => {
+    // Try to resolve relative to current location
+    const base = import.meta.env.BASE_URL || "/";
+    const path = base === "/" ? `/assets/${file}` : `${base}assets/${file}`;
+    return path;
+  };
+
+  let SQL;
+  try {
+    SQL = await initSqlJs({
+      locateFile: getWasmPath,
+    });
+  } catch (error: any) {
+    // If WASM loading fails, provide helpful error message
+    console.error("Failed to initialize sql.js WASM:", error);
+    const wasmPath = getWasmPath("sql-wasm.wasm");
+    console.error(`Attempted to load WASM from: ${wasmPath}`);
+    console.error("Make sure sql-wasm.wasm exists in public/assets/");
+    throw new Error(
+      `Failed to load SQLite WASM module: ${error?.message || String(error)}. ` +
+      `Check that ${wasmPath} is accessible and is a valid WASM file.`
+    );
+  }
+  
   const db = new SQL.Database();
 
   webDb = {
