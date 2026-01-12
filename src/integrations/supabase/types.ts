@@ -305,6 +305,7 @@ export type Database = {
           created_at: string
           current_qty: number
           id: string
+          is_visible: boolean
           lead_time_days: number
           product_id: string
           reorder_level: number
@@ -319,6 +320,7 @@ export type Database = {
           created_at?: string
           current_qty?: number
           id?: string
+          is_visible?: boolean
           lead_time_days?: number
           product_id: string
           reorder_level?: number
@@ -333,6 +335,7 @@ export type Database = {
           created_at?: string
           current_qty?: number
           id?: string
+          is_visible?: boolean
           lead_time_days?: number
           product_id?: string
           reorder_level?: number
@@ -866,10 +869,12 @@ export type Database = {
           id: string
           last_name: string | null
           last_order_date: string | null
+          lat: number | null
           legacy_id: number | null
           legacy_outlet_id: number | null
           line1: string | null
           line2: string | null
+          lng: number | null
           outlet_email: string | null
           outlet_name: string | null
           outlet_phone: string | null
@@ -913,10 +918,12 @@ export type Database = {
           id?: string
           last_name?: string | null
           last_order_date?: string | null
+          lat?: number | null
           legacy_id?: number | null
           legacy_outlet_id?: number | null
           line1?: string | null
           line2?: string | null
+          lng?: number | null
           outlet_email?: string | null
           outlet_name?: string | null
           outlet_phone?: string | null
@@ -960,10 +967,12 @@ export type Database = {
           id?: string
           last_name?: string | null
           last_order_date?: string | null
+          lat?: number | null
           legacy_id?: number | null
           legacy_outlet_id?: number | null
           line1?: string | null
           line2?: string | null
+          lng?: number | null
           outlet_email?: string | null
           outlet_name?: string | null
           outlet_phone?: string | null
@@ -7286,6 +7295,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_activate_combo_subscription: {
+        Args: {
+          p_combo_id: string
+          p_force?: boolean
+          p_paid_amount?: number
+          p_paid_at?: string
+          p_payment_reference?: string
+          p_seller_profile_id: string
+        }
+        Returns: Json
+      }
       admin_execute_query: { Args: { query_text: string }; Returns: Json }
       admin_insert: {
         Args: { data: Json; table_name: string }
@@ -8007,6 +8027,45 @@ export type Database = {
         }[]
       }
       get_buyer_financial_stats: { Args: { p_buyer_id: string }; Returns: Json }
+      get_buyer_inventory_products_paginated:
+        | {
+            Args: {
+              limit_count?: number
+              offset_count?: number
+              search_query?: string
+            }
+            Returns: {
+              category: string
+              cover_image_url: string
+              id: string
+              jimatshop_name: string
+              jimatshop_price: number
+              name: string
+              stock_level: number
+              sub_category: string
+              total_count: number
+            }[]
+          }
+        | {
+            Args: {
+              limit_count?: number
+              offset_count?: number
+              p_buyer_id?: string
+              p_buyer_user_id?: string
+              search_query?: string
+            }
+            Returns: {
+              category: string
+              cover_image_url: string
+              id: string
+              jimatshop_name: string
+              jimatshop_price: number
+              name: string
+              stock_level: number
+              sub_category: string
+              total_count: number
+            }[]
+          }
       get_buyer_orders: {
         Args: { buyer_user_id: string }
         Returns: {
@@ -10407,6 +10466,14 @@ export type Database = {
         Args: { seller_profile_id_param: string }
         Returns: boolean
       }
+      import_all_buyer_inventories_from_order_history: {
+        Args: { p_limit_buyers?: number; p_offset_buyers?: number }
+        Returns: Json
+      }
+      import_buyer_inventory_from_order_history: {
+        Args: { p_buyer_id?: string; p_buyer_user_id?: string }
+        Returns: Json
+      }
       increment: { Args: { x: number }; Returns: number }
       ingest_credit_histories_and_migrate: {
         Args: { p_buyer_id: string; p_legacy_outlet_id: number; p_rows: Json }
@@ -11285,6 +11352,15 @@ export type Database = {
           client_id: string
           id: number
         }[]
+      }
+      upsert_shopper_for_auth_user: {
+        Args: {
+          email: string
+          first_name: string
+          last_name: string
+          phone: string
+        }
+        Returns: string
       }
       use_credit: {
         Args: {

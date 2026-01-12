@@ -1,4 +1,5 @@
 import { Plus, Heart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/lib/cart/CartProvider";
@@ -24,15 +25,21 @@ export const ProductCard = ({
   badge,
   delay = 0,
 }: ProductCardProps) => {
+  const navigate = useNavigate();
   const { addItem } = useCart();
   const discount = originalPrice
     ? Math.round(((originalPrice - price) / originalPrice) * 100)
     : 0;
 
+  const handleCardClick = () => {
+    navigate(`/product/${id}`);
+  };
+
   return (
     <div
-      className="jimat-card animate-slide-up"
+      className="jimat-card animate-slide-up cursor-pointer"
       style={{ animationDelay: `${delay}ms` }}
+      onClick={handleCardClick}
     >
       <div className="relative p-3">
         {/* Badge */}
@@ -86,7 +93,8 @@ export const ProductCard = ({
             <Button
               size="icon"
               className="h-8 w-8 rounded-full"
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation();
                 addItem(
                   {
                     productId: id,
@@ -96,8 +104,8 @@ export const ProductCard = ({
                     unitPrice: price,
                   },
                   1,
-                )
-              }
+                );
+              }}
               aria-label={`Add ${name} to cart`}
             >
               <Plus className="w-4 h-4" />

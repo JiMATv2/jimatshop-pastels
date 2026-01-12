@@ -104,13 +104,8 @@ const LocationSearch = () => {
   const handleRequestPermission = async () => {
     try {
       if (permissionStatus === "denied") {
-        // If permission is permanently denied, open app settings
-        try {
-          await CapacitorApp.openUrl({ url: "app-settings:" });
-          toast.info("Please enable location permission in settings", { duration: 3000 });
-        } catch (error) {
-          toast.error("Could not open app settings. Please enable location permission manually.");
-        }
+        // If permission is permanently denied, show message (openUrl not available on App plugin)
+        toast.error("Location permission denied. Please enable it in your device settings.");
         return;
       }
 

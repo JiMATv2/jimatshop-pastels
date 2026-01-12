@@ -110,7 +110,7 @@ export default function Checkout() {
       if (!resp.success) {
         toast({
           title: "Checkout failed",
-          description: resp.message || resp.error || "Unable to place order.",
+          description: (resp as any).message || (resp as any).error || "Unable to place order.",
           variant: "destructive",
         });
         return;
