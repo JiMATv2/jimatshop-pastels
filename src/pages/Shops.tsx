@@ -7,8 +7,11 @@ import { useMemo, useState } from "react";
 import { fetchMobileBuyerShops } from "@/lib/api/mobileBuyers";
 import { useLatestLocation } from "@/lib/location/useLocation";
 import { geoNearbyOutlets } from "@/lib/api/geoLocation";
-import { MapPin, Navigation } from "lucide-react";
+import { MapPin, Navigation, Ticket } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { resolveShopperId } from "@/lib/api/shopper";
+import { supabase } from "@/lib/supabase/client";
 
 function formatKm(km: number | null | undefined) {
   if (typeof km !== "number" || Number.isNaN(km)) return null;
@@ -18,6 +21,7 @@ function formatKm(km: number | null | undefined) {
 
 export default function Shops() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [q, setQ] = useState("");
   const search = useMemo(() => q.trim(), [q]);
   const { coordinates, isLoading: locationLoading } = useLatestLocation();
@@ -61,6 +65,55 @@ export default function Shops() {
   });
 
   const shops = data?.data ?? [];
+
+  const displayedBuyerIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const o of nearbyOutlets) {
+      const id = typeof o.id === "string" ? o.id : String(o.id);
+      if (id) ids.push(id);
+    }
+    for (const s of shops) {
+      if (s.id) ids.push(s.id);
+    }
+    return Array.from(new Set(ids));
+  }, [nearbyOutlets, shops]);
+
+  const { data: shopperId } = useQuery({
+    queryKey: ["shops-shopper-id", user?.id ?? null],
+    queryFn: async () => {
+      if (!user) return null;
+      return await resolveShopperId({ authUserId: user.id, email: user.email });
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+
+  const { data: buyerIdsWithCoins = new Set<string>() } = useQuery({
+    queryKey: ["shops-buyer-ids-with-coins", shopperId ?? null, displayedBuyerIds.join(",")],
+    queryFn: async () => {
+      if (!shopperId) return new Set<string>();
+      if (displayedBuyerIds.length === 0) return new Set<string>();
+
+      const { data, error } = await supabase
+        .from("jimatshop_coins")
+        .select("buyer_id,balance")
+        .eq("shopper_id", shopperId)
+        .in("buyer_id", displayedBuyerIds);
+
+      if (error) throw error;
+
+      const ids = new Set<string>();
+      for (const row of (data as any[]) ?? []) {
+        const buyerId = (row as any)?.buyer_id;
+        const raw = (row as any)?.balance;
+        const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : 0;
+        if (buyerId && Number.isFinite(n) && n > 0) ids.add(String(buyerId));
+      }
+      return ids;
+    },
+    enabled: Boolean(shopperId) && displayedBuyerIds.length > 0,
+    staleTime: 15_000,
+  });
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -109,6 +162,7 @@ export default function Shops() {
                   const outletId = typeof outlet.id === "string" ? outlet.id : String(outlet.id);
                   const distance = formatKm(outlet.distance_in_km);
                   const name = outlet.name || "Outlet";
+                  const hasCoins = buyerIdsWithCoins.has(outletId);
                   return (
                     <button
                       key={outletId}
@@ -121,11 +175,22 @@ export default function Shops() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <div className="font-semibold text-foreground truncate">{name}</div>
-                          {distance && (
-                            <span className="text-xs font-medium text-primary whitespace-nowrap">
-                              {distance}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {hasCoins ? (
+                              <span
+                                className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 whitespace-nowrap"
+                                aria-label="You have JiMATShop coins at this shop"
+                                title="You have JiMATShop coins at this shop"
+                              >
+                                <Ticket className="w-4 h-4" />
+                              </span>
+                            ) : null}
+                            {distance ? (
+                              <span className="text-xs font-medium text-primary whitespace-nowrap">
+                                {distance}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                         <div className="text-xs text-muted-foreground truncate">
                           {outlet.address || "—"}
@@ -195,6 +260,7 @@ export default function Shops() {
               const subtitle = [s.city, s.state].filter(Boolean).join(", ");
               const img = s.shop_photo_url || s.signboard_photo_url || "/placeholder.svg";
               const distance = s.distance_in_km != null ? formatKm(s.distance_in_km) : null;
+              const hasCoins = buyerIdsWithCoins.has(s.id);
               return (
                 <button
                   key={s.id}
@@ -205,11 +271,22 @@ export default function Shops() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <div className="font-semibold text-foreground truncate">{s.business_name}</div>
-                      {hasLocation && distance && (
-                        <span className="text-xs font-medium text-primary whitespace-nowrap">
-                          {distance}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {hasCoins ? (
+                          <span
+                            className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 whitespace-nowrap"
+                            aria-label="You have JiMATShop coins at this shop"
+                            title="You have JiMATShop coins at this shop"
+                          >
+                            <Ticket className="w-4 h-4" />
+                          </span>
+                        ) : null}
+                        {hasLocation && distance ? (
+                          <span className="text-xs font-medium text-primary whitespace-nowrap">
+                            {distance}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="text-xs text-muted-foreground truncate">
                       {subtitle || "—"} · {s.product_count} products

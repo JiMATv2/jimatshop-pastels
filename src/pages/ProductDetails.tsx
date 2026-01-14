@@ -158,25 +158,63 @@ export default function ProductDetails() {
     );
   }
 
+  // Prefer an in-stock outlet inventory when available (it drives the actual sell price in cart).
+  // Fallback to the catalog product price if no outlet inventory is available.
+  const preferredInventory =
+    inventories.find((inv) => inv.stock_level > 0 && inv.retail_price > 0) ??
+    inventories.find((inv) => inv.retail_price > 0) ??
+    null;
+
+  const effectiveUnitPrice =
+    preferredInventory?.retail_price && preferredInventory.retail_price > 0
+      ? preferredInventory.retail_price
+      : product.price;
+
+  const hasStock =
+    inventories.some((inv) => inv.stock_level > 0) || Boolean(product.inStock);
+
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
   const handleAddToCart = () => {
+    // Prefer an in-stock inventory (if present) to ensure we use the correct outlet and price.
+    const firstInventory =
+      inventories.find((inv) => inv.stock_level > 0) ??
+      inventories[0] ??
+      null;
+
+    const unitPrice =
+      firstInventory?.retail_price && firstInventory.retail_price > 0
+        ? firstInventory.retail_price
+        : effectiveUnitPrice;
+    
     addItem(
       {
         productId: product.id,
         name: product.name,
         image: product.image,
         unitLabel: product.unit,
-        unitPrice: product.price,
+        unitPrice,
+        // Include buyer info if available from inventory
+        buyerId: firstInventory?.buyer_id,
+        buyerInventoryId: firstInventory?.inventory_id,
       },
       quantity
     );
-    toast({
-      title: "Added to cart",
-      description: `${quantity}x ${product.name} added to your cart`,
-    });
+    
+    if (firstInventory) {
+      toast({
+        title: "Added to cart",
+        description: `${quantity}x ${product.name} from ${firstInventory.buyer_name} added to your cart`,
+      });
+    } else {
+      toast({
+        title: "Added to cart",
+        description: `${quantity}x ${product.name} added to your cart`,
+        variant: "default",
+      });
+    }
   };
 
   const decreaseQuantity = () => {
@@ -257,9 +295,9 @@ export default function ProductDetails() {
           {/* Price */}
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold text-primary">
-              {formatMYR(product.price)}
+              {formatMYR(effectiveUnitPrice)}
             </span>
-            {product.originalPrice && (
+            {product.originalPrice && product.originalPrice > effectiveUnitPrice && (
               <span className="text-lg text-muted-foreground line-through">
                 {formatMYR(product.originalPrice)}
               </span>
@@ -297,7 +335,7 @@ export default function ProductDetails() {
         </div>
 
         {/* Available Outlets */}
-        <div className="space-y-3">
+        <div className="space-y-3" style={{ paddingBottom: "100px" }}>
           <h3 className="font-semibold text-foreground">Available at Outlets</h3>
           {inventoriesLoading ? (
             <div className="text-sm text-muted-foreground">Loading outlets...</div>
@@ -374,10 +412,10 @@ export default function ProductDetails() {
         <Button 
           className="w-full h-12 text-base gap-2" 
           onClick={handleAddToCart}
-          disabled={!product.inStock}
+          disabled={!hasStock}
         >
           <ShoppingCart className="w-5 h-5" />
-          Add to Cart · {formatMYR(product.price * quantity)}
+          Add to Cart · {formatMYR(effectiveUnitPrice * quantity)}
         </Button>
       </div>
 

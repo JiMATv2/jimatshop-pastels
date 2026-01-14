@@ -34,6 +34,7 @@ export const Header = () => {
   const [currentLocation, setCurrentLocation] = useState<SavedLocation | null>(
     sqliteLocation || getSavedLocation()
   );
+  const [searchValue, setSearchValue] = useState("");
 
   // Keep ref updated with latest refresh function
   useEffect(() => {
@@ -103,6 +104,34 @@ export const Header = () => {
       window.removeEventListener("storage", handleStorageChange);
     };
   }, []); // Empty deps - using ref for refreshLocation
+
+  // Keep search input in sync with URL (?q=...) so it works as a global header across pages.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const q = params.get("q") || "";
+    setSearchValue(q);
+  }, [location.pathname, location.search]);
+
+  // Debounced URL updates while you're on the Products page (so typing triggers search there).
+  useEffect(() => {
+    if (location.pathname !== "/products") return;
+
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(location.search);
+      const currentQ = params.get("q") || "";
+      if (currentQ === searchValue) return;
+
+      if (searchValue.trim() === "") params.delete("q");
+      else params.set("q", searchValue.trim());
+
+      navigate(
+        { pathname: "/products", search: params.toString() ? `?${params.toString()}` : "" },
+        { replace: true },
+      );
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [location.pathname, location.search, navigate, searchValue]);
 
   // Handle post-OAuth login tasks (when user returns from OAuth redirect)
   useEffect(() => {
@@ -428,6 +457,23 @@ export const Header = () => {
     }
   };
 
+  const onSubmitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchValue.trim();
+
+    // Preserve buyer_id if present (useful when you're browsing a specific outlet).
+    const currentParams = new URLSearchParams(location.search);
+    const buyerId = currentParams.get("buyer_id");
+    const section = currentParams.get("section") || "featured";
+
+    const params = new URLSearchParams();
+    params.set("section", section);
+    if (buyerId) params.set("buyer_id", buyerId);
+    if (q) params.set("q", q);
+
+    navigate(`/products?${params.toString()}`);
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border safe-area-top">
       <div className="container mx-auto px-4 py-3">
@@ -537,13 +583,18 @@ export const Header = () => {
         </div>
 
         {/* Search Bar */}
-        <div className="relative">
+        <form className="relative" onSubmit={onSubmitSearch}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
             placeholder="Search for groceries..."
             className="pl-10 bg-muted border-0 focus-visible:ring-primary"
+            inputMode="search"
+            enterKeyHint="search"
+            aria-label="Search products"
           />
-        </div>
+        </form>
       </div>
     </header>
   );

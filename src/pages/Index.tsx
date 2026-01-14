@@ -55,7 +55,7 @@ const Index = () => {
         </section>
         <HeroBanner />
         <CategoryGrid />
-        <PromoBanner />
+     
         <ProductSection title="🔥 Hot Deals" products="featured" />
         <ProductSection title="⭐ Popular Items" products="popular" />
       </main>

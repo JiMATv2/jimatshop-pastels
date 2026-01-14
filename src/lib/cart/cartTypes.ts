@@ -5,6 +5,9 @@ export type CartItem = {
   unitLabel?: string;
   unitPrice: number;
   quantity: number;
+  // Buyer/retailer information - required to ensure correct order processing
+  buyerId?: string;
+  buyerInventoryId?: string;
 };
 
 export type CartStateV1 = {

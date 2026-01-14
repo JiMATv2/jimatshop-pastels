@@ -13,6 +13,8 @@ import OrderDetails from "./pages/OrderDetails";
 import Shops from "./pages/Shops";
 import Onboarding from "./pages/Onboarding";
 import Checkout from "./pages/Checkout";
+import JimatshopCoins from "./pages/JimatshopCoins";
+import JimatshopCoinTransactions from "./pages/JimatshopCoinTransactions";
 import LocationSearch from "./pages/LocationSearch";
 import NotFound from "./pages/NotFound";
 import { CapacitorBackHandler } from "@/components/layout/CapacitorBackHandler";
@@ -41,6 +43,8 @@ const App = () => (
               <Route path="/orders" element={<Orders />} />
               <Route path="/orders/:orderId" element={<OrderDetails />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/jimatshop-coins" element={<JimatshopCoins />} />
+              <Route path="/jimatshop-coins/:coinId" element={<JimatshopCoinTransactions />} />
               <Route path="/location-search" element={<LocationSearch />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

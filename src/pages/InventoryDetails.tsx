@@ -92,6 +92,8 @@ export default function InventoryDetails() {
         image: inv.cover_image_url || undefined,
         unitLabel: `${inv.buyer_name}`,
         unitPrice: inv.retail_price,
+        buyerId: inv.buyer_id,
+        buyerInventoryId: inv.inventory_id,
       },
       quantity
     );

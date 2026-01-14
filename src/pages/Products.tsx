@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useNearbyBuyerIds } from "@/lib/shop/useNearbyBuyerIds";
+import { supabase } from "@/lib/supabase/client";
 
 type SectionKey = "featured" | "popular";
 
@@ -23,6 +24,7 @@ export default function Products() {
     [searchParams],
   );
   const buyerIdParam = searchParams.get("buyer_id"); // Single buyer ID from URL
+  const searchQuery = (searchParams.get("q") || "").trim();
   const { buyerIds: nearbyBuyerIds, outlets, isLoading: buyerIdsLoading, hasLocation } = useNearbyBuyerIds();
   
   // Use buyer_id from URL if provided, otherwise use nearby buyer IDs
@@ -34,8 +36,37 @@ export default function Products() {
     ? outlets.find((o) => String(o.id) === buyerIdParam)
     : null;
 
+  const { data: selectedBuyerShop } = useQuery({
+    queryKey: ["buyer-shop-details", buyerIdParam ?? null],
+    queryFn: async () => {
+      if (!buyerIdParam) return null;
+      const { data, error } = await supabase
+        .from("buyers")
+        .select("id,business_name,address,shop_photo_url,signboard_photo_url,lat,lng")
+        .eq("id", buyerIdParam)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as {
+        id: string;
+        business_name: string | null;
+        address: string | null;
+        shop_photo_url: string | null;
+        signboard_photo_url: string | null;
+        lat: number | null;
+        lng: number | null;
+      } | null;
+    },
+    enabled: Boolean(buyerIdParam),
+    staleTime: 60_000,
+  });
+
+  // For "nearby inventories" view, show the nearest shop details at the top.
+  const nearestOutlet = !buyerIdParam ? (outlets[0] ?? null) : null;
+
   const title = buyerIdParam
-    ? selectedBuyerOutlet?.name 
+    ? selectedBuyerShop?.business_name
+      ? `${selectedBuyerShop.business_name} Products`
+      : selectedBuyerOutlet?.name 
       ? `${selectedBuyerOutlet.name} Products`
       : "Shop Products"
     : section === "featured"
@@ -45,10 +76,10 @@ export default function Products() {
 
   useEffect(() => {
     setPage(1);
-  }, [section, buyerIds.join(",")]);
+  }, [section, buyerIds.join(","), searchQuery]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["mobile-inventories-page", section, buyerIds, page],
+    queryKey: ["mobile-inventories-page", section, buyerIds, page, searchQuery],
     queryFn: async () => {
       if (!cfg.apiToken) return { items: [] as MobileProduct[], pagination: undefined };
       // If buyer_id is provided, don't require location
@@ -70,7 +101,7 @@ export default function Products() {
           {
             page,
             limit_count: 12,
-            search_query: "",
+            search_query: searchQuery,
           buyer_ids: buyerIds,
           },
           cfg,
@@ -94,74 +125,57 @@ export default function Products() {
       <Header />
 
       <main className="px-4 py-4">
-        <h2 className="text-lg font-semibold text-foreground mb-4">{title}</h2>
 
-        {buyerIdParam && selectedBuyerOutlet ? (
+
+        {/* Shop details on top */}
+        {buyerIdParam ? (
           <section className="jimat-card p-3 mb-4">
-            <div className="text-sm font-semibold text-foreground">
-              {selectedBuyerOutlet.name || "Shop"}
-            </div>
-            <div className="text-xs text-muted-foreground mt-1 truncate">
-              {selectedBuyerOutlet.address || "—"}
-            </div>
-            {typeof selectedBuyerOutlet.distance_in_km === "number" && (
-              <div className="text-xs font-medium text-primary mt-1">
-                {selectedBuyerOutlet.distance_in_km.toFixed(1)} km away
+            <div className="flex items-start gap-3">
+              <img
+                src={selectedBuyerShop?.shop_photo_url || selectedBuyerShop?.signboard_photo_url || "/placeholder.svg"}
+                alt={selectedBuyerShop?.business_name || selectedBuyerOutlet?.name || "Shop"}
+                className="h-12 w-12 rounded-xl object-cover bg-muted flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-foreground truncate">
+                  {selectedBuyerShop?.business_name || selectedBuyerOutlet?.name || "Shop"}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1 truncate">
+                  {selectedBuyerShop?.address || selectedBuyerOutlet?.address || "—"}
+                </div>
+                {typeof selectedBuyerOutlet?.distance_in_km === "number" ? (
+                  <div className="text-xs font-medium text-primary mt-1">
+                    {selectedBuyerOutlet.distance_in_km.toFixed(1)} km away
+                  </div>
+                ) : null}
               </div>
-            )}
+            </div>
           </section>
         ) : (
           <section className="jimat-card p-3 mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-semibold text-foreground">
-                Nearby buyer outlets (20km)
-              </div>
-              {!buyerIdsLoading && buyerIds.length > 0 && (
-                <div className="text-xs text-muted-foreground">
-                  {buyerIds.length} {buyerIds.length === 1 ? "outlet" : "outlets"}
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-foreground">Nearest shop</div>
+              {nearestOutlet && typeof nearestOutlet.distance_in_km === "number" ? (
+                <div className="text-xs font-medium text-primary whitespace-nowrap">
+                  {nearestOutlet.distance_in_km.toFixed(1)} km
                 </div>
-              )}
+              ) : null}
             </div>
-            {!hasLocation ? (
-              <div className="text-xs text-muted-foreground mt-1">Location not set.</div>
-            ) : buyerIdsLoading ? (
+            {buyerIdsLoading ? (
               <div className="text-xs text-muted-foreground mt-1">Finding nearby buyers…</div>
-            ) : outlets.length === 0 ? (
-              <div className="text-xs text-muted-foreground mt-1">
-                No buyers found within 20km.
-              </div>
-            ) : (
+            ) : !hasLocation ? (
+              <div className="text-xs text-muted-foreground mt-1">Location not set.</div>
+            ) : nearestOutlet ? (
               <>
-                <div className="mt-2 space-y-2">
-                  {outlets.slice(0, 6).map((o) => (
-                    <div key={String(o.id)} className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">
-                          {o.name || "Buyer"}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {o.address || "—"}
-                        </div>
-                        {typeof o.lat === "number" && typeof o.lng === "number" ? (
-                          <div className="text-[11px] text-muted-foreground">
-                            {o.lat.toFixed(6)}, {o.lng.toFixed(6)}
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="text-xs font-medium text-primary whitespace-nowrap">
-                        {typeof o.distance_in_km === "number" ? `${o.distance_in_km.toFixed(1)} km` : ""}
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-sm font-medium text-foreground mt-2 truncate">
+                  {nearestOutlet.name || "Buyer"}
                 </div>
-                {items.length > 0 && (
-                  <div className="mt-3 pt-3 border-t">
-                    <div className="text-xs text-muted-foreground">
-                      Showing {items.length} product{items.length !== 1 ? "s" : ""} from {buyerIds.length} {buyerIds.length === 1 ? "outlet" : "outlets"}
-                    </div>
-                  </div>
-                )}
+                <div className="text-xs text-muted-foreground mt-1 truncate">
+                  {nearestOutlet.address || "—"}
+                </div>
               </>
+            ) : (
+              <div className="text-xs text-muted-foreground mt-1">No buyers found within 20km.</div>
             )}
           </section>
         )}
@@ -233,6 +247,64 @@ export default function Products() {
           <p className="mt-2 text-xs text-muted-foreground">
             API token not configured (VITE_SUPABASE_API_TOKEN).
           </p>
+        ) : null}
+
+        {/* Move nearby outlets list to bottom */}
+        {!buyerIdParam ? (
+          <section className="jimat-card p-3 mt-6">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-semibold text-foreground">
+                Nearby buyer outlets (20km)
+              </div>
+              {!buyerIdsLoading && buyerIds.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  {buyerIds.length} {buyerIds.length === 1 ? "outlet" : "outlets"}
+                </div>
+              )}
+            </div>
+            {!hasLocation ? (
+              <div className="text-xs text-muted-foreground mt-1">Location not set.</div>
+            ) : buyerIdsLoading ? (
+              <div className="text-xs text-muted-foreground mt-1">Finding nearby buyers…</div>
+            ) : outlets.length === 0 ? (
+              <div className="text-xs text-muted-foreground mt-1">
+                No buyers found within 20km.
+              </div>
+            ) : (
+              <>
+                <div className="mt-2 space-y-2">
+                  {outlets.slice(0, 6).map((o) => (
+                    <div key={String(o.id)} className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-foreground truncate">
+                          {o.name || "Buyer"}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {o.address || "—"}
+                        </div>
+                        {typeof o.lat === "number" && typeof o.lng === "number" ? (
+                          <div className="text-[11px] text-muted-foreground">
+                            {o.lat.toFixed(6)}, {o.lng.toFixed(6)}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="text-xs font-medium text-primary whitespace-nowrap">
+                        {typeof o.distance_in_km === "number" ? `${o.distance_in_km.toFixed(1)} km` : ""}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {items.length > 0 ? (
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="text-xs text-muted-foreground">
+                      Showing {items.length} product{items.length !== 1 ? "s" : ""} from {buyerIds.length}{" "}
+                      {buyerIds.length === 1 ? "outlet" : "outlets"}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </section>
         ) : null}
       </main>
 

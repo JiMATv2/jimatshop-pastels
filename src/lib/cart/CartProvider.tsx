@@ -71,7 +71,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const addQty = normalizeQty(qty);
 
       setItems((prev) => {
-        const idx = prev.findIndex((p) => p.productId === item.productId);
+        // Find existing item matching both productId and buyerId (if provided)
+        // This ensures products from different buyers are kept separate
+        const idx = prev.findIndex((p) => 
+          p.productId === item.productId && 
+          (item.buyerId ? p.buyerId === item.buyerId : !p.buyerId)
+        );
         if (idx === -1) return [...prev, { ...item, quantity: addQty }];
         const next = [...prev];
         next[idx] = { ...next[idx], quantity: normalizeQty(next[idx].quantity + addQty) };

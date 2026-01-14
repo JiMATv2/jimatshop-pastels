@@ -34,37 +34,37 @@ export function ShopperWidgets() {
   const totalSpend = data?.totalSpend ?? 0;
   const processingOrders = data?.processingOrders ?? 0;
   const availableVouchers = data?.availableVouchers ?? 0;
-  const latestShippingStatus = data?.latestShippingStatus ?? "Tiada penghantaran aktif";
+  const latestShippingStatus = data?.latestShippingStatus ?? "No active shipping";
 
   const widgets: Widget[] = [
     {
-      title: "Pesanan",
+      title: "Orders",
       value: `${totalOrders}`,
-      subtitle: "jumlah pesanan",
+      subtitle: "total orders",
       Icon: ShoppingBag,
       gradient: "",
       iconBg: "bg-primary",
     },
     {
-      title: "Pembelian",
+      title: "Purchases",
       value: formatMYR(totalSpend),
-      subtitle: "nilai terkumpul",
+      subtitle: "total spent",
       Icon: Wallet,
       gradient: "",
       iconBg: "bg-primary",
     },
     {
-      title: "Diproses",
+      title: "Processing",
       value: `${processingOrders}`,
-      subtitle: "pesanan aktif",
+      subtitle: "active orders",
       Icon: Clock,
       gradient: "",
       iconBg: "bg-primary",
     },
     {
-      title: "Baucar",
+      title: "Vouchers",
       value: `${availableVouchers}`,
-      subtitle: "boleh ditebus",
+      subtitle: "redeemable",
       Icon: Ticket,
       gradient: "",
       iconBg: "bg-primary",
@@ -72,9 +72,9 @@ export function ShopperWidgets() {
   ];
 
   const shippingWidget: Widget = {
-    title: "Penghantaran",
+    title: "Shipping",
     value: latestShippingStatus,
-    subtitle: "status terkini",
+    subtitle: "latest status",
     Icon: Truck,
     gradient: "",
     iconBg: "bg-primary",
@@ -86,9 +86,9 @@ export function ShopperWidgets() {
         <div className="bg-white border-2 border-primary rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold mb-1 text-foreground">Selamat Datang!</h3>
+              <h3 className="text-lg font-bold mb-1 text-foreground">Welcome!</h3>
               <p className="text-sm text-muted-foreground">
-                Log masuk untuk lihat ringkasan pembelian anda
+                Sign in to view your purchase summary
               </p>
             </div>
             <ChevronRight className="w-6 h-6 text-primary" />
@@ -101,11 +101,11 @@ export function ShopperWidgets() {
   return (
     <section className="px-4 py-4">
       <div className="flex items-baseline justify-between gap-3 mb-3">
-        <h3 className="text-lg font-semibold text-foreground">Ringkasan</h3>
+        <h3 className="text-lg font-semibold text-foreground">Summary</h3>
         {isLoading ? (
-          <span className="text-xs text-muted-foreground">Memuatkan...</span>
+          <span className="text-xs text-muted-foreground">Loading...</span>
         ) : isError ? (
-          <span className="text-xs text-destructive">Gagal memuat</span>
+          <span className="text-xs text-destructive">Failed to load</span>
         ) : null}
       </div>
 
@@ -121,7 +121,7 @@ export function ShopperWidgets() {
           >
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-muted-foreground mb-1">{w.title}</p>
+                <p className="text-xs font-bold text-muted-foreground mb-1">{w.title}</p>
                 <p className="text-xl font-bold text-foreground truncate">{w.value}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{w.subtitle}</p>
               </div>

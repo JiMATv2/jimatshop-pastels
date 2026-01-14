@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/client";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useNearbyBuyerIds } from "@/lib/shop/useNearbyBuyerIds";
@@ -25,8 +26,76 @@ export default function Checkout() {
   const { buyerIds, isLoading: buyerIdsLoading, hasLocation } = useNearbyBuyerIds();
   const [submitting, setSubmitting] = useState(false);
   
-  // Use the first nearby buyer ID, or null if none available
-  const buyerId = buyerIds.length > 0 ? buyerIds[0] : null;
+  // Determine buyer ID(s) from cart items or fall back to nearby buyers
+  // Group items by buyerId to handle multi-buyer orders
+  const itemsByBuyer = React.useMemo(() => {
+    const grouped = new Map<string, typeof items>();
+    
+    items.forEach(item => {
+      const buyerId = item.buyerId;
+      if (buyerId) {
+        if (!grouped.has(buyerId)) {
+          grouped.set(buyerId, []);
+        }
+        grouped.get(buyerId)!.push(item);
+      } else {
+        // Items without buyerId go into a special group
+        if (!grouped.has('__no_buyer__')) {
+          grouped.set('__no_buyer__', []);
+        }
+        grouped.get('__no_buyer__')!.push(item);
+      }
+    });
+    
+    return grouped;
+  }, [items]);
+  
+  // Use buyerId from cart items if all items have the same buyer, otherwise use first nearby buyer
+  const primaryBuyerId = React.useMemo(() => {
+    const buyersWithItems = Array.from(itemsByBuyer.keys()).filter(k => k !== '__no_buyer__');
+    if (buyersWithItems.length === 1) {
+      return buyersWithItems[0];
+    }
+    // Fall back to first nearby buyer if items don't have buyer info or have multiple buyers
+    return buyerIds.length > 0 ? buyerIds[0] : null;
+  }, [itemsByBuyer, buyerIds]);
+
+  // Buyer IDs that will actually be used when creating orders at checkout.
+  const checkoutBuyerIds = React.useMemo(() => {
+    const ids = new Set<string>();
+
+    for (const key of itemsByBuyer.keys()) {
+      if (key !== "__no_buyer__") ids.add(key);
+    }
+
+    const itemsWithoutBuyer = itemsByBuyer.get("__no_buyer__") || [];
+    if (itemsWithoutBuyer.length > 0 && primaryBuyerId) {
+      ids.add(primaryBuyerId);
+    }
+
+    if (ids.size === 0 && primaryBuyerId) {
+      ids.add(primaryBuyerId);
+    }
+
+    return Array.from(ids);
+  }, [itemsByBuyer, primaryBuyerId]);
+
+  // Subtotal per buyer (for coin sufficiency checks when checkout creates multiple orders).
+  const subtotalByBuyer = React.useMemo(() => {
+    const m = new Map<string, number>();
+
+    const add = (buyerId: string, amount: number) => {
+      m.set(buyerId, (m.get(buyerId) ?? 0) + amount);
+    };
+
+    items.forEach((it) => {
+      const buyerId = it.buyerId || primaryBuyerId;
+      if (!buyerId) return;
+      add(buyerId, (it.unitPrice || 0) * (it.quantity || 0));
+    });
+
+    return m;
+  }, [items, primaryBuyerId]);
 
   const [notes, setNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"pay_in_store" | "jimatshop_coins">("pay_in_store");
@@ -41,28 +110,72 @@ export default function Checkout() {
     staleTime: 60_000,
   });
 
-  const { data: coinBalance = null, isLoading: isCoinLoading } = useQuery({
-    queryKey: ["checkout-coin-balance", shopperId ?? null],
+  type BuyerCoinBalance = {
+    buyer_id: string;
+    balance: number;
+    buyer?: { business_name?: string | null } | null;
+  };
+
+  const { data: coinBalances = [], isLoading: isCoinLoading } = useQuery({
+    queryKey: ["checkout-coin-balances", shopperId ?? null, checkoutBuyerIds.join(",")],
     queryFn: async () => {
-      if (!shopperId) return null as number | null;
+      if (!shopperId) return [] as BuyerCoinBalance[];
+      if (checkoutBuyerIds.length === 0) return [] as BuyerCoinBalance[];
+
       const { data, error } = await supabase
         .from("jimatshop_coins")
-        .select("balance")
+        .select("buyer_id, balance, buyer:buyers(business_name)")
         .eq("shopper_id", shopperId)
-        .maybeSingle();
+        .in("buyer_id", checkoutBuyerIds);
       if (error) throw error;
-      const raw = (data as any)?.balance;
-      const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : 0;
-      return Number.isFinite(n) ? n : 0;
+
+      return ((data as any[]) || []).map((row) => {
+        const raw = (row as any)?.balance;
+        const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : 0;
+        return {
+          buyer_id: String((row as any)?.buyer_id),
+          balance: Number.isFinite(n) ? n : 0,
+          buyer: (row as any)?.buyer ?? null,
+        } satisfies BuyerCoinBalance;
+      });
     },
     enabled: Boolean(shopperId),
     staleTime: 15_000,
   });
 
-  const coinsSufficient = paymentMethod !== "jimatshop_coins" ? true : (coinBalance ?? 0) >= subtotal;
+  const coinBalanceByBuyer = React.useMemo(() => {
+    const m = new Map<string, number>();
+    coinBalances.forEach((c) => m.set(c.buyer_id, c.balance));
+    return m;
+  }, [coinBalances]);
+
+  const buyerNameById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    coinBalances.forEach((c) => {
+      const name = c.buyer?.business_name;
+      if (name) m.set(c.buyer_id, name);
+    });
+    return m;
+  }, [coinBalances]);
+
+  const totalCoinBalance = React.useMemo(() => {
+    let sum = 0;
+    for (const b of coinBalanceByBuyer.values()) sum += b;
+    return sum;
+  }, [coinBalanceByBuyer]);
+
+  const coinsSufficientIfSelected = React.useMemo(() => {
+    for (const [buyerId, buyerSubtotal] of subtotalByBuyer.entries()) {
+      const bal = coinBalanceByBuyer.get(buyerId) ?? 0;
+      if (bal < buyerSubtotal) return false;
+    }
+    return true;
+  }, [subtotalByBuyer, coinBalanceByBuyer]);
+
+  const coinsSufficient = paymentMethod !== "jimatshop_coins" ? true : coinsSufficientIfSelected;
 
   const canCheckout =
-    Boolean(buyerId) &&
+    Boolean(primaryBuyerId) &&
     items.length > 0 &&
     Boolean(user) &&
     !submitting &&
@@ -75,7 +188,7 @@ export default function Checkout() {
       toast({ title: "Sign in required", description: "Please sign in to place an order." });
       return;
     }
-    if (!buyerId || !hasLocation) {
+    if (!primaryBuyerId || !hasLocation) {
       toast({ 
         title: "Location required", 
         description: "Please set your location to see nearby shops and checkout." 
@@ -107,31 +220,86 @@ export default function Checkout() {
         return;
       }
 
-      const resp = await createMobileJimatshopOrder({
-        buyer_id: buyerId,
-        shopper_id: resolvedShopperId,
-        items: items.map((it) => ({ product_id: it.productId, quantity: it.quantity })),
-        // Pickup-only for now
-        shipping_address: null,
-        notes: notes.trim() || null,
-        payment_method: paymentMethod,
+      // Group items by buyer and create separate orders for each buyer
+      const buyersWithItems = Array.from(itemsByBuyer.entries()).filter(([buyerId]) => buyerId !== '__no_buyer__');
+      const itemsWithoutBuyer = itemsByBuyer.get('__no_buyer__') || [];
+      
+      const ordersToCreate: Array<{ buyerId: string; items: typeof items }> = [];
+      
+      // Add orders for items with buyer info
+      buyersWithItems.forEach(([buyerId, buyerItems]) => {
+        ordersToCreate.push({ buyerId, items: buyerItems });
       });
-
-      if (!resp.success) {
+      
+      // Add order for items without buyer info (use primary buyer)
+      if (itemsWithoutBuyer.length > 0 && primaryBuyerId) {
+        ordersToCreate.push({ buyerId: primaryBuyerId, items: itemsWithoutBuyer });
+      }
+      
+      // If no items have buyer info, create single order with primary buyer
+      if (ordersToCreate.length === 0 && primaryBuyerId) {
+        ordersToCreate.push({ buyerId: primaryBuyerId, items });
+      }
+      
+      if (ordersToCreate.length === 0) {
         toast({
           title: "Checkout failed",
-          description: (resp as any).message || (resp as any).error || "Unable to place order.",
+          description: "Unable to determine buyer for order items.",
           variant: "destructive",
         });
         return;
       }
 
+      // Create orders for each buyer
+      const orderResults = await Promise.allSettled(
+        ordersToCreate.map(({ buyerId, items: buyerItems }) =>
+          createMobileJimatshopOrder({
+            buyer_id: buyerId,
+            shopper_id: resolvedShopperId,
+            items: buyerItems.map((it) => ({ product_id: it.productId, quantity: it.quantity })),
+            // Pickup-only for now
+            shipping_address: null,
+            notes: notes.trim() || null,
+            payment_method: paymentMethod,
+          })
+        )
+      );
+
+      // Check for failures
+      const failures = orderResults.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success));
+      if (failures.length > 0) {
+        const errorMsg = failures[0].status === 'fulfilled' 
+          ? (failures[0].value as any).message || (failures[0].value as any).error || "Unable to place order."
+          : "Failed to create order";
+        toast({
+          title: "Checkout failed",
+          description: errorMsg,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get successful order IDs
+      const successfulOrders = orderResults
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value.success)
+        .map(r => r.value.data);
+
       clear();
-      toast({
-        title: "Order placed",
-        description: `Order #${resp.data.jimatshop_order_id.slice(0, 8)} created.`,
-      });
-      navigate(`/orders/${resp.data.jimatshop_order_id}`);
+      
+      if (successfulOrders.length === 1) {
+        toast({
+          title: "Order placed",
+          description: `Order #${successfulOrders[0].jimatshop_order_id.slice(0, 8)} created.`,
+        });
+        navigate(`/orders/${successfulOrders[0].jimatshop_order_id}`);
+      } else {
+        toast({
+          title: "Orders placed",
+          description: `${successfulOrders.length} order(s) created successfully.`,
+        });
+        // Navigate to first order or orders list
+        navigate(`/orders/${successfulOrders[0].jimatshop_order_id}`);
+      }
     } catch (e: any) {
       toast({
         title: "Checkout failed",
@@ -161,7 +329,7 @@ export default function Checkout() {
               {buyerIdsLoading ? "Loading nearby shops..." : "Please set your location to checkout."}
             </p>
           </div>
-        ) : !buyerId ? (
+        ) : !primaryBuyerId ? (
           <div className="jimat-card p-4">
             <p className="text-sm text-muted-foreground">
               No nearby shops found. Please update your location.
@@ -270,7 +438,7 @@ export default function Checkout() {
               type="button"
               variant={paymentMethod === "jimatshop_coins" ? "default" : "outline"}
               onClick={() => setPaymentMethod("jimatshop_coins")}
-              disabled={!user || (coinBalance != null && coinBalance < subtotal)}
+              disabled={!user || (shopperId && !isCoinLoading && !coinsSufficientIfSelected)}
             >
               Pay by JiMATShop coins
             </Button>
@@ -291,7 +459,17 @@ export default function Checkout() {
                   "Loading coin balance..."
                 ) : (
                   <>
-                    JiMATShop coins balance: <span className="font-semibold">{formatMYR(coinBalance ?? 0)}</span>
+                    JiMATShop coins available: <span className="font-semibold">{formatMYR(totalCoinBalance)}</span>
+                    {checkoutBuyerIds.length > 1 ? (
+                      <span className="block mt-1">
+                        {checkoutBuyerIds.map((buyerId) => (
+                          <span key={buyerId} className="block">
+                            {buyerNameById.get(buyerId) || buyerId.slice(0, 8)}:{" "}
+                            <span className="font-semibold">{formatMYR(coinBalanceByBuyer.get(buyerId) ?? 0)}</span>
+                          </span>
+                        ))}
+                      </span>
+                    ) : null}
                     {paymentMethod === "jimatshop_coins" && !coinsSufficient ? (
                       <span className="text-destructive"> (insufficient)</span>
                     ) : null}
