@@ -238,8 +238,17 @@ export default function ProductDetails() {
               variant="ghost" 
               size="icon"
               onClick={() => setIsFavorite(!isFavorite)}
+              aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
             >
               <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/checkout")}
+              aria-label="Go to checkout"
+            >
+              <ShoppingCart className="w-5 h-5" />
             </Button>
             <Button variant="ghost" size="icon">
               <Share2 className="w-5 h-5" />
