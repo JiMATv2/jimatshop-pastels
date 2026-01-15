@@ -98,7 +98,7 @@ export default function Checkout() {
   }, [items, primaryBuyerId]);
 
   const [notes, setNotes] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"pay_in_store" | "jimatshop_coins">("pay_in_store");
+  const [paymentMethod, setPaymentMethod] = useState<"pay_in_store" | "jimatshop_coins" | "billplz">("pay_in_store");
 
   const { data: shopperId } = useQuery({
     queryKey: ["checkout-shopper-id", user?.id ?? null],
@@ -250,6 +250,17 @@ export default function Checkout() {
         return;
       }
 
+      // Billplz redirect can only handle a single bill URL cleanly.
+      // For now, require single-shop checkout when Billplz is selected.
+      if (paymentMethod === "billplz" && ordersToCreate.length > 1) {
+        toast({
+          title: "Billplz checkout",
+          description: "Please checkout one shop at a time when paying by Billplz.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Create orders for each buyer
       const orderResults = await Promise.allSettled(
         ordersToCreate.map(({ buyerId, items: buyerItems }) =>
@@ -285,6 +296,17 @@ export default function Checkout() {
         .map(r => r.value.data);
 
       clear();
+
+      // If Billplz is selected and backend returned a bill URL, redirect to payment.
+      if (paymentMethod === "billplz") {
+        const billUrl = successfulOrders?.[0]?.billplz_url as string | null | undefined;
+        if (billUrl) {
+          toast({ title: "Redirecting to Billplz", description: "Complete your payment to confirm the order." });
+          window.location.href = billUrl;
+          return;
+        }
+        // If billUrl is missing, it likely means coins covered the full amount (0 remainder) or backend didn't generate a bill.
+      }
       
       if (successfulOrders.length === 1) {
         toast({
@@ -426,7 +448,7 @@ export default function Checkout() {
 
         <div className="jimat-card p-4 space-y-3">
           <h3 className="text-sm font-semibold text-foreground">Payment Method</h3>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <Button
               type="button"
               variant={paymentMethod === "pay_in_store" ? "default" : "outline"}
@@ -442,10 +464,22 @@ export default function Checkout() {
             >
               Pay by JiMATShop coins
             </Button>
+            <Button
+              type="button"
+              variant={paymentMethod === "billplz" ? "default" : "outline"}
+              onClick={() => setPaymentMethod("billplz")}
+              disabled={!user}
+            >
+              Pay by Billplz
+            </Button>
           </div>
           {paymentMethod === "jimatshop_coins" ? (
             <p className="text-xs text-muted-foreground">
               Coins will be deducted from your JiMATShop coin balance when you place the order.
+            </p>
+          ) : paymentMethod === "billplz" ? (
+            <p className="text-xs text-muted-foreground">
+              You'll be redirected to Billplz to complete payment after placing the order.
             </p>
           ) : (
             <p className="text-xs text-muted-foreground">
