@@ -3,6 +3,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCart } from "@/lib/cart/CartProvider";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { resolveShopperId } from "@/lib/api/shopper";
@@ -98,7 +99,9 @@ export default function Checkout() {
   }, [items, primaryBuyerId]);
 
   const [notes, setNotes] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"pay_in_store" | "jimatshop_coins" | "billplz">("pay_in_store");
+  const [paymentMethod, setPaymentMethod] = useState<
+    "pay_in_store" | "jimatshop_coins" | "jimatshop_coins_platform" | "billplz"
+  >("pay_in_store");
 
   const { data: shopperId } = useQuery({
     queryKey: ["checkout-shopper-id", user?.id ?? null],
@@ -143,6 +146,26 @@ export default function Checkout() {
     staleTime: 15_000,
   });
 
+  const { data: platformCoinBalance = 0, isLoading: isPlatformCoinLoading } = useQuery({
+    queryKey: ["checkout-platform-coin-balance", shopperId ?? null],
+    queryFn: async () => {
+      if (!shopperId) return 0;
+      const { data, error } = await supabase
+        .from("jimatshop_coins")
+        .select("balance")
+        .eq("shopper_id", shopperId)
+        .is("buyer_id", null)
+        .maybeSingle();
+      if (error) throw error;
+
+      const raw = (data as any)?.balance;
+      const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : 0;
+      return Number.isFinite(n) ? n : 0;
+    },
+    enabled: Boolean(shopperId),
+    staleTime: 15_000,
+  });
+
   const coinBalanceByBuyer = React.useMemo(() => {
     const m = new Map<string, number>();
     coinBalances.forEach((c) => m.set(c.buyer_id, c.balance));
@@ -172,7 +195,17 @@ export default function Checkout() {
     return true;
   }, [subtotalByBuyer, coinBalanceByBuyer]);
 
-  const coinsSufficient = paymentMethod !== "jimatshop_coins" ? true : coinsSufficientIfSelected;
+  const platformCoinsSufficient = React.useMemo(() => {
+    if (paymentMethod !== "jimatshop_coins_platform") return true;
+    return platformCoinBalance >= subtotal;
+  }, [paymentMethod, platformCoinBalance, subtotal]);
+
+  const coinsSufficient =
+    paymentMethod === "jimatshop_coins"
+      ? coinsSufficientIfSelected
+      : paymentMethod === "jimatshop_coins_platform"
+        ? platformCoinsSufficient
+        : true;
 
   const canCheckout =
     Boolean(primaryBuyerId) &&
@@ -181,7 +214,8 @@ export default function Checkout() {
     !submitting &&
     !buyerIdsLoading &&
     hasLocation &&
-    (paymentMethod !== "jimatshop_coins" || coinsSufficient);
+    (paymentMethod !== "jimatshop_coins" || coinsSufficientIfSelected) &&
+    (paymentMethod !== "jimatshop_coins_platform" || platformCoinsSufficient);
 
   const onCheckout = async () => {
     if (!user) {
@@ -203,6 +237,14 @@ export default function Checkout() {
       toast({
         title: "Insufficient coins",
         description: "Your JiMATShop coin balance is not enough to cover this order.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (paymentMethod === "jimatshop_coins_platform" && !platformCoinsSufficient) {
+      toast({
+        title: "Insufficient platform coins",
+        description: "Your platform JiMATShop coin balance is not enough to cover this order.",
         variant: "destructive",
       });
       return;
@@ -305,7 +347,12 @@ export default function Checkout() {
           window.location.href = billUrl;
           return;
         }
-        // If billUrl is missing, it likely means coins covered the full amount (0 remainder) or backend didn't generate a bill.
+        // If billUrl is missing, backend did not generate a bill URL (treat as an error, but keep the order created).
+        toast({
+          title: "Billplz checkout",
+          description: "Billplz URL is missing. Please try again or contact support.",
+          variant: "destructive",
+        });
       }
       
       if (successfulOrders.length === 1) {
@@ -448,34 +495,34 @@ export default function Checkout() {
 
         <div className="jimat-card p-4 space-y-3">
           <h3 className="text-sm font-semibold text-foreground">Payment Method</h3>
-          <div className="grid grid-cols-3 gap-2">
-            <Button
-              type="button"
-              variant={paymentMethod === "pay_in_store" ? "default" : "outline"}
-              onClick={() => setPaymentMethod("pay_in_store")}
-            >
-              Pay in store
-            </Button>
-            <Button
-              type="button"
-              variant={paymentMethod === "jimatshop_coins" ? "default" : "outline"}
-              onClick={() => setPaymentMethod("jimatshop_coins")}
-              disabled={!user || (shopperId && !isCoinLoading && !coinsSufficientIfSelected)}
-            >
-              Pay by JiMATShop coins
-            </Button>
-            <Button
-              type="button"
-              variant={paymentMethod === "billplz" ? "default" : "outline"}
-              onClick={() => setPaymentMethod("billplz")}
-              disabled={!user}
-            >
-              Pay by Billplz
-            </Button>
-          </div>
+          <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as any)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select payment method" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pay_in_store">Pay in store</SelectItem>
+              <SelectItem
+                value="jimatshop_coins"
+                disabled={!user || (shopperId && !isCoinLoading && !coinsSufficientIfSelected)}
+              >
+                JiMATShop Coins
+              </SelectItem>
+              <SelectItem value="jimatshop_coins_platform" disabled={!user}>
+                JiMATShop Coins (Platform)
+              </SelectItem>
+              <SelectItem value="billplz" disabled={!user}>
+                Billplz
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
           {paymentMethod === "jimatshop_coins" ? (
             <p className="text-xs text-muted-foreground">
               Coins will be deducted from your JiMATShop coin balance when you place the order.
+            </p>
+          ) : paymentMethod === "jimatshop_coins_platform" ? (
+            <p className="text-xs text-muted-foreground">
+              Coins will be deducted from your platform JiMATShop coin balance when you place the order.
             </p>
           ) : paymentMethod === "billplz" ? (
             <p className="text-xs text-muted-foreground">
@@ -489,11 +536,17 @@ export default function Checkout() {
           <p className="text-xs text-muted-foreground">
             {user ? (
               shopperId ? (
-                isCoinLoading ? (
+                isCoinLoading || isPlatformCoinLoading ? (
                   "Loading coin balance..."
                 ) : (
                   <>
                     JiMATShop coins available: <span className="font-semibold">{formatMYR(totalCoinBalance)}</span>
+                    <span className="block mt-1">
+                      Platform coins available: <span className="font-semibold">{formatMYR(platformCoinBalance)}</span>
+                      {paymentMethod === "jimatshop_coins_platform" && !platformCoinsSufficient ? (
+                        <span className="text-destructive"> (insufficient)</span>
+                      ) : null}
+                    </span>
                     {checkoutBuyerIds.length > 1 ? (
                       <span className="block mt-1">
                         {checkoutBuyerIds.map((buyerId) => (

@@ -2,6 +2,7 @@ import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { resolveShopperId } from "@/lib/api/shopper";
@@ -9,13 +10,20 @@ import { supabase } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { ChevronRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 type OrderRow = {
   id: string;
   status: string;
   total_amount: unknown;
   created_at: string;
+  outlet_name?: string | null;
+  items?: Array<{
+    name: string;
+    quantity: number;
+    inventoryId?: string | null;
+    imageUrl?: string | null;
+  }>;
 };
 
 const formatMYR = (amount: number) =>
@@ -58,7 +66,19 @@ function formatTabLabel(tab: OrderStatusTab): string {
   return "Other";
 }
 
-function OrdersList({ orders }: { orders: OrderRow[] }) {
+function formatOrderItems(items: OrderRow["items"]): string | null {
+  if (!items || items.length === 0) return null;
+  const maxItems = 3;
+  const parts = items
+    .slice(0, maxItems)
+    .map((item) => `${item.name} x${item.quantity}`);
+  const remaining = items.length - maxItems;
+  return remaining > 0 ? `${parts.join(", ")} +${remaining} more` : parts.join(", ");
+}
+
+function OrdersList({ orders, showCompletedDetails }: { orders: OrderRow[]; showCompletedDetails: boolean }) {
+  const navigate = useNavigate();
+
   if (orders.length === 0) {
     return (
       <div className="jimat-card p-4">
@@ -85,6 +105,46 @@ function OrdersList({ orders }: { orders: OrderRow[] }) {
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </div>
           </div>
+          {showCompletedDetails ? (
+            <div className="mt-2 text-xs text-muted-foreground space-y-1">
+              {o.outlet_name ? <p className="truncate">Outlet: {o.outlet_name}</p> : null}
+              {o.items && o.items.length > 0 ? (
+                <div className="space-y-2">
+                  {o.items.map((item, idx) => (
+                    <div key={`${o.id}-${idx}`} className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <img
+                          src={item.imageUrl || "/placeholder.svg"}
+                          alt={item.name}
+                          className="h-10 w-10 rounded-md object-cover bg-muted"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs text-foreground truncate">{item.name}</p>
+                          <p className="text-[11px] text-muted-foreground">Qty {item.quantity}</p>
+                        </div>
+                      </div>
+                      {item.inventoryId ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            navigate(`/inventory/${item.inventoryId}`);
+                          }}
+                        >
+                          Buy again
+                        </Button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="truncate">Items: {formatOrderItems(o.items)}</p>
+              )}
+            </div>
+          ) : null}
           <div className="mt-2 flex items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">
               {new Intl.DateTimeFormat("ms-MY", {
@@ -103,6 +163,8 @@ function OrdersList({ orders }: { orders: OrderRow[] }) {
 
 export default function Orders() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab") as OrderStatusTab | null;
 
   const { data: orders = [], isLoading, isError } = useQuery({
     queryKey: ["shopper-orders", user?.id],
@@ -114,13 +176,59 @@ export default function Orders() {
 
       const { data, error } = await supabase
         .from("jimatshop_orders")
-        .select("id,status,total_amount,created_at")
+        .select(
+          `
+            id,
+            status,
+            total_amount,
+            created_at,
+            buyers (
+              business_name,
+              outlet_name
+            ),
+            jimatshop_order_items (
+              quantity,
+              buyer_inventory_id,
+              buyer_inventories (
+                products (
+                  name,
+                  image_url,
+                  cover_image_url
+                )
+              )
+            )
+          `,
+        )
         .eq("shopper_id", shopperId)
         .order("created_at", { ascending: false })
         .limit(50);
 
       if (error) throw error;
-      return (data ?? []) as OrderRow[];
+      return (data ?? []).map((row: any) => {
+        const outletName = row?.buyers?.business_name || row?.buyers?.outlet_name || null;
+        const items = (row?.jimatshop_order_items ?? [])
+          .map((item: any) => {
+            const product = item?.buyer_inventories?.products;
+            const name = product?.name;
+            if (!name) return null;
+            return {
+              name,
+              quantity: Number(item?.quantity ?? 0),
+              inventoryId: item?.buyer_inventory_id ?? null,
+              imageUrl: product?.cover_image_url || product?.image_url || null,
+            };
+          })
+          .filter(Boolean);
+
+        return {
+          id: row.id,
+          status: row.status,
+          total_amount: row.total_amount,
+          created_at: row.created_at,
+          outlet_name: outletName,
+          items,
+        } as OrderRow;
+      });
     },
     enabled: Boolean(user),
     staleTime: 30_000,
@@ -149,6 +257,14 @@ export default function Orders() {
     // Keep "all" always, hide empty status tabs for a cleaner UI.
     return ordered.filter((k) => k === "all" || hasAny(k));
   }, [grouped]);
+
+  // Determine default tab: use URL param if valid, otherwise "all"
+  const defaultTab = useMemo(() => {
+    if (tabFromUrl && tabs.includes(tabFromUrl)) {
+      return tabFromUrl;
+    }
+    return "all";
+  }, [tabFromUrl, tabs]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -190,7 +306,7 @@ export default function Orders() {
             <p className="text-sm text-muted-foreground">No orders yet.</p>
           </div>
         ) : (
-          <Tabs defaultValue="all" className="w-full">
+          <Tabs defaultValue={defaultTab} className="w-full">
             <div className="-mx-4 px-4 overflow-x-auto pb-2">
               <TabsList className="w-max">
                 {tabs.map((t) => (
@@ -204,7 +320,7 @@ export default function Orders() {
 
             {tabs.map((t) => (
               <TabsContent key={t} value={t} className="mt-3">
-                <OrdersList orders={grouped[t]} />
+                <OrdersList orders={grouped[t]} showCompletedDetails={t === "completed"} />
               </TabsContent>
             ))}
           </Tabs>

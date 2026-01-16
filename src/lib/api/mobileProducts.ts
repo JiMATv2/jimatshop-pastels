@@ -20,6 +20,9 @@ export interface MobileProduct {
   semantic_similarity: number | null;
   brand_id: string | null;
   brand_name: string | null;
+  outlets_with_stock?: number;
+  total_outlets?: number;
+  total_quantity_sold?: number;
 }
 
 export interface MobilePaginationInfo {
@@ -58,7 +61,7 @@ export interface MobileProductsRequest {
   use_semantic_search?: boolean;
   semantic_threshold?: number;
   // ex_supabase extension: choose data source
-  source?: "marketplace" | "buyer_inventory";
+  source?: "marketplace" | "buyer_inventory" | "buyer_catalog";
   // when source="buyer_inventory"
   buyer_id?: string | null; // deprecated, use buyer_ids
   buyer_ids?: string[]; // new: array of buyer IDs
@@ -143,6 +146,7 @@ export interface MobileProductDetailsResponse {
 
 export async function fetchMobileProductById(
   productId: string,
+  params: Pick<MobileProductsRequest, "source" | "buyer_ids" | "buyer_user_id"> = {},
   cfg: MobileProductsClientConfig = getMobileProductsClientConfig(),
 ): Promise<MobileProductDetailsResponse> {
   const headers: Record<string, string> = {
@@ -153,7 +157,15 @@ export async function fetchMobileProductById(
     headers["Authorization"] = `Bearer ${cfg.apiToken}`;
   }
 
-  const res = await fetch(`${cfg.baseUrl}/product/${productId}`, {
+  const query = new URLSearchParams();
+  if (params.source) query.set("source", params.source);
+  if (params.buyer_user_id) query.set("buyer_user_id", params.buyer_user_id);
+  if (params.buyer_ids && params.buyer_ids.length > 0) {
+    query.set("buyer_ids", JSON.stringify(params.buyer_ids));
+  }
+
+  const qs = query.toString();
+  const res = await fetch(`${cfg.baseUrl}/product/${productId}${qs ? `?${qs}` : ""}`, {
     method: "GET",
     headers,
   });

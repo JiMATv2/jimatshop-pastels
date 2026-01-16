@@ -6,6 +6,8 @@ export type MobileProduct = {
   product_name: string;
   cover_image_url: string;
   retail_price: number;
+  promotion_price?: number | null;
+  normal_price?: number | null;
   outlets_with_stock: number;
   total_outlets: number;
   total_quantity_sold: number;
@@ -21,6 +23,8 @@ export type MobileInventory = {
   cover_image_url: string;
   stock_level: number;
   retail_price: number;
+  promotion_price?: number | null;
+  normal_price?: number | null;
   buyer_id: string;
   buyer_name: string;
   buyer_address?: string;
@@ -39,6 +43,8 @@ function normalizeProduct(raw: any): MobileProduct {
     product_name: String(raw?.product_name ?? ""),
     cover_image_url: String(raw?.cover_image_url ?? ""),
     retail_price: toNumber(raw?.retail_price, 0),
+    promotion_price: raw?.promotion_price != null ? toNumber(raw?.promotion_price, 0) : null,
+    normal_price: raw?.normal_price != null ? toNumber(raw?.normal_price, 0) : null,
     outlets_with_stock: toNumber(raw?.outlets_with_stock, 0),
     total_outlets: toNumber(raw?.total_outlets, 0),
     total_quantity_sold: toNumber(raw?.total_quantity_sold, 0),
@@ -55,6 +61,8 @@ function normalizeInventory(raw: any): MobileInventory {
     cover_image_url: String(raw?.cover_image_url ?? ""),
     stock_level: toNumber(raw?.stock_level, 0),
     retail_price: toNumber(raw?.retail_price, 0),
+    promotion_price: raw?.promotion_price != null ? toNumber(raw?.promotion_price, 0) : null,
+    normal_price: raw?.normal_price != null ? toNumber(raw?.normal_price, 0) : null,
     buyer_id: String(raw?.buyer_id ?? ""),
     buyer_name: String(raw?.buyer_name ?? ""),
     buyer_address: raw?.buyer_address ? String(raw.buyer_address) : undefined,

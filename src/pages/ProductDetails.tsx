@@ -66,7 +66,10 @@ export default function ProductDetails() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetchMobileProductById(productId);
+        const response = await fetchMobileProductById(productId, {
+          source: "buyer_inventory",
+          buyer_ids: buyerIds.length > 0 ? buyerIds : undefined,
+        });
         
         if (response.success && response.data) {
           const apiProduct = response.data;
@@ -160,15 +163,19 @@ export default function ProductDetails() {
 
   // Prefer an in-stock outlet inventory when available (it drives the actual sell price in cart).
   // Fallback to the catalog product price if no outlet inventory is available.
+  const getInventoryUnitPrice = (inv: MobileInventory | null) => {
+    if (!inv) return product.price;
+    if (inv.promotion_price != null && inv.promotion_price > 0) return inv.promotion_price;
+    if (inv.retail_price > 0) return inv.retail_price;
+    return product.price;
+  };
+
   const preferredInventory =
-    inventories.find((inv) => inv.stock_level > 0 && inv.retail_price > 0) ??
-    inventories.find((inv) => inv.retail_price > 0) ??
+    inventories.find((inv) => inv.stock_level > 0 && (inv.promotion_price ?? inv.retail_price) > 0) ??
+    inventories.find((inv) => (inv.promotion_price ?? inv.retail_price) > 0) ??
     null;
 
-  const effectiveUnitPrice =
-    preferredInventory?.retail_price && preferredInventory.retail_price > 0
-      ? preferredInventory.retail_price
-      : product.price;
+  const effectiveUnitPrice = getInventoryUnitPrice(preferredInventory);
 
   const hasStock =
     inventories.some((inv) => inv.stock_level > 0) || Boolean(product.inStock);
@@ -184,10 +191,7 @@ export default function ProductDetails() {
       inventories[0] ??
       null;
 
-    const unitPrice =
-      firstInventory?.retail_price && firstInventory.retail_price > 0
-        ? firstInventory.retail_price
-        : effectiveUnitPrice;
+    const unitPrice = getInventoryUnitPrice(firstInventory);
     
     addItem(
       {

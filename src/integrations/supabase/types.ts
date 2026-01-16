@@ -298,6 +298,42 @@ export type Database = {
           },
         ]
       }
+      buyer_followers: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          id: string
+          shopper_id: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          id?: string
+          shopper_id: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          shopper_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buyer_followers_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "buyers"
+            referencedColumns: ["id"]
+          }
+          {
+            foreignKeyName: "buyer_followers_shopper_id_fkey"
+            columns: ["shopper_id"]
+            isOneToOne: false
+            referencedRelation: "shoppers"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       buyer_inventories: {
         Row: {
           buyer_location_id: string

@@ -1,9 +1,10 @@
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { fetchShopperSummary } from "@/lib/api/shopperSummary";
 import { cn } from "@/lib/utils";
-import { Clock, ShoppingBag, Ticket, Truck, Wallet, ChevronRight } from "lucide-react";
+import { Clock, ShoppingBag, Ticket, Package, Wallet, ChevronRight } from "lucide-react";
 import type { ComponentType } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 type Widget = {
   title: string;
@@ -19,6 +20,7 @@ const formatMYR = (amount: number) =>
 
 export function ShopperWidgets() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["shopper-summary", user?.id],
@@ -34,7 +36,7 @@ export function ShopperWidgets() {
   const totalSpend = data?.totalSpend ?? 0;
   const processingOrders = data?.processingOrders ?? 0;
   const availableVouchers = data?.availableVouchers ?? 0;
-  const latestShippingStatus = data?.latestShippingStatus ?? "No active shipping";
+  const readyForPickupOrders = data?.readyForPickupOrders ?? 0;
 
   const widgets: Widget[] = [
     {
@@ -71,11 +73,11 @@ export function ShopperWidgets() {
     },
   ];
 
-  const shippingWidget: Widget = {
-    title: "Shipping",
-    value: latestShippingStatus,
-    subtitle: "latest status",
-    Icon: Truck,
+  const readyForPickupWidget: Widget = {
+    title: "Ready for Pickup",
+    value: `${readyForPickupOrders}`,
+    subtitle: readyForPickupOrders === 1 ? "order ready" : "orders ready",
+    Icon: Package,
     gradient: "",
     iconBg: "bg-primary",
   };
@@ -111,43 +113,74 @@ export function ShopperWidgets() {
 
       {/* Main 4 widgets in 2x2 grid */}
       <div className="grid grid-cols-2 gap-3 mb-3">
-        {widgets.map((w) => (
-          <div
-            key={w.title}
-            className={cn(
-              "relative overflow-hidden rounded-2xl p-4 bg-white border-2 border-primary",
-              w.gradient
-            )}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-muted-foreground mb-1">{w.title}</p>
-                <p className="text-xl font-bold text-foreground truncate">{w.value}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{w.subtitle}</p>
-              </div>
-              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-sm", w.iconBg)}>
-                <w.Icon className="w-5 h-5 text-white" />
+        {widgets.map((w) => {
+          const isOrdersWidget = w.title === "Orders";
+
+          const commonProps = isOrdersWidget
+            ? {
+                onClick: () => navigate("/orders"),
+                role: "button",
+                tabIndex: 0,
+                onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate("/orders");
+                  }
+                },
+                "aria-label": "View order history",
+              }
+            : {};
+
+          return (
+            <div
+              key={w.title}
+              className={cn(
+                "relative overflow-hidden rounded-2xl p-4 bg-white border-2 border-primary",
+                isOrdersWidget && "cursor-pointer hover:shadow-md transition-shadow",
+                w.gradient
+              )}
+              {...commonProps}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-muted-foreground mb-1">{w.title}</p>
+                  <p className="text-xl font-bold text-foreground truncate">{w.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{w.subtitle}</p>
+                </div>
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-sm", w.iconBg)}>
+                  <w.Icon className="w-5 h-5 text-white" />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Shipping status - full width */}
+      {/* Ready for Pickup - full width */}
       <div
         className={cn(
-          "relative overflow-hidden rounded-2xl p-4 bg-white border-2 border-primary",
-          shippingWidget.gradient
+          "relative overflow-hidden rounded-2xl p-4 bg-white border-2 border-primary cursor-pointer hover:shadow-md transition-shadow",
+          readyForPickupWidget.gradient
         )}
+        onClick={() => navigate("/orders?tab=ready")}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            navigate("/orders?tab=ready");
+          }
+        }}
+        aria-label="View orders ready for pickup"
       >
         <div className="flex items-center gap-4">
-          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shadow-sm", shippingWidget.iconBg)}>
-            <shippingWidget.Icon className="w-6 h-6 text-white" />
+          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shadow-sm", readyForPickupWidget.iconBg)}>
+            <readyForPickupWidget.Icon className="w-6 h-6 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-muted-foreground mb-0.5">{shippingWidget.title}</p>
-            <p className="text-base font-semibold text-foreground truncate">{shippingWidget.value}</p>
-            <p className="text-xs text-muted-foreground">{shippingWidget.subtitle}</p>
+            <p className="text-xs font-medium text-muted-foreground mb-0.5">{readyForPickupWidget.title}</p>
+            <p className="text-base font-semibold text-foreground truncate">{readyForPickupWidget.value}</p>
+            <p className="text-xs text-muted-foreground">{readyForPickupWidget.subtitle}</p>
           </div>
           <ChevronRight className="w-5 h-5 text-muted-foreground" />
         </div>

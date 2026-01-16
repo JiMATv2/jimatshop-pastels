@@ -75,6 +75,9 @@ export default function InventoryDetails() {
     );
   }
 
+  const unitPrice =
+    inv.promotion_price != null && inv.promotion_price > 0 ? inv.promotion_price : inv.retail_price;
+
   const handleAddToCart = () => {
     if (inv.stock_level <= 0) {
       toast({
@@ -91,7 +94,7 @@ export default function InventoryDetails() {
         name: inv.product_name,
         image: inv.cover_image_url || undefined,
         unitLabel: `${inv.buyer_name}`,
-        unitPrice: inv.retail_price,
+        unitPrice,
         buyerId: inv.buyer_id,
         buyerInventoryId: inv.inventory_id,
       },
@@ -153,7 +156,16 @@ export default function InventoryDetails() {
 
         <div className="flex items-baseline gap-2">
           <span className="text-2xl font-bold text-primary">
-            {formatMYR(inv.retail_price)}
+            <div className="flex items-baseline gap-2">
+              <span>{formatMYR(unitPrice)}</span>
+              {inv.promotion_price != null &&
+                inv.promotion_price > 0 &&
+                inv.promotion_price !== inv.retail_price && (
+                  <span className="text-xs text-muted-foreground line-through">
+                    {formatMYR(inv.retail_price)}
+                  </span>
+                )}
+            </div>
           </span>
         </div>
 
@@ -216,7 +228,7 @@ export default function InventoryDetails() {
           disabled={isOutOfStock}
         >
           <ShoppingCart className="w-5 h-5" />
-          {isOutOfStock ? "Out of Stock" : `Add to Cart · ${formatMYR(inv.retail_price * quantity)}`}
+          {isOutOfStock ? "Out of Stock" : `Add to Cart · ${formatMYR(unitPrice * quantity)}`}
         </Button>
       </div>
 

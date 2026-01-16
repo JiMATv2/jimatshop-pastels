@@ -37,7 +37,7 @@ export type MobileCreateJimatshopOrderRequest = {
   items: MobileCreateJimatshopOrderItem[];
   shipping_address?: Record<string, unknown> | null;
   notes?: string | null;
-  payment_method?: "pay_in_store" | "jimatshop_coins" | "billplz";
+  payment_method?: "pay_in_store" | "jimatshop_coins" | "jimatshop_coins_platform" | "billplz";
 };
 
 export type MobileCreateJimatshopOrderResponse =

@@ -7,6 +7,7 @@ export type ShopperSummary = {
   processingOrders: number;
   availableVouchers: number;
   latestShippingStatus: string;
+  readyForPickupOrders: number;
 };
 
 function asNumber(v: unknown): number {
@@ -32,6 +33,7 @@ export async function fetchShopperSummary(args: {
       processingOrders: 0,
       availableVouchers: 0,
       latestShippingStatus: "Tiada penghantaran aktif",
+      readyForPickupOrders: 0,
     };
   }
 
@@ -56,6 +58,7 @@ export async function fetchShopperSummary(args: {
   const processingOrders = orderRows.filter((r) =>
     ["pending", "processing", "ready"].includes(r.status),
   ).length;
+  const readyForPickupOrders = orderRows.filter((r) => r.status === "ready").length;
 
   // Latest delivery status: attempt to load deliveries for recent orders.
   // Note: jimatshop_deliveries has RLS enabled; if blocked, we fall back gracefully.
@@ -92,6 +95,7 @@ export async function fetchShopperSummary(args: {
     processingOrders,
     availableVouchers,
     latestShippingStatus,
+    readyForPickupOrders,
   };
 }
 

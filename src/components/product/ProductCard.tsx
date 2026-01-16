@@ -5,6 +5,7 @@ export type ProductCardProps = {
   productId: string;
   productName: string;
   price: number;
+  originalPrice?: number;
   coverImageUrl: string;
   outletsWithStock: number;
   totalOutlets: number;
@@ -16,6 +17,7 @@ export function ProductCard({
   productId,
   productName,
   price,
+  originalPrice,
   coverImageUrl,
   outletsWithStock,
   totalOutlets,
@@ -24,6 +26,10 @@ export function ProductCard({
 }: ProductCardProps) {
   const navigate = useNavigate();
   const displayPrice = typeof price === "number" ? price : Number(price);
+  const displayOriginalPrice =
+    typeof originalPrice === "number" ? originalPrice : originalPrice != null ? Number(originalPrice) : null;
+  const showOriginalPrice =
+    typeof displayOriginalPrice === "number" && Number.isFinite(displayOriginalPrice) && displayOriginalPrice > displayPrice;
 
   return (
     <div
@@ -57,9 +63,16 @@ export function ProductCard({
           )}
 
           <div className="flex items-center justify-between pt-2">
-            <span className="text-base font-bold text-primary">
-              RM{Number.isFinite(displayPrice) ? displayPrice.toFixed(2) : "0.00"}
-            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-base font-bold text-primary">
+                RM{Number.isFinite(displayPrice) ? displayPrice.toFixed(2) : "0.00"}
+              </span>
+              {showOriginalPrice && (
+                <span className="text-xs text-muted-foreground line-through">
+                  RM{displayOriginalPrice?.toFixed(2)}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
