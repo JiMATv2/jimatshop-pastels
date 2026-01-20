@@ -1,11 +1,38 @@
 import { messaging, getToken } from "@/lib/firebase/config";
 import { supabase } from "@/lib/supabase/client";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
+import {
+  PushNotifications,
+  PushNotificationActionPerformed,
+  PushNotificationSchema,
+  PushNotificationToken,
+} from "@capacitor/push-notifications";
 
 class NotificationService {
   private vapidKey: string;
+  private androidPushEnabled: boolean;
+  private nativeListenersRegistered = false;
+  private pendingNativeTokenPromise?: Promise<string | null>;
+  private pendingNativeTokenResolve?: (token: string | null) => void;
+  private pendingNativeTokenTimeout?: ReturnType<typeof setTimeout>;
+  private nativeUserId?: string;
 
   constructor() {
     this.vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || "";
+    this.androidPushEnabled =
+      (import.meta.env.VITE_ENABLE_ANDROID_PUSH || "").toLowerCase() === "true";
+  }
+
+  init() {
+    if (!this.isAndroidNative()) return;
+    if (!this.androidPushEnabled) {
+      console.warn(
+        "[notifications] Android push disabled (set VITE_ENABLE_ANDROID_PUSH=true to enable)",
+      );
+      return;
+    }
+    this.ensureNativeListeners();
   }
 
   private async registerServiceWorker() {
@@ -18,7 +45,7 @@ class NotificationService {
     }
   }
 
-  private async saveTokenToDatabase(userId: string, token: string) {
+  private async saveTokenToDatabase(userId: string, token: string, platform: string) {
     try {
       const { error } = await supabase
         .from("user_notification_tokens" as any)
@@ -26,7 +53,7 @@ class NotificationService {
           {
             user_id: userId,
             fcm_token: token,
-            platform: "web",
+            platform,
             is_active: true,
             updated_at: new Date().toISOString(),
           },
@@ -41,7 +68,114 @@ class NotificationService {
     }
   }
 
+  private isAndroidNative() {
+    return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+  }
+
+  private clearPendingNativeToken() {
+    if (this.pendingNativeTokenTimeout) {
+      clearTimeout(this.pendingNativeTokenTimeout);
+    }
+    this.pendingNativeTokenPromise = undefined;
+    this.pendingNativeTokenResolve = undefined;
+    this.pendingNativeTokenTimeout = undefined;
+  }
+
+  private ensureNativeListeners() {
+    if (this.nativeListenersRegistered) return;
+    this.nativeListenersRegistered = true;
+
+    PushNotifications.addListener(
+      "registration",
+      async (token: PushNotificationToken) => {
+        const tokenValue = token.value;
+        if (this.nativeUserId && tokenValue) {
+          await this.saveTokenToDatabase(this.nativeUserId, tokenValue, "android");
+        }
+        if (this.pendingNativeTokenResolve) {
+          this.pendingNativeTokenResolve(tokenValue || null);
+          this.clearPendingNativeToken();
+        }
+      },
+    );
+
+    PushNotifications.addListener("registrationError", (error) => {
+      console.error("Push registration error:", error);
+      if (this.pendingNativeTokenResolve) {
+        this.pendingNativeTokenResolve(null);
+        this.clearPendingNativeToken();
+      }
+    });
+
+    PushNotifications.addListener(
+      "pushNotificationReceived",
+      async (notification: PushNotificationSchema) => {
+        const shouldShowLocal = document.visibilityState === "visible";
+        if (!shouldShowLocal) return;
+
+        try {
+          await LocalNotifications.requestPermissions();
+          const notificationId = Date.now() % 2147483647;
+          await LocalNotifications.schedule({
+            notifications: [
+              {
+                id: notificationId,
+                title: notification.title || "New update",
+                body: notification.body || "You have a new notification",
+                extra: notification.data || {},
+                smallIcon: "ic_notification",
+              },
+            ],
+          });
+        } catch (error) {
+          console.error("Local notification scheduling failed:", error);
+        }
+      },
+    );
+
+    PushNotifications.addListener(
+      "pushNotificationActionPerformed",
+      (notification: PushNotificationActionPerformed) => {
+        const url = notification.notification?.data?.url;
+        if (typeof url === "string" && url.length > 0) {
+          window.location.assign(url);
+        }
+      },
+    );
+  }
+
+  private async getNativeToken(userId: string) {
+    this.nativeUserId = userId;
+    this.ensureNativeListeners();
+
+    const permission = await PushNotifications.requestPermissions();
+    if (permission.receive !== "granted") return null;
+
+    if (!this.pendingNativeTokenPromise) {
+      this.pendingNativeTokenPromise = new Promise((resolve) => {
+        this.pendingNativeTokenResolve = resolve;
+        this.pendingNativeTokenTimeout = setTimeout(() => {
+          resolve(null);
+          this.clearPendingNativeToken();
+        }, 10000);
+      });
+    }
+
+    await PushNotifications.register();
+    return this.pendingNativeTokenPromise;
+  }
+
   async requestPermissionAndGetToken(userId: string) {
+    if (this.isAndroidNative() && !this.androidPushEnabled) {
+      console.warn(
+        "[notifications] Android push disabled (set VITE_ENABLE_ANDROID_PUSH=true to enable)",
+      );
+      return null;
+    }
+    if (this.isAndroidNative()) {
+      return this.getNativeToken(userId);
+    }
+
     if (!messaging) return null;
 
     await this.registerServiceWorker();
@@ -56,7 +190,7 @@ class NotificationService {
 
       if (!currentToken) return null;
 
-      await this.saveTokenToDatabase(userId, currentToken);
+      await this.saveTokenToDatabase(userId, currentToken, "web");
       return currentToken;
     } catch (error) {
       console.error("Error retrieving FCM token:", error);

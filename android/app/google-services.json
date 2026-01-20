@@ -1,0 +1,198 @@
+{
+    "project_info": {
+      "project_number": "552393042714",
+      "project_id": "jimat-294609",
+      "storage_bucket": "jimat-294609.firebasestorage.app"
+    },
+    "client": [
+      {
+        "client_info": {
+          "mobilesdk_app_id": "1:552393042714:android:5c81ca98c2b5bbf1821aa3",
+          "android_client_info": {
+            "package_name": "com.jimat.pos"
+          }
+        },
+        "oauth_client": [
+          {
+            "client_id": "552393042714-rhoo2it7vr67g4v3r4uk5g7bovajv70r.apps.googleusercontent.com",
+            "client_type": 1,
+            "android_info": {
+              "package_name": "com.jimat.pos",
+              "certificate_hash": "655da640d105f4c021666ec2cb6d3028dcc5e84c"
+            }
+          },
+          {
+            "client_id": "552393042714-uept2drgff0nptbotus889t0behq6n9v.apps.googleusercontent.com",
+            "client_type": 3
+          }
+        ],
+        "api_key": [
+          {
+            "current_key": "AIzaSyDbUT5fH-dKEOQ3QsKEhZULqXjwXVLGNco"
+          },
+          {
+            "current_key": "AIzaSyBbsFNgp8HYTa-MEm7tX7CcxXOIdIIJo5k"
+          }
+        ],
+        "services": {
+          "appinvite_service": {
+            "other_platform_oauth_client": [
+              {
+                "client_id": "552393042714-d8dboeed2krpot6agba44ftshvk0c5r2.apps.googleusercontent.com",
+                "client_type": 3
+              },
+              {
+                "client_id": "552393042714-t68nsrqh9u9gclr2bbt1j66l1ou3ul6v.apps.googleusercontent.com",
+                "client_type": 2,
+                "ios_info": {
+                  "bundle_id": "com.jimat.shop"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "client_info": {
+          "mobilesdk_app_id": "1:552393042714:android:cd60bafea3b8605c821aa3",
+          "android_client_info": {
+            "package_name": "com.jimat.shop"
+          }
+        },
+        "oauth_client": [
+          {
+            "client_id": "552393042714-9sbtd4dice48l9p6mj1eelbrnqfhap9d.apps.googleusercontent.com",
+            "client_type": 1,
+            "android_info": {
+              "package_name": "com.jimat.shop",
+              "certificate_hash": "f58021fad4dbf6858ca52e4c511bf97bd5473d55"
+            }
+          },
+          {
+            "client_id": "552393042714-q5q6tslqlfthv19rmcdpa5l4f6106aan.apps.googleusercontent.com",
+            "client_type": 1,
+            "android_info": {
+              "package_name": "com.jimat.shop",
+              "certificate_hash": "adc871f6c8fc835917c2851ee8d495dfb19d91d9"
+            }
+          },
+          {
+            "client_id": "552393042714-uept2drgff0nptbotus889t0behq6n9v.apps.googleusercontent.com",
+            "client_type": 3
+          }
+        ],
+        "api_key": [
+          {
+            "current_key": "AIzaSyDbUT5fH-dKEOQ3QsKEhZULqXjwXVLGNco"
+          },
+          {
+            "current_key": "AIzaSyBbsFNgp8HYTa-MEm7tX7CcxXOIdIIJo5k"
+          }
+        ],
+        "services": {
+          "appinvite_service": {
+            "other_platform_oauth_client": [
+              {
+                "client_id": "552393042714-d8dboeed2krpot6agba44ftshvk0c5r2.apps.googleusercontent.com",
+                "client_type": 3
+              },
+              {
+                "client_id": "552393042714-t68nsrqh9u9gclr2bbt1j66l1ou3ul6v.apps.googleusercontent.com",
+                "client_type": 2,
+                "ios_info": {
+                  "bundle_id": "com.jimat.shop"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "client_info": {
+          "mobilesdk_app_id": "1:552393042714:android:f949f15c6384d38b821aa3",
+          "android_client_info": {
+            "package_name": "com.jimat.shop_legacy"
+          }
+        },
+        "oauth_client": [
+          {
+            "client_id": "552393042714-ipqs0rnrmqgn2vc4hcpksh4vebhaslo7.apps.googleusercontent.com",
+            "client_type": 1,
+            "android_info": {
+              "package_name": "com.jimat.shop_legacy",
+              "certificate_hash": "adc871f6c8fc835917c2851ee8d495dfb19d91d9"
+            }
+          },
+          {
+            "client_id": "552393042714-uept2drgff0nptbotus889t0behq6n9v.apps.googleusercontent.com",
+            "client_type": 3
+          }
+        ],
+        "api_key": [
+          {
+            "current_key": "AIzaSyDbUT5fH-dKEOQ3QsKEhZULqXjwXVLGNco"
+          },
+          {
+            "current_key": "AIzaSyBbsFNgp8HYTa-MEm7tX7CcxXOIdIIJo5k"
+          }
+        ],
+        "services": {
+          "appinvite_service": {
+            "other_platform_oauth_client": [
+              {
+                "client_id": "552393042714-d8dboeed2krpot6agba44ftshvk0c5r2.apps.googleusercontent.com",
+                "client_type": 3
+              },
+              {
+                "client_id": "552393042714-t68nsrqh9u9gclr2bbt1j66l1ou3ul6v.apps.googleusercontent.com",
+                "client_type": 2,
+                "ios_info": {
+                  "bundle_id": "com.jimat.shop"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "client_info": {
+          "mobilesdk_app_id": "1:552393042714:android:24c4d5c1bc09e9c8821aa3",
+          "android_client_info": {
+            "package_name": "com.jimatbiz.shop3"
+          }
+        },
+        "oauth_client": [
+          {
+            "client_id": "552393042714-uept2drgff0nptbotus889t0behq6n9v.apps.googleusercontent.com",
+            "client_type": 3
+          }
+        ],
+        "api_key": [
+          {
+            "current_key": "AIzaSyDbUT5fH-dKEOQ3QsKEhZULqXjwXVLGNco"
+          },
+          {
+            "current_key": "AIzaSyBbsFNgp8HYTa-MEm7tX7CcxXOIdIIJo5k"
+          }
+        ],
+        "services": {
+          "appinvite_service": {
+            "other_platform_oauth_client": [
+              {
+                "client_id": "552393042714-d8dboeed2krpot6agba44ftshvk0c5r2.apps.googleusercontent.com",
+                "client_type": 3
+              },
+              {
+                "client_id": "552393042714-t68nsrqh9u9gclr2bbt1j66l1ou3ul6v.apps.googleusercontent.com",
+                "client_type": 2,
+                "ios_info": {
+                  "bundle_id": "com.jimat.shop"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "configuration_version": "1"
+  }

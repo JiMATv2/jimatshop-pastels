@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Phone, LogOut, Shield, Package, Heart, MapPin, Coins } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Mail, Phone, LogOut, Shield, Package, Heart, MapPin, Coins, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/sonner";
+import { notificationService } from "@/lib/notifications/notificationService";
 import { useEffect, useMemo, useState } from "react";
 
 const Profile = () => {
@@ -38,6 +40,9 @@ const Profile = () => {
     email: "",
     phone: "",
   });
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsSaving, setNotificationsSaving] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -182,6 +187,36 @@ const Profile = () => {
     };
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    const loadNotifications = async () => {
+      setNotificationsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("user_notification_tokens" as any)
+          .select("id, is_active")
+          .eq("user_id", user.id);
+        if (error) throw error;
+        const hasActive = (data ?? []).some((row: { is_active: boolean }) => row.is_active);
+        if (!cancelled) setNotificationsEnabled(hasActive);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Failed to load notification settings";
+        // eslint-disable-next-line no-console
+        console.error("[profile] failed to load notification settings", e);
+        toast.error(msg);
+      } finally {
+        if (!cancelled) setNotificationsLoading(false);
+      }
+    };
+
+    loadNotifications();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const handleShopperSave = async () => {
     if (!user) return;
     setIsSavingShopper(true);
@@ -211,6 +246,35 @@ const Profile = () => {
       toast.error(msg);
     } finally {
       setIsSavingShopper(false);
+    }
+  };
+
+  const handleNotificationsToggle = async (enabled: boolean) => {
+    if (!user) return;
+    setNotificationsSaving(true);
+    setNotificationsEnabled(enabled);
+    try {
+      if (enabled) {
+        const token = await notificationService.requestPermissionAndGetToken(user.id);
+        if (!token) {
+          throw new Error("Notification permission not granted");
+        }
+      } else {
+        const { error } = await supabase
+          .from("user_notification_tokens" as any)
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .eq("user_id", user.id);
+        if (error) throw error;
+      }
+      toast.success(enabled ? "Notifications enabled" : "Notifications disabled");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to update notifications";
+      // eslint-disable-next-line no-console
+      console.error("[profile] failed to update notifications", e);
+      toast.error(msg);
+      setNotificationsEnabled(!enabled);
+    } finally {
+      setNotificationsSaving(false);
     }
   };
 
@@ -371,6 +435,40 @@ const Profile = () => {
               <Button className="w-full" onClick={handleShopperSave} disabled={isSavingShopper}>
                 {isSavingShopper ? "Saving..." : "Save shopper details"}
               </Button>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        {/* Notification Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Notifications</CardTitle>
+            <CardDescription>Manage order updates and promotional alerts.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <Bell className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Push notifications</p>
+                  <p className="text-xs text-muted-foreground">
+                    {notificationsLoading
+                      ? "Loading status..."
+                      : notificationsEnabled
+                      ? "Enabled on this device"
+                      : "Disabled"}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={notificationsEnabled}
+                onCheckedChange={handleNotificationsToggle}
+                disabled={notificationsLoading || notificationsSaving}
+                aria-label="Toggle push notifications"
+              />
+            </div>
+            {notificationsSaving ? (
+              <p className="text-xs text-muted-foreground">Saving notification preference...</p>
             ) : null}
           </CardContent>
         </Card>

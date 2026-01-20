@@ -27,3 +27,6 @@ public/assets/sql-wasm.wasm
 *.sw?
 *.env
 *.env.production
+
+# Android signing keystore
+android/app/*.jks
