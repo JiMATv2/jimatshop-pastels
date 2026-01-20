@@ -1,46 +1,75 @@
-import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface Category {
   id: string;
   name: string;
-  emoji: string;
-  color: string;
+  image_url: string | null;
 }
 
-const categories: Category[] = [
-  { id: "1", name: "Fruits", emoji: "🍎", color: "bg-jimat-pastelpeach" },
-  { id: "2", name: "Vegetables", emoji: "🥬", color: "bg-jimat-pastelsage" },
-  { id: "3", name: "Dairy", emoji: "🥛", color: "bg-jimat-pastelblue" },
-  { id: "4", name: "Meat", emoji: "🥩", color: "bg-jimat-pastelpeach" },
-  { id: "5", name: "Bakery", emoji: "🍞", color: "bg-jimat-pastellavender" },
-  { id: "6", name: "Drinks", emoji: "🧃", color: "bg-jimat-pastelblue" },
-  { id: "7", name: "Snacks", emoji: "🍿", color: "bg-jimat-pastelsage" },
-  { id: "8", name: "More", emoji: "➕", color: "bg-muted" },
-];
-
 export const CategoryGrid = () => {
+  const navigate = useNavigate();
+  const { data: categories = [], isLoading, isError } = useQuery({
+    queryKey: ["home-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_categories")
+        .select("id,name,image_url")
+        .is("parent_id", null)
+        .order("name", { ascending: true })
+        .limit(8);
+
+      if (error) throw error;
+      return (data ?? []).filter((category) => category?.name);
+    },
+    staleTime: 5 * 60_000,
+  });
+
   return (
     <section className="px-4 py-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-foreground">Categories</h3>
         <button className="text-sm text-primary font-medium">See All</button>
       </div>
-      
-      <div className="grid grid-cols-4 gap-3">
-        {categories.map((category, index) => (
-          <button
-            key={category.id}
-            className={cn(
-              "flex flex-col items-center gap-2 p-3 rounded-2xl transition-transform hover:scale-105 animate-fade-in",
-              category.color
-            )}
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            <span className="text-2xl">{category.emoji}</span>
-            <span className="text-xs font-medium text-foreground">{category.name}</span>
-          </button>
-        ))}
-      </div>
+
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground">Loading categories…</div>
+      ) : isError ? (
+        <div className="text-sm text-destructive">Failed to load categories.</div>
+      ) : categories.length === 0 ? (
+        <div className="text-sm text-muted-foreground">No categories available.</div>
+      ) : (
+        <div className="grid grid-cols-4 gap-3">
+          {categories.map((category, index) => {
+            const initial = category.name?.trim()?.charAt(0)?.toUpperCase() ?? "?";
+            const search = new URLSearchParams({
+              section: "featured",
+              category: category.name,
+            }).toString();
+            return (
+              <button
+                key={category.id}
+                onClick={() => navigate(`/products?${search}`)}
+                className="flex flex-col items-center gap-2 p-3 rounded-2xl transition-transform hover:scale-105 animate-fade-in bg-card"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                {category.image_url ? (
+                  <img
+                    src={category.image_url}
+                    alt={category.name}
+                    className="h-8 w-8 object-contain"
+                    loading="lazy"
+                  />
+                ) : (
+                  <span className="text-lg font-semibold text-foreground">{initial}</span>
+                )}
+                <span className="text-xs font-medium text-foreground">{category.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 };

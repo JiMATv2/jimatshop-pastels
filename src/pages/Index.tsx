@@ -39,20 +39,7 @@ const Index = () => {
       <main>
         <ShopperWidgets />
         <NearbyOutlets />
-        <section className="px-4">
-          <Link
-            to="/shops"
-            className="block jimat-card p-4 bg-white border-2 border-primary"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-semibold text-foreground">Browse Buyer Shops</div>
-                <div className="text-xs text-muted-foreground">View all nearby shops</div>
-              </div>
-              <span className="text-xs font-medium text-primary">See all</span>
-            </div>
-          </Link>
-        </section>
+
         <HeroBanner />
         <CategoryGrid />
      

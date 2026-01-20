@@ -28,6 +28,7 @@ export default function Products() {
   );
   const buyerIdParam = searchParams.get("buyer_id"); // Single buyer ID from URL
   const searchQuery = (searchParams.get("q") || "").trim();
+  const categoryFilter = (searchParams.get("category") || "").trim();
   const { buyerIds: nearbyBuyerIds, outlets, isLoading: buyerIdsLoading, hasLocation } = useNearbyBuyerIds();
   
   // Use buyer_id from URL if provided, otherwise use nearby buyer IDs
@@ -170,10 +171,10 @@ export default function Products() {
 
   useEffect(() => {
     setPage(1);
-  }, [section, buyerIds.join(","), searchQuery]);
+  }, [section, buyerIds.join(","), searchQuery, categoryFilter]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["mobile-products-buyer-catalog", section, buyerIds, page, searchQuery],
+    queryKey: ["mobile-products-buyer-catalog", section, buyerIds, page, searchQuery, categoryFilter],
     queryFn: async () => {
       if (!cfg.apiToken) return { items: [] as MobileProduct[], pagination: undefined };
       // If buyer_id is provided, don't require location
@@ -192,15 +193,16 @@ export default function Products() {
       }
 
       const resp = await fetchMobileProducts(
-          {
-            page,
-            limit_count: 12,
-            search_query: searchQuery,
+        {
+          page,
+          limit_count: 12,
+          search_query: searchQuery,
+          category_filter: categoryFilter || undefined,
           source: "buyer_inventory",
           buyer_ids: buyerIds,
-          },
-          cfg,
-        );
+        },
+        cfg,
+      );
 
       // Debug: Log products in response
       console.debug("[Products] Products in response:", resp.data.length);

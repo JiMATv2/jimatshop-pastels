@@ -30,6 +30,7 @@ export function ProductCard({
     typeof originalPrice === "number" ? originalPrice : originalPrice != null ? Number(originalPrice) : null;
   const showOriginalPrice =
     typeof displayOriginalPrice === "number" && Number.isFinite(displayOriginalPrice) && displayOriginalPrice > displayPrice;
+  const isOutOfStock = outletsWithStock <= 0;
 
   return (
     <div
@@ -37,7 +38,7 @@ export function ProductCard({
       style={{ animationDelay: `${delay}ms` }}
       onClick={() => navigate(`/product/${productId}`)}
     >
-      <div className="relative p-3">
+      <div className={cn("relative p-3", isOutOfStock && "grayscale")}>
         <div className="aspect-square bg-muted rounded-xl mb-3 flex items-center justify-center overflow-hidden">
           <img
             src={coverImageUrl || "https://via.placeholder.com/400"}

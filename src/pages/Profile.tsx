@@ -51,44 +51,6 @@ const Profile = () => {
     navigate("/");
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <Header />
-        <main className="px-4 py-6">
-          <div className="space-y-4">
-            <Skeleton className="h-32 w-full rounded-xl" />
-            <Skeleton className="h-48 w-full rounded-xl" />
-            <Skeleton className="h-32 w-full rounded-xl" />
-          </div>
-        </main>
-        <BottomNav />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <Header />
-        <main className="px-4 py-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sign In Required</CardTitle>
-              <CardDescription>Please sign in to view your profile</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => navigate("/")} className="w-full">
-                Go to Home
-              </Button>
-            </CardContent>
-          </Card>
-        </main>
-        <BottomNav />
-      </div>
-    );
-  }
-
   const displayName =
     user.user_metadata?.full_name ||
     user.user_metadata?.name ||
@@ -307,6 +269,44 @@ const Profile = () => {
       setIsDeletingAccount(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background pb-24">
+        <Header />
+        <main className="px-4 py-6">
+          <div className="space-y-4">
+            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="h-48 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+          </div>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background pb-24">
+        <Header />
+        <main className="px-4 py-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sign In Required</CardTitle>
+              <CardDescription>Please sign in to view your profile</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate("/")} className="w-full">
+                Go to Home
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -533,7 +533,11 @@ const Profile = () => {
               </div>
             </Button>
             <Separator />
-            <Button variant="ghost" className="w-full justify-start gap-3 h-auto py-3">
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-auto py-3"
+              onClick={() => navigate("/wishlist")}
+            >
               <Heart className="h-5 w-5" />
               <div className="flex-1 text-left">
                 <p className="font-medium">Wishlist</p>

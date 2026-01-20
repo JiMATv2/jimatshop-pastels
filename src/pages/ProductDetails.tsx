@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -10,6 +10,8 @@ import { fetchMobileProductById } from "@/lib/api/mobileProducts";
 import { fetchInventoriesForProduct, type MobileInventory } from "@/lib/api/mobileInventories";
 import { useNearbyBuyerIds } from "@/lib/shop/useNearbyBuyerIds";
 import { InventoryCard } from "@/components/inventory/InventoryCard";
+import { supabase } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { 
   ArrowLeft, 
   Heart, 
@@ -42,18 +44,29 @@ interface Product {
 const formatMYR = (amount: number) =>
   new Intl.NumberFormat("ms-MY", { style: "currency", currency: "MYR" }).format(amount);
 
+const formatKm = (km: number | null | undefined) => {
+  if (typeof km !== "number" || Number.isNaN(km)) return null;
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  return `${km.toFixed(1)} km`;
+};
+
 export default function ProductDetails() {
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
   const { addItem } = useCart();
+  const { user } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [shopperId, setShopperId] = useState<string | null>(null);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [favoriteSaving, setFavoriteSaving] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
   const [inventories, setInventories] = useState<MobileInventory[]>([]);
   const [inventoriesLoading, setInventoriesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { buyerIds } = useNearbyBuyerIds();
+  const { buyerIds, outlets } = useNearbyBuyerIds();
+  const [outletSort, setOutletSort] = useState<"price" | "distance">("price");
 
   useEffect(() => {
     if (!productId) {
@@ -130,6 +143,156 @@ export default function ProductDetails() {
     loadInventories();
   }, [productId, buyerIds.join(",")]);
 
+  useEffect(() => {
+    if (!user) {
+      setShopperId(null);
+      setIsFavorite(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadShopper = async () => {
+      try {
+        const { data, error: fetchErr } = await supabase
+          .from("shoppers")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (fetchErr) throw fetchErr;
+
+        let row = data as { id: string } | null;
+
+        if (!row) {
+          const { error: upsertErr } = await supabase.rpc("upsert_shopper_for_auth_user", {
+            first_name:
+              (user.user_metadata?.given_name as string | undefined) ||
+              (user.user_metadata?.full_name as string | undefined) ||
+              (user.user_metadata?.name as string | undefined) ||
+              "",
+            last_name: (user.user_metadata?.family_name as string | undefined) || null,
+            email: user.email || null,
+            phone: user.phone || null,
+          });
+          if (upsertErr) throw upsertErr;
+
+          const { data: after, error: afterErr } = await supabase
+            .from("shoppers")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (afterErr) throw afterErr;
+          row = after as { id: string } | null;
+        }
+
+        if (!cancelled) {
+          setShopperId(row?.id ?? null);
+        }
+      } catch (err) {
+        console.error("[product-details] Failed to load shopper profile", err);
+      }
+    };
+
+    loadShopper();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!shopperId || !product?.id) {
+      setIsFavorite(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadFavorite = async () => {
+      setFavoriteLoading(true);
+      try {
+        const { data, error: favErr } = await supabase
+          .from("shopper_wishlists")
+          .select("id")
+          .eq("shopper_id", shopperId)
+          .eq("product_id", product.id)
+          .maybeSingle();
+        if (favErr) throw favErr;
+
+        if (!cancelled) {
+          setIsFavorite(Boolean(data));
+        }
+      } catch (err) {
+        console.error("[product-details] Failed to load wishlist state", err);
+      } finally {
+        if (!cancelled) setFavoriteLoading(false);
+      }
+    };
+
+    loadFavorite();
+    return () => {
+      cancelled = true;
+    };
+  }, [shopperId, product?.id]);
+
+
+  const basePrice = product?.price ?? 0;
+
+  // Prefer an in-stock outlet inventory when available (it drives the actual sell price in cart).
+  // Fallback to the catalog product price if no outlet inventory is available.
+  const getInventoryUnitPrice = (inv: MobileInventory | null) => {
+    if (!inv) return basePrice;
+    if (inv.promotion_price != null && inv.promotion_price > 0) return inv.promotion_price;
+    if (inv.retail_price > 0) return inv.retail_price;
+    return basePrice;
+  };
+
+  const preferredInventory =
+    inventories.find((inv) => inv.stock_level > 0 && (inv.promotion_price ?? inv.retail_price) > 0) ??
+    inventories.find((inv) => (inv.promotion_price ?? inv.retail_price) > 0) ??
+    null;
+
+  const effectiveUnitPrice = getInventoryUnitPrice(preferredInventory);
+
+  const outletDistanceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const outlet of outlets) {
+      const id = typeof outlet.id === "string" ? outlet.id : String(outlet.id);
+      const distance = typeof outlet.distance_in_km === "number" ? outlet.distance_in_km : Number(outlet.distance_in_km);
+      if (!id || !Number.isFinite(distance)) continue;
+      map.set(id, distance);
+    }
+    return map;
+  }, [outlets]);
+
+  const sortedInventories = useMemo(() => {
+    const list = [...inventories];
+    if (outletSort === "distance") {
+      list.sort((a, b) => {
+        const aDistance = outletDistanceMap.get(a.buyer_id) ?? Number.POSITIVE_INFINITY;
+        const bDistance = outletDistanceMap.get(b.buyer_id) ?? Number.POSITIVE_INFINITY;
+        if (aDistance !== bDistance) return aDistance - bDistance;
+        return getInventoryUnitPrice(a) - getInventoryUnitPrice(b);
+      });
+      return list;
+    }
+
+    list.sort((a, b) => {
+      const aPrice = getInventoryUnitPrice(a);
+      const bPrice = getInventoryUnitPrice(b);
+      if (aPrice !== bPrice) return aPrice - bPrice;
+      const aDistance = outletDistanceMap.get(a.buyer_id) ?? Number.POSITIVE_INFINITY;
+      const bDistance = outletDistanceMap.get(b.buyer_id) ?? Number.POSITIVE_INFINITY;
+      return aDistance - bDistance;
+    });
+    return list;
+  }, [inventories, outletSort, outletDistanceMap]);
+
+  const hasStock =
+    inventories.some((inv) => inv.stock_level > 0) || Boolean(product?.inStock);
+
+  const discount = product?.originalPrice
+    ? Math.round(((product.originalPrice - basePrice) / product.originalPrice) * 100)
+    : 0;
 
   if (loading) {
     return (
@@ -160,29 +323,6 @@ export default function ProductDetails() {
       </div>
     );
   }
-
-  // Prefer an in-stock outlet inventory when available (it drives the actual sell price in cart).
-  // Fallback to the catalog product price if no outlet inventory is available.
-  const getInventoryUnitPrice = (inv: MobileInventory | null) => {
-    if (!inv) return product.price;
-    if (inv.promotion_price != null && inv.promotion_price > 0) return inv.promotion_price;
-    if (inv.retail_price > 0) return inv.retail_price;
-    return product.price;
-  };
-
-  const preferredInventory =
-    inventories.find((inv) => inv.stock_level > 0 && (inv.promotion_price ?? inv.retail_price) > 0) ??
-    inventories.find((inv) => (inv.promotion_price ?? inv.retail_price) > 0) ??
-    null;
-
-  const effectiveUnitPrice = getInventoryUnitPrice(preferredInventory);
-
-  const hasStock =
-    inventories.some((inv) => inv.stock_level > 0) || Boolean(product.inStock);
-
-  const discount = product.originalPrice
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-    : 0;
 
   const handleAddToCart = () => {
     // Prefer an in-stock inventory (if present) to ensure we use the correct outlet and price.
@@ -229,6 +369,104 @@ export default function ProductDetails() {
     setQuantity(quantity + 1);
   };
 
+  const resolveShopperId = async () => {
+    if (!user) return null;
+    if (shopperId) return shopperId;
+
+    const { data, error: fetchErr } = await supabase
+      .from("shoppers")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (fetchErr) throw fetchErr;
+
+    let row = data as { id: string } | null;
+
+    if (!row) {
+      const { error: upsertErr } = await supabase.rpc("upsert_shopper_for_auth_user", {
+        first_name:
+          (user.user_metadata?.given_name as string | undefined) ||
+          (user.user_metadata?.full_name as string | undefined) ||
+          (user.user_metadata?.name as string | undefined) ||
+          "",
+        last_name: (user.user_metadata?.family_name as string | undefined) || null,
+        email: user.email || null,
+        phone: user.phone || null,
+      });
+      if (upsertErr) throw upsertErr;
+
+      const { data: after, error: afterErr } = await supabase
+        .from("shoppers")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (afterErr) throw afterErr;
+      row = after as { id: string } | null;
+    }
+
+    const resolvedId = row?.id ?? null;
+    if (resolvedId) setShopperId(resolvedId);
+    return resolvedId;
+  };
+
+  const handleFavoriteToggle = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to save products to your wishlist.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!product || favoriteSaving) return;
+
+    setFavoriteSaving(true);
+    try {
+      const resolvedShopperId = await resolveShopperId();
+      if (!resolvedShopperId) {
+        throw new Error("Missing shopper profile");
+      }
+
+      if (isFavorite) {
+        const { error: deleteErr } = await supabase
+          .from("shopper_wishlists")
+          .delete()
+          .eq("shopper_id", resolvedShopperId)
+          .eq("product_id", product.id);
+        if (deleteErr) throw deleteErr;
+
+        setIsFavorite(false);
+        toast({
+          title: "Removed from wishlist",
+          description: `${product.name} removed from your wishlist.`,
+        });
+      } else {
+        const { error: insertErr } = await supabase
+          .from("shopper_wishlists")
+          .insert(
+            { shopper_id: resolvedShopperId, product_id: product.id },
+            { onConflict: "shopper_id,product_id", ignoreDuplicates: true },
+          );
+        if (insertErr) throw insertErr;
+
+        setIsFavorite(true);
+        toast({
+          title: "Added to wishlist",
+          description: `${product.name} saved to your wishlist.`,
+        });
+      }
+    } catch (err) {
+      console.error("[product-details] Failed to update wishlist", err);
+      toast({
+        title: "Wishlist update failed",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setFavoriteSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pb-32">
       {/* Header with back button */}
@@ -241,8 +479,9 @@ export default function ProductDetails() {
             <Button 
               variant="ghost" 
               size="icon"
-              onClick={() => setIsFavorite(!isFavorite)}
+              onClick={handleFavoriteToggle}
               aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+              disabled={favoriteSaving || favoriteLoading}
             >
               <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
             </Button>
@@ -331,64 +570,66 @@ export default function ProductDetails() {
           </p>
         </div>
 
-        {/* Features */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="flex flex-col items-center gap-2 p-3 bg-muted rounded-xl">
-            <Truck className="w-5 h-5 text-primary" />
-            <span className="text-xs text-center text-muted-foreground">Fast Delivery</span>
-          </div>
-          <div className="flex flex-col items-center gap-2 p-3 bg-muted rounded-xl">
-            <Shield className="w-5 h-5 text-primary" />
-            <span className="text-xs text-center text-muted-foreground">Quality Guaranteed</span>
-          </div>
-          <div className="flex flex-col items-center gap-2 p-3 bg-muted rounded-xl">
-            <RotateCcw className="w-5 h-5 text-primary" />
-            <span className="text-xs text-center text-muted-foreground">Easy Returns</span>
-          </div>
-        </div>
 
         {/* Available Outlets */}
         <div className="space-y-3" style={{ paddingBottom: "100px" }}>
-          <h3 className="font-semibold text-foreground">Available at Outlets</h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-semibold text-foreground">Available at Outlets</h3>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setOutletSort((prev) => (prev === "price" ? "distance" : "price"))}
+              className="text-xs"
+            >
+              Sort by {outletSort === "price" ? "Distance" : "Price"}
+            </Button>
+          </div>
           {inventoriesLoading ? (
             <div className="text-sm text-muted-foreground">Loading outlets...</div>
           ) : inventories.length === 0 ? (
             <div className="text-sm text-muted-foreground">No outlets found</div>
           ) : (
             <div className="grid grid-cols-1 gap-3">
-              {inventories.map((inv) => (
-                <div
-                  key={inv.inventory_id}
-                  onClick={() => navigate(`/inventory/${inv.inventory_id}`)}
-                  className="jimat-card p-3 cursor-pointer transition-colors hover:bg-muted/50 active:bg-muted"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-foreground">{inv.buyer_name}</div>
-                      {inv.buyer_address && (
-                        <div className="text-xs text-muted-foreground mt-1 truncate">
-                          {inv.buyer_address}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className={`text-xs ${inv.stock_level > 0 ? "text-green-600" : "text-red-600"}`}>
-                          {inv.stock_level > 0 ? `Stock: ${inv.stock_level}` : "Out of Stock"}
-                        </span>
-                        {inv.total_quantity_sold > 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            Sold: {inv.total_quantity_sold}
-                          </span>
+              {sortedInventories.map((inv) => {
+                const distanceLabel = formatKm(outletDistanceMap.get(inv.buyer_id));
+                return (
+                  <div
+                    key={inv.inventory_id}
+                    onClick={() => navigate(`/inventory/${inv.inventory_id}`)}
+                    className="jimat-card p-3 cursor-pointer transition-colors hover:bg-muted/50 active:bg-muted"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-foreground">{inv.buyer_name}</div>
+                        {inv.buyer_address && (
+                          <div className="text-xs text-muted-foreground mt-1 truncate">
+                            {inv.buyer_address}
+                          </div>
                         )}
+                        <div className="flex flex-wrap items-center gap-3 mt-2">
+                          <span className={`text-xs ${inv.stock_level > 0 ? "text-green-600" : "text-red-600"}`}>
+                            {inv.stock_level > 0 ? `Stock: ${inv.stock_level}` : "Out of Stock"}
+                          </span>
+                          {inv.total_quantity_sold > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              Sold: {inv.total_quantity_sold}
+                            </span>
+                          )}
+                          {distanceLabel && (
+                            <span className="text-xs text-muted-foreground">{distanceLabel}</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-base font-bold text-primary">
-                        {formatMYR(inv.retail_price)}
+                      <div className="text-right">
+                        <div className="text-base font-bold text-primary">
+                          {formatMYR(getInventoryUnitPrice(inv))}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -1,13 +1,13 @@
 import { useLatestLocation } from "@/lib/location/useLocation";
 import { geoNearbyOutlets } from "@/lib/api/geoLocation";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Navigation, Ticket } from "lucide-react";
+import { MapPin, Ticket } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { resolveShopperId } from "@/lib/api/shopper";
 import { supabase } from "@/lib/supabase/client";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 function formatKm(km: number | null | undefined) {
   if (typeof km !== "number" || Number.isNaN(km)) return null;
   if (km < 1) return `${Math.round(km * 1000)} m`;
@@ -18,6 +18,7 @@ export function NearbyOutlets() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { coordinates, isLoading: locationLoading } = useLatestLocation();
+  const [isOpen, setIsOpen] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["nearby-outlets", coordinates?.latitude, coordinates?.longitude],
@@ -84,87 +85,158 @@ export function NearbyOutlets() {
 
   return (
     <section className="px-4 py-4">
-      <div className="flex items-baseline justify-between gap-3 mb-3">
-        <h3 className="text-lg font-semibold text-foreground">Nearby Outlets</h3>
-        <Link to="/location-search" className="text-xs font-medium text-primary">
-          Change location
-        </Link>
-      </div>
+      <details
+        className="group"
+        open={isOpen}
+        onToggle={(event) => setIsOpen(event.currentTarget.open)}
+      >
+        <summary className="flex items-baseline justify-between gap-3 mb-3 cursor-pointer list-none">
+          <h3 className="text-lg font-semibold text-foreground">Nearby Outlets</h3>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/location-search"
+              className="text-xs font-medium text-primary"
+              onClick={(event) => event.stopPropagation()}
+            >
+              Change location
+            </Link>
+            <button
+              type="button"
+              className="text-xs font-medium text-primary"
+              onClick={(event) => {
+                event.preventDefault();
+                setIsOpen((prev) => !prev);
+              }}
+            >
+              {isOpen ? "Collapse" : "Expand"}
+            </button>
+          </div>
+        </summary>
 
-      {!hasLocation ? (
-        <div className="jimat-card p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-jimat-pastelblue/30 flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-jimat-darkgreen" />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-foreground">Location not set</div>
-              <div className="text-xs text-muted-foreground">
-                Set your location to see the nearest outlets.
+        {!hasLocation ? (
+          <div className="jimat-card p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-jimat-pastelblue/30 flex items-center justify-center">
+                <MapPin className="w-5 h-5 text-jimat-darkgreen" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-foreground">Location not set</div>
+                <div className="text-xs text-muted-foreground">
+                  Set your location to see the nearest outlets.
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ) : locationLoading || isLoading ? (
-        <div className="jimat-card p-4">
-          <div className="text-sm text-muted-foreground">Finding outlets near you…</div>
-        </div>
-      ) : isError ? (
-        <div className="jimat-card p-4">
-          <div className="text-sm text-destructive">Failed to load nearby outlets.</div>
-          <div className="text-xs text-muted-foreground mt-1">
-            Please try again or update your location.
+        ) : locationLoading || isLoading ? (
+          <div className="jimat-card p-4">
+            <div className="text-sm text-muted-foreground">Finding outlets near you…</div>
           </div>
-        </div>
-      ) : items.length === 0 ? (
-        <div className="jimat-card p-4">
-          <div className="text-sm text-muted-foreground">No outlets found within 20 km.</div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {items.slice(0, 6).map((o) => {
-            const outletId = typeof o.id === "string" ? o.id : String(o.id);
-            const distance = formatKm(o.distance_in_km);
-            const name = o.name || "Outlet";
-            const hasCoins = buyerIdsWithCoins.has(outletId);
-            return (
-              <button
-                key={outletId}
-                onClick={() => navigate(`/products?buyer_id=${outletId}`)}
-                className="w-full text-left jimat-card p-3 flex gap-3 items-center transition-colors hover:bg-muted/50 active:bg-muted"
-              >
-                <div className="h-14 w-14 rounded-xl bg-jimat-green/15 flex items-center justify-center flex-shrink-0">
-                  <Navigation className="w-6 h-6 text-jimat-darkgreen" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="font-semibold text-foreground truncate">{name}</div>
-                    <div className="flex items-center gap-2">
-                      {hasCoins ? (
-                        <span
-                          className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 whitespace-nowrap"
-                          aria-label="You have JiMATShop coins at this shop"
-                          title="You have JiMATShop coins at this shop"
-                        >
-                          <Ticket className="w-4 h-4" />
-                        </span>
-                      ) : null}
-                      {distance ? (
-                        <span className="text-xs font-medium text-primary whitespace-nowrap">
-                          {distance}
-                        </span>
-                      ) : null}
+        ) : isError ? (
+          <div className="jimat-card p-4">
+            <div className="text-sm text-destructive">Failed to load nearby outlets.</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Please try again or update your location.
+            </div>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="jimat-card p-4">
+            <div className="text-sm text-muted-foreground">No outlets found within 20 km.</div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {items.slice(0, 6).map((o) => {
+              const outletId = typeof o.id === "string" ? o.id : String(o.id);
+              const distance = formatKm(o.distance_in_km);
+              const name = o.name || "Outlet";
+              const address = o.address || "—";
+              const hasCoins = buyerIdsWithCoins.has(outletId);
+              return (
+                <button
+                  key={outletId}
+                  onClick={() => navigate(`/products?buyer_id=${outletId}`)}
+                  className="w-full text-left jimat-card p-0 overflow-hidden transition-colors hover:bg-muted/50 active:bg-muted"
+                >
+                  <div className="p-4 grid grid-cols-4 md:grid-cols-12 items-center">
+                    <div className="col-span-1 md:col-span-2 flex justify-center">
+                      <div className="h-20 w-20 rounded-xl bg-jimat-green/15 flex items-center justify-center text-jimat-darkgreen">
+                        <img
+                          src="https://jimatshop.com/images/icons/store.svg"
+                          alt="Store"
+                          className="h-12 w-12"
+                        />
+                      </div>
+                    </div>
+                    <div className="col-span-3 md:col-span-10 ml-2 md:ml-3 min-w-0">
+                      <h5 className="text-sm font-semibold text-foreground leading-5 truncate">
+                        {name}
+                      </h5>
+                      <p className="py-1 text-xs text-muted-foreground leading-tight truncate">
+                        {address}
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {hasCoins ? (
+                          <span
+                            className="inline-flex items-center gap-1 rounded bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700"
+                            aria-label="You have JiMATShop coins at this shop"
+                            title="You have JiMATShop coins at this shop"
+                          >
+                            <Ticket className="w-3.5 h-3.5" />
+                            Coins
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded bg-jimat-green/15 px-2.5 py-0.5 text-xs font-medium text-jimat-darkgreen">
+                            Open
+                          </span>
+                        )}
+                        {distance ? <span>{distance}</span> : null}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {o.address || "—"}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </details>
+      {!isOpen &&
+      hasLocation &&
+      !locationLoading &&
+      !isLoading &&
+      !isError &&
+      items.length > 0 ? (
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {items.slice(0, 4).map((o) => {
+            const outletId = typeof o.id === "string" ? o.id : String(o.id);
+            const name = o.name || "Outlet";
+            return (
+              <button
+                key={`preview-${outletId}`}
+                onClick={() => navigate(`/products?buyer_id=${outletId}`)}
+                className="jimat-card p-2 text-left transition-colors hover:bg-muted/50 active:bg-muted"
+              >
+                <div className="flex flex-col items-center gap-1">
+                  <div className="h-10 w-10 rounded-lg bg-jimat-green/15 flex items-center justify-center">
+                    <img
+                      src="https://jimatshop.com/images/icons/store.svg"
+                      alt="Store"
+                      className="h-6 w-6"
+                    />
+                  </div>
+                  <div className="text-[10px] font-medium text-foreground text-center line-clamp-2">
+                    {name}
                   </div>
                 </div>
               </button>
             );
           })}
         </div>
-      )}
+      ) : null}
+      <Link
+        to="/shops"
+        className="mt-3 block w-full jimat-card p-3 text-center text-sm font-medium text-primary transition-colors hover:bg-muted/50 active:bg-muted"
+      >
+        View all outlets
+      </Link>
     </section>
   );
 }
