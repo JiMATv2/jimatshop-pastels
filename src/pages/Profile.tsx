@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { notificationService } from "@/lib/notifications/notificationService";
+import { deleteShopperAccount } from "@/lib/api/accountDeletion";
 import { useEffect, useMemo, useState } from "react";
 
 const Profile = () => {
@@ -43,6 +44,7 @@ const Profile = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsSaving, setNotificationsSaving] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -275,6 +277,34 @@ const Profile = () => {
       setNotificationsEnabled(!enabled);
     } finally {
       setNotificationsSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user?.email) {
+      toast.error("Email not available for account deletion.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "This will permanently delete your account and anonymize your data. This action cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    setIsDeletingAccount(true);
+    try {
+      const result = await deleteShopperAccount({ email: user.email });
+      if (!result?.success) {
+        throw new Error(result?.message || "Failed to delete account.");
+      }
+      toast.success(result.message || "Account deletion request submitted.");
+      await signOut();
+      navigate("/");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to delete account.";
+      toast.error(msg);
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -517,6 +547,22 @@ const Profile = () => {
                 <p className="font-medium">Delivery Addresses</p>
                 <p className="text-xs text-muted-foreground">Manage addresses</p>
               </div>
+            </Button>
+            <Separator />
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-auto py-3 text-destructive"
+              onClick={handleDeleteAccount}
+              disabled={isDeletingAccount}
+            >
+              <Shield className="h-5 w-5" />
+              <div className="flex-1 text-left">
+                <p className="font-medium">Delete my account</p>
+                <p className="text-xs text-muted-foreground">Request account deletion</p>
+              </div>
+              {isDeletingAccount ? (
+                <span className="text-xs text-muted-foreground">Deleting...</span>
+              ) : null}
             </Button>
           </CardContent>
         </Card>
