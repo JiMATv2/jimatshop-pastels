@@ -1,30 +1,42 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { fetchJimatshopCampaigns } from "@/lib/api/jimatshopCampaigns";
 
 export const HeroBanner = () => {
+  const navigate = useNavigate();
+  const { data } = useQuery({
+    queryKey: ["jimatshop-campaigns", "hero"],
+    queryFn: () => fetchJimatshopCampaigns({ status: "active", limit_count: 1 }),
+  });
+
+  const campaign = data?.data?.[0];
+
+  const handleAction = () => {
+    if (campaign?.id) {
+      navigate(`/campaigns/${campaign.id}`);
+      return;
+    }
+    navigate("/products");
+  };
+
   return (
-    <section className="relative overflow-hidden bg-hero-gradient rounded-2xl mx-4 my-4 p-6 animate-fade-in">
-      <div className="relative z-10">
-        <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full mb-3">
-          🎉 Limited Time Offer
-        </span>
-        <h2 className="text-2xl font-bold text-foreground mb-2">
-          Fresh Groceries - To your doorstep
-          <br />
-          <span className="text-primary">Up to 100% OFF</span>
-        </h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Get fresh produce collect from stores
-        </p>
-        <Button className="group">
-          Shop Now
+    <section
+      className="relative overflow-hidden bg-hero-gradient rounded-2xl mx-4 my-4 p-6 animate-fade-in"
+      style={campaign?.cover_image_url ? { backgroundImage: `url(${campaign.cover_image_url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+    >
+      {campaign?.cover_image_url && (
+        <div className="absolute inset-0 bg-black/10" />
+      )}
+      <div className="relative flex items-end justify-center z-10 h-[320px]">
+      
+        <Button className="group" onClick={handleAction}>
+          {campaign ? "View Campaign" : "Shop Now"}
           <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
         </Button>
       </div>
-      
-      {/* Decorative elements */}
-      <div className="absolute top-4 right-4 w-24 h-24 bg-jimat-lightgreen/30 rounded-full blur-2xl" />
-      <div className="absolute bottom-4 right-8 w-16 h-16 bg-jimat-pastelpeach/50 rounded-full blur-xl" />
+
     </section>
   );
 };

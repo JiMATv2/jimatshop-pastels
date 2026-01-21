@@ -19,6 +19,7 @@ import JimatshopCoinTransactions from "./pages/JimatshopCoinTransactions";
 import LocationSearch from "./pages/LocationSearch";
 import Wishlist from "./pages/Wishlist";
 import NotFound from "./pages/NotFound";
+import JimatshopCampaignDetails from "./pages/JimatshopCampaignDetails";
 import { CapacitorBackHandler } from "@/components/layout/CapacitorBackHandler";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { CartProvider } from "@/lib/cart/CartProvider";
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/orders/:orderId" element={<OrderDetails />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/wishlist" element={<Wishlist />} />
+              <Route path="/campaigns/:campaignId" element={<JimatshopCampaignDetails />} />
               <Route path="/jimatshop-coins" element={<JimatshopCoins />} />
               <Route path="/jimatshop-coins/:coinId" element={<JimatshopCoinTransactions />} />
               <Route path="/location-search" element={<LocationSearch />} />
