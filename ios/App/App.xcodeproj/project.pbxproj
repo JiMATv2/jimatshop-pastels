@@ -371,7 +371,7 @@
 
 
 
-	};
+
 /* Begin PBXGroup section */
 		0322E643770D6E2C96924976 /* Pods */ = {
 			isa = PBXGroup;
@@ -426,5 +426,6 @@
 		};
 /* End PBXShellScriptBuildPhase section */
 
+	};
 	rootObject = 504EC2FC1FED79650016851F /* Project object */;
 }
