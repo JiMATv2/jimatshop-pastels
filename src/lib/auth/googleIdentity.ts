@@ -61,23 +61,23 @@ function loadGoogleIdentityScript(): Promise<void> {
  */
 function getGoogleClientId(): string {
   // Check if we're on Android and have an Android-specific client ID
-  const isAndroid = typeof window !== "undefined" && 
-    (window.navigator.userAgent.includes("Android") || 
-     (window as any).Capacitor?.getPlatform?.() === "android");
-  
+  const isAndroid = typeof window !== "undefined" &&
+    (window.navigator.userAgent.includes("Android") ||
+      (window as any).Capacitor?.getPlatform?.() === "android");
+
   const androidClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID_ANDROID as string | undefined;
   const webClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-  
+
   // Prefer Android client ID on Android platform
   if (isAndroid && androidClientId) {
     return androidClientId;
   }
-  
+
   // Fall back to web client ID
   if (webClientId) {
     return webClientId;
   }
-  
+
   throw new Error("Missing VITE_GOOGLE_CLIENT_ID (or VITE_GOOGLE_CLIENT_ID_ANDROID for Android)");
 }
 
@@ -114,6 +114,30 @@ export async function getGoogleIdToken(): Promise<string> {
       }
       resolve(resp.credential);
     };
+
+    // Native Platform Check
+    const isNative = typeof window !== "undefined" && (window as any).Capacitor?.isNativePlatform();
+
+    if (isNative) {
+      import("@codetrix-studio/capacitor-google-auth").then(async ({ GoogleAuth }) => {
+        try {
+          // Initialize potentially needed for web, but good practice to call
+          await GoogleAuth.initialize();
+          const user = await GoogleAuth.signIn();
+          if (user.authentication.idToken) {
+            resolve(user.authentication.idToken);
+          } else {
+            reject(new Error("Google login did not return an id_token"));
+          }
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error("Google login failed"));
+        }
+      }).catch(err => {
+        console.error("Failed to load GoogleAuth plugin", err);
+        reject(err);
+      });
+      return;
+    }
 
     try {
       // Initialize Google Identity Services
