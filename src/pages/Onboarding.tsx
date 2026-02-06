@@ -101,8 +101,12 @@ export default function Onboarding() {
     try {
       const isMobile = isMobilePlatform();
 
-      // Deprecated: used to call signInWithOAuthMobile("google") here
-      // Now falling through to getGoogleIdToken() which has native support.
+      if (isMobile) {
+        toast.info("Membuka Google sign-in...");
+        await signInWithOAuthMobile("google");
+        // OAuth will redirect, navigate happens on return
+        return;
+      }
 
       // Web platform
       try {
