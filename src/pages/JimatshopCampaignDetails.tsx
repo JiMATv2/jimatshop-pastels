@@ -45,6 +45,21 @@ const JimatshopCampaignDetails = () => {
     return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Active</Badge>;
   }, [campaign]);
 
+  const participatingOutlets = useMemo(() => {
+    const byBuyerId = new Map<string, { id: string; name: string; address?: string | null }>();
+    inventories.forEach((item) => {
+      if (!item.buyer_id) return;
+      if (!byBuyerId.has(item.buyer_id)) {
+        byBuyerId.set(item.buyer_id, {
+          id: item.buyer_id,
+          name: item.buyer_name || "Outlet",
+          address: item.buyer_address || null,
+        });
+      }
+    });
+    return Array.from(byBuyerId.values());
+  }, [inventories]);
+
   if (!campaignId) {
     return (
       <div className="p-6">
@@ -77,13 +92,38 @@ const JimatshopCampaignDetails = () => {
           className="h-48 w-full rounded-xl object-cover"
         />
       )}
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold">Participating Outlets</h2>
+        {inventoryLoading ? (
+          <p className="text-sm text-muted-foreground">Loading outlets...</p>
+        ) : participatingOutlets.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No outlets available for this campaign yet.</p>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+            {participatingOutlets.map((outlet) => (
+              <div
+                key={outlet.id}
+                className="flex-none w-[calc((100%-3*0.75rem)/4)] min-w-[120px] rounded-xl border bg-white p-3 shadow-sm snap-start"
+              >
+                <div className="text-xs font-semibold text-foreground line-clamp-2">{outlet.name}</div>
+                {outlet.address && (
+                  <div className="text-[10px] text-muted-foreground mt-1 line-clamp-3">
+                    {outlet.address}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Participating Inventory</h2>
+        <h2 className="text-lg font-semibold">Participating Products</h2>
         <Button variant="outline" size="sm" onClick={() => window.history.back()}>
           Back
         </Button>
       </div>
+
 
       {inventoryLoading ? (
         <p className="text-sm text-muted-foreground">Loading inventory...</p>

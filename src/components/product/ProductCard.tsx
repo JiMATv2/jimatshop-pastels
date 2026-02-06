@@ -10,6 +10,7 @@ export type ProductCardProps = {
   outletsWithStock: number;
   totalOutlets: number;
   totalQuantitySold?: number;
+  promoBadge?: "campaign" | "buyer_promo";
   delay?: number;
 };
 
@@ -22,6 +23,7 @@ export function ProductCard({
   outletsWithStock,
   totalOutlets,
   totalQuantitySold,
+  promoBadge,
   delay = 0,
 }: ProductCardProps) {
   const navigate = useNavigate();
@@ -39,6 +41,17 @@ export function ProductCard({
       onClick={() => navigate(`/product/${productId}`)}
     >
       <div className={cn("relative p-3", isOutOfStock && "grayscale")}>
+        {promoBadge ? (
+          <span
+            className={cn(
+              "absolute top-2 left-2 z-10 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+              promoBadge === "campaign" && "bg-red-100 text-red-700",
+              promoBadge === "buyer_promo" && "bg-blue-100 text-blue-700",
+            )}
+          >
+            PROMO
+          </span>
+        ) : null}
         <div className="aspect-square bg-muted rounded-xl mb-3 flex items-center justify-center overflow-hidden">
           <img
             src={coverImageUrl || "https://via.placeholder.com/400"}

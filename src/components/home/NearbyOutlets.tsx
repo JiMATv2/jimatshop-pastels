@@ -83,6 +83,44 @@ export function NearbyOutlets() {
     staleTime: 15_000,
   });
 
+  const { data: buyerIdsWithPromo = new Set<string>() } = useQuery({
+    queryKey: ["nearby-outlets-buyer-ids-with-promo", displayedBuyerIds.join(",")],
+    queryFn: async () => {
+      if (displayedBuyerIds.length === 0) return new Set<string>();
+
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: campaigns, error: campaignError } = await supabase
+        .from("jimatshop_campaigns")
+        .select("id")
+        .lte("start_date", today)
+        .gte("end_date", today);
+
+      if (campaignError) throw campaignError;
+
+      const campaignIds = (campaigns as Array<{ id: string }> | null)
+        ?.map((campaign) => campaign.id)
+        .filter(Boolean);
+
+      if (!campaignIds || campaignIds.length === 0) return new Set<string>();
+
+      const { data: campaignBuyers, error: buyerError } = await supabase
+        .from("campaign_buyers")
+        .select("buyer_id")
+        .in("campaign_id", campaignIds)
+        .in("buyer_id", displayedBuyerIds);
+
+      if (buyerError) throw buyerError;
+
+      const ids = new Set<string>();
+      for (const row of (campaignBuyers as Array<{ buyer_id: string }> | null) ?? []) {
+        if (row?.buyer_id) ids.add(String(row.buyer_id));
+      }
+      return ids;
+    },
+    enabled: displayedBuyerIds.length > 0,
+    staleTime: 60_000,
+  });
+
   return (
     <section className="px-4 py-4">
       <details
@@ -150,6 +188,7 @@ export function NearbyOutlets() {
               const name = o.name || "Outlet";
               const address = o.address || "—";
               const hasCoins = buyerIdsWithCoins.has(outletId);
+              const hasPromo = buyerIdsWithPromo.has(outletId);
               return (
                 <button
                   key={outletId}
@@ -174,6 +213,11 @@ export function NearbyOutlets() {
                         {address}
                       </p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {hasPromo ? (
+                          <span className="inline-flex items-center rounded bg-pink-100 px-2.5 py-0.5 text-xs font-semibold text-pink-700">
+                            PROMO
+                          </span>
+                        ) : null}
                         {hasCoins ? (
                           <span
                             className="inline-flex items-center gap-1 rounded bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700"

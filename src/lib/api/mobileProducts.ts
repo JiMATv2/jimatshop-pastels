@@ -49,6 +49,16 @@ export interface MobileProductsResponse {
   };
 }
 
+export interface MobilePromosResponse {
+  success: boolean;
+  data: {
+    campaign_product_ids: string[];
+    buyer_promo_product_ids: string[];
+    campaign_promos: Array<{ product_id: string; promo_price: number | null }>;
+    buyer_promos: Array<{ product_id: string; promo_price: number | null }>;
+  };
+}
+
 export interface MobileProductsRequest {
   limit_count?: number;
   offset_count?: number;
@@ -135,6 +145,41 @@ export async function fetchMobileProducts(
   }
 
   return json as MobileProductsResponse;
+}
+
+export async function fetchMobilePromos(
+  params: { buyer_ids: string[]; product_ids: string[] },
+  cfg: MobileProductsClientConfig = getMobileProductsClientConfig(),
+): Promise<MobilePromosResponse> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (cfg.apiToken) {
+    headers["Authorization"] = `Bearer ${cfg.apiToken}`;
+  }
+
+  const res = await fetch(`${cfg.baseUrl}/supabase/mobile/promos/list`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(params),
+  });
+
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    const message =
+      (json && (json.message || json.error)) ||
+      `Failed to fetch promos (HTTP ${res.status})`;
+    throw new Error(message);
+  }
+
+  if (json && json.success === false) {
+    const message = (json.message || json.error) ?? "Failed to fetch promos";
+    throw new Error(message);
+  }
+
+  return json as MobilePromosResponse;
 }
 
 export interface MobileProductDetailsResponse {

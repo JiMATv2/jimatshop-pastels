@@ -1,6 +1,7 @@
 import { ProductCard } from "./ProductCard";
 import { getProductsBySection } from "@/lib/catalog/seed";
 import { useQuery } from "@tanstack/react-query";
+ 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import {
@@ -109,6 +110,8 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
     enabled: !buyerIdsLoading, // Wait for buyer IDs to load
     staleTime: 60_000,
   });
+
+
 
   return (
     <section className="px-4 py-4">

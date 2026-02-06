@@ -2,7 +2,12 @@ import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchMobileProducts, getMobileProductsClientConfig, type MobileProduct } from "@/lib/api/mobileProducts";
+import {
+  fetchMobileProducts,
+  fetchMobilePromos,
+  getMobileProductsClientConfig,
+  type MobileProduct,
+} from "@/lib/api/mobileProducts";
 import { ProductCard } from "@/components/product/ProductCard";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -217,6 +222,60 @@ export default function Products() {
   const items: MobileProduct[] = (data?.items ?? []) as MobileProduct[];
   const pagination = Array.isArray(data) ? undefined : data?.pagination;
 
+  const productIds = useMemo(
+    () => items.map((product) => String(product.id)).filter(Boolean),
+    [items],
+  );
+
+  const { data: promoResp } = useQuery({
+    queryKey: ["product-promos", buyerIds.join(","), productIds.join(",")],
+    queryFn: async () => {
+      if (buyerIds.length === 0 || productIds.length === 0) {
+        return {
+          campaign_product_ids: [],
+          buyer_promo_product_ids: [],
+          campaign_promos: [],
+          buyer_promos: [],
+        };
+      }
+      const resp = await fetchMobilePromos({ buyer_ids: buyerIds, product_ids: productIds }, cfg);
+      return resp.data;
+    },
+    enabled: buyerIds.length > 0 && productIds.length > 0,
+    staleTime: 60_000,
+  });
+
+  const campaignPromoProductIds = useMemo(
+    () => new Set<string>((promoResp?.campaign_product_ids ?? []).map(String)),
+    [promoResp?.campaign_product_ids],
+  );
+
+  const buyerPromoProductIds = useMemo(
+    () => new Set<string>((promoResp?.buyer_promo_product_ids ?? []).map(String)),
+    [promoResp?.buyer_promo_product_ids],
+  );
+
+
+  const campaignPromoPrices = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of promoResp?.campaign_promos ?? []) {
+      const price =
+        typeof row.promo_price === "number" ? row.promo_price : row.promo_price != null ? Number(row.promo_price) : NaN;
+      if (row.product_id && Number.isFinite(price)) map.set(String(row.product_id), price);
+    }
+    return map;
+  }, [promoResp?.campaign_promos]);
+
+  const buyerPromoPrices = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of promoResp?.buyer_promos ?? []) {
+      const price =
+        typeof row.promo_price === "number" ? row.promo_price : row.promo_price != null ? Number(row.promo_price) : NaN;
+      if (row.product_id && Number.isFinite(price)) map.set(String(row.product_id), price);
+    }
+    return map;
+  }, [promoResp?.buyer_promos]);
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <Header />
@@ -308,11 +367,22 @@ export default function Products() {
             ))
           ) : (
             items.map((product, idx) => {
-              // Prefer promotion price when available; use catalog price as fallback.
-              const displayPrice =
-                product.promotion_price != null ? product.promotion_price : product.normal_price;
-              const originalPrice =
-                product.promotion_price != null ? product.normal_price : undefined;
+              const productId = String(product.id);
+              const campaignPromoPrice = campaignPromoPrices.get(productId);
+              const buyerPromoPrice = buyerPromoPrices.get(productId);
+              const promoPrice = campaignPromoPrice ?? buyerPromoPrice ?? null;
+              const hasPromo = promoPrice != null && Number.isFinite(promoPrice);
+              // Prefer promo price when available; otherwise use catalog price.
+              const displayPrice = hasPromo
+                ? (promoPrice as number)
+                : product.promotion_price != null
+                ? product.promotion_price
+                : product.normal_price;
+              const originalPrice = hasPromo
+                ? product.normal_price
+                : product.promotion_price != null
+                ? product.normal_price
+                : undefined;
               const outletsWithStock =
                 typeof product.outlets_with_stock === "number"
                   ? product.outlets_with_stock
@@ -336,6 +406,13 @@ export default function Products() {
                   outletsWithStock={outletsWithStock}
                   totalOutlets={totalOutlets}
                   totalQuantitySold={totalQuantitySold}
+                  promoBadge={
+                    campaignPromoProductIds.has(productId)
+                      ? "campaign"
+                      : buyerPromoProductIds.has(productId)
+                      ? "buyer_promo"
+                      : undefined
+                  }
                   delay={idx * 25}
                 />
               );
