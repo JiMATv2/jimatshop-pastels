@@ -119,23 +119,24 @@ export async function getGoogleIdToken(): Promise<string> {
     const isNative = typeof window !== "undefined" && (window as any).Capacitor?.isNativePlatform();
 
     if (isNative) {
-      import("@codetrix-studio/capacitor-google-auth").then(async ({ GoogleAuth }) => {
-        try {
-          // Initialize potentially needed for web, but good practice to call
-          await GoogleAuth.initialize();
-          const user = await GoogleAuth.signIn();
-          if (user.authentication.idToken) {
-            resolve(user.authentication.idToken);
-          } else {
-            reject(new Error("Google login did not return an id_token"));
+      import("@codetrix-studio/capacitor-google-auth")
+        .then(async ({ GoogleAuth }) => {
+          try {
+            await GoogleAuth.initialize();
+            const user = await GoogleAuth.signIn();
+            if (user.authentication.idToken) {
+              resolve(user.authentication.idToken);
+            } else {
+              reject(new Error("Google login did not return an id_token"));
+            }
+          } catch (error) {
+            reject(error instanceof Error ? error : new Error("Google login failed"));
           }
-        } catch (error) {
-          reject(error instanceof Error ? error : new Error("Google login failed"));
-        }
-      }).catch(err => {
-        console.error("Failed to load GoogleAuth plugin", err);
-        reject(err);
-      });
+        })
+        .catch((err) => {
+          console.error("Failed to load GoogleAuth plugin", err);
+          reject(err);
+        });
       return;
     }
 

@@ -101,12 +101,8 @@ export default function Onboarding() {
     try {
       const isMobile = isMobilePlatform();
 
-      if (isMobile) {
-        toast.info("Membuka Google sign-in...");
-        await signInWithOAuthMobile("google");
-        // OAuth will redirect, navigate happens on return
-        return;
-      }
+      // Deprecated: used to call signInWithOAuthMobile("google") here
+      // Now falling through to getGoogleIdToken() which has native support.
 
       // Web platform
       try {
@@ -287,9 +283,8 @@ export default function Onboarding() {
             {slides.map((_, idx) => (
               <div
                 key={idx}
-                className={`h-2 rounded-full transition-all ${
-                  idx === currentSlide ? "w-8 bg-primary" : "w-2 bg-muted"
-                }`}
+                className={`h-2 rounded-full transition-all ${idx === currentSlide ? "w-8 bg-primary" : "w-2 bg-muted"
+                  }`}
               />
             ))}
           </div>
