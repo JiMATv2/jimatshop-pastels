@@ -12,6 +12,7 @@ import {
 class NotificationService {
   private vapidKey: string;
   private androidPushEnabled: boolean;
+  private iosPushEnabled: boolean;
   private nativeListenersRegistered = false;
   private pendingNativeTokenPromise?: Promise<string | null>;
   private pendingNativeTokenResolve?: (token: string | null) => void;
@@ -22,16 +23,27 @@ class NotificationService {
     this.vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || "";
     this.androidPushEnabled =
       (import.meta.env.VITE_ENABLE_ANDROID_PUSH || "").toLowerCase() === "true";
+    this.iosPushEnabled =
+      (import.meta.env.VITE_ENABLE_IOS_PUSH || "").toLowerCase() === "true";
   }
 
   init() {
-    if (!this.isAndroidNative()) return;
-    if (!this.androidPushEnabled) {
+    if (!this.isAndroidNative() && !this.isIOSNative()) return;
+
+    if (this.isAndroidNative() && !this.androidPushEnabled) {
       console.warn(
         "[notifications] Android push disabled (set VITE_ENABLE_ANDROID_PUSH=true to enable)",
       );
       return;
     }
+
+    if (this.isIOSNative() && !this.iosPushEnabled) {
+      console.warn(
+        "[notifications] iOS push disabled (set VITE_ENABLE_IOS_PUSH=true to enable)",
+      );
+      return;
+    }
+
     this.ensureNativeListeners();
   }
 
@@ -72,6 +84,10 @@ class NotificationService {
     return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
   }
 
+  private isIOSNative() {
+    return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
+  }
+
   private clearPendingNativeToken() {
     if (this.pendingNativeTokenTimeout) {
       clearTimeout(this.pendingNativeTokenTimeout);
@@ -90,7 +106,8 @@ class NotificationService {
       async (token: PushNotificationToken) => {
         const tokenValue = token.value;
         if (this.nativeUserId && tokenValue) {
-          await this.saveTokenToDatabase(this.nativeUserId, tokenValue, "android");
+          const platform = this.isIOSNative() ? "ios" : "android";
+          await this.saveTokenToDatabase(this.nativeUserId, tokenValue, platform);
         }
         if (this.pendingNativeTokenResolve) {
           this.pendingNativeTokenResolve(tokenValue || null);
@@ -172,7 +189,15 @@ class NotificationService {
       );
       return null;
     }
-    if (this.isAndroidNative()) {
+
+    if (this.isIOSNative() && !this.iosPushEnabled) {
+      console.warn(
+        "[notifications] iOS push disabled (set VITE_ENABLE_IOS_PUSH=true to enable)",
+      );
+      return null;
+    }
+
+    if (this.isAndroidNative() || this.isIOSNative()) {
       return this.getNativeToken(userId);
     }
 
