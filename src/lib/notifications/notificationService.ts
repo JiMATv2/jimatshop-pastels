@@ -8,6 +8,7 @@ import {
   PushNotificationSchema,
   PushNotificationToken,
 } from "@capacitor/push-notifications";
+import { Preferences } from "@capacitor/preferences";
 
 class NotificationService {
   private vapidKey: string;
@@ -161,6 +162,18 @@ class NotificationService {
     );
   }
 
+  private async getiOSFcmToken(retries = 10, delayMs = 1000): Promise<string | null> {
+    // Firebase delivers the FCM token via MessagingDelegate (Swift) which stores it
+    // in UserDefaults under 'CapacitorStorage.fcm_ios_token' key.
+    // We poll because there is an async gap after register() before Firebase resolves.
+    for (let i = 0; i < retries; i++) {
+      const { value } = await Preferences.get({ key: "fcm_ios_token" });
+      if (value) return value;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+    return null;
+  }
+
   private async getNativeToken(userId: string) {
     this.nativeUserId = userId;
     this.ensureNativeListeners();
@@ -168,6 +181,22 @@ class NotificationService {
     const permission = await PushNotifications.requestPermissions();
     if (permission.receive !== "granted") return null;
 
+    await PushNotifications.register();
+
+    // On iOS, the Capacitor registration event returns the raw APNs hex token,
+    // NOT an FCM token. Firebase exchanges it asynchronously via MessagingDelegate.
+    // We read the real FCM token from UserDefaults where AppDelegate stored it.
+    if (this.isIOSNative()) {
+      const fcmToken = await this.getiOSFcmToken();
+      if (fcmToken) {
+        await this.saveTokenToDatabase(userId, fcmToken, "ios");
+        return fcmToken;
+      }
+      console.warn("[notifications] iOS FCM token not yet available after polling");
+      return null;
+    }
+
+    // Android: use the promise-based registration event (FCM token comes directly)
     if (!this.pendingNativeTokenPromise) {
       this.pendingNativeTokenPromise = new Promise((resolve) => {
         this.pendingNativeTokenResolve = resolve;
@@ -178,7 +207,6 @@ class NotificationService {
       });
     }
 
-    await PushNotifications.register();
     return this.pendingNativeTokenPromise;
   }
 
