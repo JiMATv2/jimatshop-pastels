@@ -22,7 +22,9 @@ end
 
 target 'App' do
   capacitor_pods
-  # Add your pods here
+  # Firebase - required for FCM push notifications on iOS
+  pod 'Firebase/Core'
+  pod 'Firebase/Messaging'
 end
 
 post_install do |installer|
