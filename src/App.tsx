@@ -23,6 +23,7 @@ import JimatshopCampaignDetails from "./pages/JimatshopCampaignDetails";
 import { CapacitorBackHandler } from "@/components/layout/CapacitorBackHandler";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { CartProvider } from "@/lib/cart/CartProvider";
+import { PushPermissionDialog } from "@/components/notifications/PushPermissionDialog";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <CapacitorBackHandler />
+            <PushPermissionDialog />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/onboarding" element={<Onboarding />} />
