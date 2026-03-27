@@ -21,6 +21,8 @@ PODS:
     - IONGeolocationLib (= 2.0.0)
   - CapacitorLocalNotifications (8.0.0):
     - Capacitor
+  - CapacitorPreferences (8.0.1):
+    - Capacitor
   - CapacitorPushNotifications (8.0.0):
     - Capacitor
   - CodetrixStudioCapacitorGoogleAuth (0.0.1):
@@ -159,6 +161,7 @@ DEPENDENCIES:
   - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
   - "CapacitorGeolocation (from `../../node_modules/@capacitor/geolocation`)"
   - "CapacitorLocalNotifications (from `../../node_modules/@capacitor/local-notifications`)"
+  - "CapacitorPreferences (from `../../node_modules/@capacitor/preferences`)"
   - "CapacitorPushNotifications (from `../../node_modules/@capacitor/push-notifications`)"
   - "CodetrixStudioCapacitorGoogleAuth (from `../../node_modules/@codetrix-studio/capacitor-google-auth`)"
   - Firebase/Core
@@ -201,6 +204,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/@capacitor/geolocation"
   CapacitorLocalNotifications:
     :path: "../../node_modules/@capacitor/local-notifications"
+  CapacitorPreferences:
+    :path: "../../node_modules/@capacitor/preferences"
   CapacitorPushNotifications:
     :path: "../../node_modules/@capacitor/push-notifications"
   CodetrixStudioCapacitorGoogleAuth:
@@ -215,6 +220,7 @@ SPEC CHECKSUMS:
   CapacitorCordova: 921bdb690ebe82421b24fce45552fd3dea2ae43a
   CapacitorGeolocation: a8381371f7b460e6be569576557285e70f0c9d6c
   CapacitorLocalNotifications: b0003a1b69c95badd88f9cb56b1965ace20eb346
+  CapacitorPreferences: 0fa33b3affebf12d96358b491ed7c2b39bec3270
   CapacitorPushNotifications: 49cd6c474cb03ee171494636693f6f06209469a0
   CodetrixStudioCapacitorGoogleAuth: fcce058390347c1ce5d8ac4764bdf1f5c1ee233b
   Firebase: 3c3a624c4eb42b091c32590a87678cfee193c9c5
@@ -236,6 +242,6 @@ SPEC CHECKSUMS:
   SQLCipher: eb79c64049cb002b4e9fcb30edb7979bf4706dfc
   ZIPFoundation: dfd3d681c4053ff7e2f7350bc4e53b5dba3f5351
 
-PODFILE CHECKSUM: 0a59b28f7730a3098c53707027c032b900b93163
+PODFILE CHECKSUM: a36a237f83cdc8dad9a74794006953f4aab2911e
 
 COCOAPODS: 1.16.2
