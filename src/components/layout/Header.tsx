@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getGoogleIdToken } from "@/lib/auth/googleIdentity";
-import { getOAuthRedirectUrl, isMobilePlatform, signInWithOAuthMobile } from "@/lib/auth/mobileAuth";
+import { isMobilePlatform, signInWithGoogleNative } from "@/lib/auth/mobileAuth";
 import { supabase } from "@/lib/supabase/client";
 import { shopLoginWithGoogleIdToken } from "@/lib/api/jimatshopSession";
 import { getCurrentLocation } from "@/lib/geolocation/geolocation";
@@ -236,77 +236,37 @@ export const Header = () => {
       
       if (isMobile) {
         // eslint-disable-next-line no-console
-        console.log("[auth] Using mobile OAuth flow (Browser.open)");
+        console.log("[auth] Using native Google Sign-In (GoogleAuth plugin)");
         toast.info("Opening Google sign-in...");
         setAuthOpen(false);
-        await signInWithOAuthMobile("google");
-        
-        // Wait for AuthProvider to update (onAuthStateChange should fire)
-        // Poll for session update with timeout
-        let attempts = 0;
-        const maxAttempts = 20; // 2 seconds total (20 * 100ms)
-        let sessionVerified = false;
-        
-        while (attempts < maxAttempts && !sessionVerified) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          
-          const { data: polledSession, error: sessionError } = await supabase.auth.getSession();
-          
-          if (sessionError) {
-            // eslint-disable-next-line no-console
-            console.error("[auth] Error getting session after OAuth:", sessionError);
-            throw new Error("Failed to get session after sign-in");
-          }
-          
-          if (polledSession.session) {
-            sessionVerified = true;
-            if (import.meta.env.DEV) {
-              // eslint-disable-next-line no-console
-              console.log("[auth] Session verified after OAuth:", {
-                userId: polledSession.session.user.id,
-                email: polledSession.session.user.email,
-                attempts: attempts + 1,
-              });
-            }
-            break;
-          }
-          
-          attempts++;
-        }
-        
-        // Get fresh session after verification
-        const { data: finalSession } = await supabase.auth.getSession();
-        
-        if (!sessionVerified || !finalSession.session) {
+
+        const { userId, email, name } = await signInWithGoogleNative();
+
+        if (import.meta.env.DEV) {
           // eslint-disable-next-line no-console
-          console.error("[auth] Session not found after OAuth completion (timeout)");
-          throw new Error("Sign-in was cancelled or failed - session not set");
+          console.log("[auth] Native Google sign-in complete", { userId, email });
         }
 
-        const oauthUser = finalSession.session.user;
-        const userEmail = oauthUser.email ?? undefined;
-        const userName =
-          (oauthUser.user_metadata?.full_name as string | undefined) ||
-          (oauthUser.user_metadata?.name as string | undefined) ||
-          undefined;
-
-        // Link / upsert shopper profile in Supabase (server-side RPC).
+        // Link / upsert shopper profile via ex_supabase RPC.
+        const { data: freshSession } = await supabase.auth.getSession();
+        const oauthUser = freshSession.session?.user;
         const { error: shopperUpsertError } = await supabase.rpc("upsert_shopper_for_auth_user", {
           first_name:
-            (oauthUser.user_metadata?.given_name as string | undefined) ||
-            (oauthUser.user_metadata?.full_name as string | undefined) ||
-            (oauthUser.user_metadata?.name as string | undefined) ||
+            (oauthUser?.user_metadata?.given_name as string | undefined) ||
+            (oauthUser?.user_metadata?.full_name as string | undefined) ||
+            (oauthUser?.user_metadata?.name as string | undefined) ||
+            name ||
             "",
-          last_name: (oauthUser.user_metadata?.family_name as string | undefined) || null,
-          email: userEmail || null,
-          phone: oauthUser.phone || null,
+          last_name: (oauthUser?.user_metadata?.family_name as string | undefined) || null,
+          email: email || oauthUser?.email || null,
+          phone: oauthUser?.phone || null,
         });
         if (shopperUpsertError) {
           // eslint-disable-next-line no-console
           console.warn("[auth] upsert_shopper_for_auth_user failed", shopperUpsertError);
         }
 
-        // Get user's current geolocation after sign-in
+        // Best-effort location capture – never block the sign-in UX.
         try {
           const location = await getCurrentLocation();
           // eslint-disable-next-line no-console
@@ -315,11 +275,8 @@ export const Header = () => {
             longitude: location.longitude,
             accuracy: location.accuracy,
           });
-          
-          // Save location to SQLite
           try {
             await saveCurrentLocation(location);
-            console.log("[auth] Location saved to SQLite");
             refreshLocationRef.current();
           } catch (saveError) {
             console.warn("[auth] Failed to save location to SQLite:", saveError);
@@ -426,9 +383,20 @@ export const Header = () => {
 
       toast.success("Signed in");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Sign-in failed";
+      const msg =
+        e instanceof Error
+          ? e.message
+          : typeof e === "string"
+            ? e
+            : (() => {
+                try {
+                  return JSON.stringify(e);
+                } catch {
+                  return "Sign-in failed";
+                }
+              })();
       // eslint-disable-next-line no-console
-      console.error("[auth] sign-in failed", e);
+      console.error("[auth] sign-in failed:", msg, e);
       toast.error(msg);
     } finally {
       setAuthSubmitting(false);

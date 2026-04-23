@@ -11,6 +11,117 @@ export function isMobilePlatform(): boolean {
 }
 
 /**
+ * Safely stringify an error-like value for logs so we never end up with
+ * `[object Object]` in the Android logcat.
+ */
+function describeError(err: unknown): string {
+  if (!err) return "unknown error";
+  if (err instanceof Error) return `${err.name}: ${err.message}`;
+  if (typeof err === "string") return err;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}
+
+/**
+ * Native Google Sign-In for Capacitor (Android/iOS).
+ *
+ * Uses @codetrix-studio/capacitor-google-auth to get a Google id_token, then
+ * exchanges it for a session via the ex_supabase backend through
+ * `supabase.auth.signInWithIdToken` (which POSTs `/supabase/auth/google`).
+ *
+ * This replaces the Supabase OAuth redirect flow (`signInWithOAuthMobile`),
+ * which the ex_supabase backend does not support.
+ */
+export async function signInWithGoogleNative(): Promise<{
+  userId: string;
+  email: string | null;
+  name: string | null;
+}> {
+  if (!isMobilePlatform()) {
+    throw new Error("signInWithGoogleNative should only be called on mobile platforms");
+  }
+
+  const webClientId =
+    (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ||
+    "552393042714-oioegtu0b4rntqj2ol015jm86va9jaoj.apps.googleusercontent.com";
+
+  // Dynamic import so web builds don't pull in the native plugin shim.
+  const { GoogleAuth } = await import("@codetrix-studio/capacitor-google-auth");
+
+  try {
+    // Safe to call multiple times – plugin is idempotent.
+    await GoogleAuth.initialize({
+      clientId: webClientId,
+      scopes: ["profile", "email"],
+      grantOfflineAccess: true,
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[auth][nativeGoogle] GoogleAuth.initialize failed:", describeError(err));
+    throw new Error(`GoogleAuth init failed: ${describeError(err)}`);
+  }
+
+  let googleUser: Awaited<ReturnType<typeof GoogleAuth.signIn>>;
+  try {
+    googleUser = await GoogleAuth.signIn();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[auth][nativeGoogle] GoogleAuth.signIn failed:", describeError(err));
+    const msg = describeError(err);
+    // Common Android cause: SHA-1 not registered → DEVELOPER_ERROR (code 10).
+    if (msg.includes("10") || msg.toLowerCase().includes("developer_error")) {
+      throw new Error(
+        "Google sign-in failed (DEVELOPER_ERROR). The Android app's SHA-1 fingerprint " +
+          "is likely not registered for this OAuth client in Google Cloud Console.",
+      );
+    }
+    throw new Error(`Google sign-in cancelled or failed: ${msg}`);
+  }
+
+  const idToken = googleUser?.authentication?.idToken;
+  if (!idToken) {
+    throw new Error("Google sign-in did not return an id_token");
+  }
+
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log("[auth][nativeGoogle] got id_token, exchanging with backend", {
+      email: googleUser.email,
+    });
+  }
+
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: "google",
+    token: idToken,
+  });
+
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.error("[auth][nativeGoogle] backend id_token exchange failed:", describeError(error));
+    throw new Error(describeError(error));
+  }
+
+  const session = data?.session;
+  const user = data?.user || session?.user;
+  if (!session || !user) {
+    throw new Error("Backend did not return a session for this Google account");
+  }
+
+  return {
+    userId: user.id,
+    email: user.email ?? googleUser.email ?? null,
+    name:
+      (user.user_metadata?.full_name as string | undefined) ||
+      (user.user_metadata?.name as string | undefined) ||
+      googleUser.name ||
+      null,
+  };
+}
+
+/**
  * Get the redirect URL for OAuth based on the platform
  * For mobile: Use web redirect URI that Google accepts, then redirect to deep link
  */
@@ -50,8 +161,11 @@ export function getDeepLinkUrl(): string {
 }
 
 /**
- * Sign in with OAuth on mobile platforms using Capacitor Browser
- * Note: Uses Supabase's Google OAuth client configuration, not Android client ID
+ * @deprecated The ex_supabase backend does not support the Supabase OAuth
+ * redirect flow. Use {@link signInWithGoogleNative} instead on mobile.
+ * Kept here for reference / potential Apple sign-in reuse.
+ *
+ * Sign in with OAuth on mobile platforms using Capacitor Browser.
  */
 export async function signInWithOAuthMobile(provider: "google" | "apple" = "google"): Promise<void> {
   if (!isMobilePlatform()) {

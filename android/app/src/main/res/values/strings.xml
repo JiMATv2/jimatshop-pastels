@@ -4,4 +4,5 @@
     <string name="title_activity_main">jimatshop-pastels</string>
     <string name="package_name">com.jimatbiz.shop3</string>
     <string name="custom_url_scheme">com.jimatbiz.shop3</string>
+    <string name="server_client_id">552393042714-oioegtu0b4rntqj2ol015jm86va9jaoj.apps.googleusercontent.com</string>
 </resources>

@@ -8,7 +8,7 @@ import { ChevronRight, ShoppingCart, Truck } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getGoogleIdToken } from "@/lib/auth/googleIdentity";
-import { getOAuthRedirectUrl, isMobilePlatform, signInWithOAuthMobile } from "@/lib/auth/mobileAuth";
+import { isMobilePlatform, signInWithGoogleNative } from "@/lib/auth/mobileAuth";
 import { toast } from "@/components/ui/sonner";
 import { useOnboarding } from "@/hooks/useOnboarding";
 
@@ -103,8 +103,10 @@ export default function Onboarding() {
 
       if (isMobile) {
         toast.info("Membuka Google sign-in...");
-        await signInWithOAuthMobile("google");
-        // OAuth will redirect, navigate happens on return
+        await signInWithGoogleNative();
+        toast.success("Log masuk berjaya!");
+        markOnboardingSeen();
+        navigate("/", { replace: true });
         return;
       }
 
@@ -120,18 +122,30 @@ export default function Onboarding() {
         markOnboardingSeen();
         navigate("/", { replace: true });
       } catch (e) {
-        // Fallback or detailed error message
         const isUnregisteredOrigin = e instanceof Error && e.message.includes("unregistered_origin");
         if (isUnregisteredOrigin) {
-          toast.error("Google Sign-In Error: Domain/Origin not registered. Please add 'http://localhost:8082' to your Google Cloud Console JavaScript origins.");
+          toast.error(
+            "Google Sign-In Error: Domain/Origin not registered. Please add 'http://localhost:8082' to your Google Cloud Console JavaScript origins.",
+          );
           throw e;
         }
-        
-        // No redirect-flow fallback as backend doesn't support it
         throw e;
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Gagal log masuk";
+      const msg =
+        e instanceof Error
+          ? e.message
+          : typeof e === "string"
+            ? e
+            : (() => {
+                try {
+                  return JSON.stringify(e);
+                } catch {
+                  return "Gagal log masuk";
+                }
+              })();
+      // eslint-disable-next-line no-console
+      console.error("[auth][Onboarding] Google login failed:", msg, e);
       toast.error(msg);
     } finally {
       setSubmitting(false);
