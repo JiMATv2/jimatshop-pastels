@@ -119,15 +119,16 @@ export default function Onboarding() {
         toast.success("Log masuk berjaya!");
         markOnboardingSeen();
         navigate("/", { replace: true });
-      } catch {
-        // Fallback to OAuth redirect
-        const redirectTo = getOAuthRedirectUrl();
-        const { error: oauthError } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: { redirectTo },
-        });
-        if (oauthError) throw oauthError;
-        toast.info("Sedang redirect ke Google...");
+      } catch (e) {
+        // Fallback or detailed error message
+        const isUnregisteredOrigin = e instanceof Error && e.message.includes("unregistered_origin");
+        if (isUnregisteredOrigin) {
+          toast.error("Google Sign-In Error: Domain/Origin not registered. Please add 'http://localhost:8082' to your Google Cloud Console JavaScript origins.");
+          throw e;
+        }
+        
+        // No redirect-flow fallback as backend doesn't support it
+        throw e;
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Gagal log masuk";

@@ -52,10 +52,10 @@ const Profile = () => {
   };
 
   const displayName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    `${user.user_metadata?.given_name || ""} ${user.user_metadata?.family_name || ""}`.trim() ||
-    user.email?.split("@")[0] ||
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    `${user?.user_metadata?.given_name || ""} ${user?.user_metadata?.family_name || ""}`.trim() ||
+    user?.email?.split("@")[0] ||
     "User";
 
   const initials = displayName
@@ -65,15 +65,15 @@ const Profile = () => {
     .join("")
     .toUpperCase();
 
-  const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
+  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
 
   const displayNameFromShopper = useMemo(() => {
     const name = [shopper?.first_name, shopper?.last_name].filter(Boolean).join(" ").trim();
     return name || null;
   }, [shopper?.first_name, shopper?.last_name]);
 
-  const loginEmail = user.email || "";
-  const loginPhone = user.phone || "";
+  const loginEmail = user?.email || "";
+  const loginPhone = user?.phone || "";
   const contactEmail = shopper?.email || loginEmail || "";
   const contactPhone = shopper?.phone || loginPhone || "";
 

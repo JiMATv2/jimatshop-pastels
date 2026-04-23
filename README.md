@@ -77,8 +77,7 @@ export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
 export ANDROID_HOME="$ANDROID_SDK_ROOT"
 export PATH="$PATH:$ANDROID_SDK_ROOT/platform-tools"
 
-npm run build
-npx cap sync android
+npm run build && npx cap sync android
 npx cap run android --target Medium_Phone_API_36.1
 
 npx cap run android -l --host 10.0.2.2 --port 8080 --target Medium_Phone_API_36.1

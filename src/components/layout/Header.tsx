@@ -343,32 +343,19 @@ export const Header = () => {
         setAuthOpen(false);
         idToken = await getGoogleIdToken();
       } catch (gsiError) {
-        // If Google Identity Services fails, fall back to Supabase OAuth redirect
-        if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
-          console.warn("[auth] Google Identity Services failed, using OAuth redirect fallback", gsiError);
+        // If Google Identity Services fails, provide clear feedback
+        const isUnregisteredOrigin = gsiError instanceof Error && gsiError.message.includes("unregistered_origin");
+        if (isUnregisteredOrigin) {
+          toast.error("Google Sign-In Error: Domain/Origin not registered. Please add 'http://localhost:8082' to your Google Cloud Console JavaScript origins.");
+          throw gsiError;
         }
 
-        // Use shared redirect URL logic (prefers localhost/dev current origin)
-        const redirectTo = getOAuthRedirectUrl();
-        
+        // No redirect-flow fallback as ex_supabase backend doesn't support it
         if (import.meta.env.DEV) {
           // eslint-disable-next-line no-console
-          console.log("[auth] OAuth redirect URL:", redirectTo);
+          console.warn("[auth] Google Identity Services failed", gsiError);
         }
-        
-        const { error: oauthError } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo,
-          },
-        });
-
-        if (oauthError) throw oauthError;
-
-        // OAuth redirect will handle the rest, so we can return early
-        toast.info("Redirecting to Google sign-in...");
-        return;
+        throw gsiError;
       }
 
       // Continue with id_token flow if Google Identity Services succeeded
