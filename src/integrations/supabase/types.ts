@@ -11391,10 +11391,12 @@ export type Database = {
       }
       upsert_shopper_for_auth_user: {
         Args: {
-          email: string
+          email: string | null
           first_name: string
-          last_name: string
-          phone: string
+          ic_no?: string | null
+          last_name: string | null
+          phone: string | null
+          tax_identification_number?: string | null
         }
         Returns: string
       }

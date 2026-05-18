@@ -28,5 +28,6 @@ public/assets/sql-wasm.wasm
 *.env
 *.env.production
 
-# Android signing keystore
+# Android signing keystore & Play upload cert
 android/app/*.jks
+android/app/upload_certificate.pem

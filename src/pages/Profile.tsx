@@ -21,7 +21,8 @@ const Profile = () => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
 
-  const shopperSelectCols = "id, first_name, last_name, email, phone, member_no";
+  const shopperSelectCols =
+    "id, first_name, last_name, email, phone, member_no, ic_no, tax_identification_number";
 
   const [shopperLoading, setShopperLoading] = useState(false);
   const [shopper, setShopper] = useState<{
@@ -31,6 +32,8 @@ const Profile = () => {
     email: string | null;
     phone: string | null;
     member_no: string | null;
+    ic_no: string | null;
+    tax_identification_number: string | null;
   } | null>(null);
 
   const [isEditingShopper, setIsEditingShopper] = useState(false);
@@ -40,6 +43,8 @@ const Profile = () => {
     lastName: "",
     email: "",
     phone: "",
+    icNo: "",
+    taxIdentificationNumber: "",
   });
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -134,6 +139,8 @@ const Profile = () => {
           lastName: row?.last_name || (user.user_metadata?.family_name as string | undefined) || "",
           email: row?.email || user.email || "",
           phone: row?.phone || user.phone || "",
+          icNo: row?.ic_no ?? "",
+          taxIdentificationNumber: row?.tax_identification_number ?? "",
         });
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Failed to load shopper profile";
@@ -190,6 +197,8 @@ const Profile = () => {
         last_name: shopperForm.lastName.trim() || null,
         email: (loginEmail || shopperForm.email).trim() || null,
         phone: shopperForm.phone.trim() || null,
+        ic_no: shopperForm.icNo.trim() || null,
+        tax_identification_number: shopperForm.taxIdentificationNumber.trim() || null,
       });
       if (error) throw error;
 
@@ -457,6 +466,33 @@ const Profile = () => {
                   onChange={(e) => setShopperForm((p) => ({ ...p, phone: e.target.value }))}
                   disabled={!isEditingShopper || isSavingShopper}
                   placeholder={loginPhone || "Phone"}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="shopper_ic_no">IC No</Label>
+                <Input
+                  id="shopper_ic_no"
+                  value={shopperForm.icNo}
+                  onChange={(e) => setShopperForm((p) => ({ ...p, icNo: e.target.value }))}
+                  disabled={!isEditingShopper || isSavingShopper}
+                  placeholder="IC No"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="shopper_tin">Tax Identification Number (TIN)</Label>
+                <Input
+                  id="shopper_tin"
+                  value={shopperForm.taxIdentificationNumber}
+                  onChange={(e) =>
+                    setShopperForm((p) => ({ ...p, taxIdentificationNumber: e.target.value }))
+                  }
+                  disabled={!isEditingShopper || isSavingShopper}
+                  placeholder="TIN"
+                  autoComplete="off"
                 />
               </div>
             </div>

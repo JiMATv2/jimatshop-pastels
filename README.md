@@ -87,3 +87,6 @@ npm run android:logs
  1962  export PATH="$PATH:$ANDROID_SDK_ROOT/platform-tools"
  1963  npm run cap:run:android -- --target Medium_Phone_API_36.1
  1964  npx cap run android -l --host 10.0.2.2 --port 8080 --target Medium_Phone_API_36.1
+ cd android && ./gradlew assembleDebug
+
+ ./gradlew bundleRelease
