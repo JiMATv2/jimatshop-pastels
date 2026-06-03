@@ -23,7 +23,8 @@ import {
   Truck,
   Shield,
   RotateCcw,
-  Loader2
+  Loader2,
+  MessageSquare,
 } from "lucide-react";
 
 interface Product {
@@ -570,6 +571,25 @@ export default function ProductDetails() {
           </p>
         </div>
 
+        {user && sortedInventories[0]?.buyer_id && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              const buyerId = sortedInventories[0].buyer_id;
+              const params = new URLSearchParams({
+                buyer_id: buyerId,
+                inquiry_product_id: product.id,
+                inquiry_image_url: product.image,
+              });
+              navigate(`/chat?${params.toString()}`);
+            }}
+          >
+            <MessageSquare className="w-4 h-4 mr-2" />
+            Ask the shop about this product
+          </Button>
+        )}
 
         {/* Available Outlets */}
         <div className="space-y-3" style={{ paddingBottom: "100px" }}>

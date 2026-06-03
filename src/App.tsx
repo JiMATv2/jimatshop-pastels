@@ -10,6 +10,7 @@ import InventoryDetails from "./pages/InventoryDetails";
 import Profile from "./pages/Profile";
 import Orders from "./pages/Orders";
 import OrderDetails from "./pages/OrderDetails";
+import RefundRequest from "./pages/RefundRequest";
 import Shops from "./pages/Shops";
 import Categories from "./pages/Categories";
 import Onboarding from "./pages/Onboarding";
@@ -20,10 +21,13 @@ import LocationSearch from "./pages/LocationSearch";
 import Wishlist from "./pages/Wishlist";
 import NotFound from "./pages/NotFound";
 import JimatshopCampaignDetails from "./pages/JimatshopCampaignDetails";
+import UserGuide from "./pages/UserGuide";
 import { CapacitorBackHandler } from "@/components/layout/CapacitorBackHandler";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { CartProvider } from "@/lib/cart/CartProvider";
+import { ChatProvider } from "@/contexts/ChatContext";
 import { PushPermissionDialog } from "@/components/notifications/PushPermissionDialog";
+import Chat from "./pages/Chat";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +35,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <CartProvider>
+        <ChatProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -48,17 +53,21 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/orders/:orderId" element={<OrderDetails />} />
+              <Route path="/orders/:orderId/refund" element={<RefundRequest />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/wishlist" element={<Wishlist />} />
               <Route path="/campaigns/:campaignId" element={<JimatshopCampaignDetails />} />
               <Route path="/jimatshop-coins" element={<JimatshopCoins />} />
               <Route path="/jimatshop-coins/:coinId" element={<JimatshopCoinTransactions />} />
               <Route path="/location-search" element={<LocationSearch />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/user-guide" element={<UserGuide />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
+        </ChatProvider>
       </CartProvider>
     </AuthProvider>
   </QueryClientProvider>

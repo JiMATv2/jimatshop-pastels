@@ -207,15 +207,68 @@ export default function Checkout() {
         ? platformCoinsSufficient
         : true;
 
+  const coinsBalanceLoading =
+    Boolean(user && shopperId) &&
+    (paymentMethod === "jimatshop_coins"
+      ? isCoinLoading
+      : paymentMethod === "jimatshop_coins_platform"
+        ? isPlatformCoinLoading
+        : false);
+
   const canCheckout =
     Boolean(primaryBuyerId) &&
     items.length > 0 &&
     Boolean(user) &&
     !submitting &&
     !buyerIdsLoading &&
+    !coinsBalanceLoading &&
     hasLocation &&
     (paymentMethod !== "jimatshop_coins" || coinsSufficientIfSelected) &&
     (paymentMethod !== "jimatshop_coins_platform" || platformCoinsSufficient);
+
+  const checkoutBlockers = React.useMemo(() => {
+    const blockers: string[] = [];
+
+    if (!user) blockers.push("Sign in to place an order.");
+    if (items.length === 0) blockers.push("Your cart is empty.");
+    if (buyerIdsLoading) {
+      blockers.push("Loading nearby shops...");
+    } else if (!hasLocation) {
+      blockers.push("Please set your location to checkout.");
+    } else if (!primaryBuyerId) {
+      blockers.push("No nearby shops found. Please update your location.");
+    }
+
+    if (user && !shopperId) {
+      blockers.push("Preparing your shopper profile...");
+    } else if (coinsBalanceLoading) {
+      blockers.push("Loading coin balance...");
+    } else if (paymentMethod === "jimatshop_coins" && !coinsSufficientIfSelected) {
+      blockers.push("Insufficient JiMATShop coins for this order.");
+    } else if (paymentMethod === "jimatshop_coins_platform" && !platformCoinsSufficient) {
+      const shortfall = subtotal - platformCoinBalance;
+      blockers.push(
+        shortfall > 0
+          ? `Insufficient platform coins (need ${formatMYR(shortfall)} more).`
+          : "Insufficient platform coins for this order.",
+      );
+    }
+
+    return blockers;
+  }, [
+    user,
+    items.length,
+    buyerIdsLoading,
+    hasLocation,
+    primaryBuyerId,
+    shopperId,
+    coinsBalanceLoading,
+    paymentMethod,
+    coinsSufficientIfSelected,
+    platformCoinsSufficient,
+    subtotal,
+    platformCoinBalance,
+  ]);
 
   const onCheckout = async () => {
     if (!user) {
@@ -592,8 +645,17 @@ export default function Checkout() {
           <Button className="w-full mt-4" onClick={onCheckout} disabled={!canCheckout}>
             {submitting ? "Placing order..." : `Place order · ${formatMYR(subtotal)}`}
           </Button>
-          {!user ? (
-            <p className="mt-2 text-xs text-muted-foreground">Sign in to place an order.</p>
+          {!canCheckout && !submitting && checkoutBlockers.length > 0 ? (
+            <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+              <p className="text-xs font-medium text-destructive">Cannot place order yet:</p>
+              <ul className="mt-1 list-disc pl-4 space-y-0.5">
+                {checkoutBlockers.map((reason) => (
+                  <li key={reason} className="text-xs text-destructive/90">
+                    {reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : null}
         </div>
       </main>

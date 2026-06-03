@@ -1,4 +1,5 @@
-import { Home, Grid3X3, Heart, User, ShoppingBag } from "lucide-react";
+import { Home, Grid3X3, Heart, User, ShoppingBag, MessageSquare } from "lucide-react";
+import { useChatContext } from "@/contexts/ChatContext";
 import { cn } from "@/lib/utils";
 import { NavLink } from "react-router-dom";
 
@@ -6,15 +7,16 @@ interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   to: string;
+  badge?: number;
 }
 
-const NavItem = ({ icon, label, to }: NavItemProps) => {
+const NavItem = ({ icon, label, to, badge }: NavItemProps) => {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
         cn(
-          "flex flex-col items-center gap-1 py-2 px-4 transition-colors",
+          "flex flex-col items-center gap-1 py-2 px-2 transition-colors relative",
           isActive ? "text-primary" : "text-muted-foreground"
         )
       }
@@ -23,13 +25,18 @@ const NavItem = ({ icon, label, to }: NavItemProps) => {
         <>
           <div
             className={cn(
-              "p-1.5 rounded-xl transition-colors",
+              "p-1.5 rounded-xl transition-colors relative",
               isActive && "bg-primary/10"
             )}
           >
             {icon}
+            {badge && badge > 0 ? (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                {badge > 9 ? '9+' : badge}
+              </span>
+            ) : null}
           </div>
-          <span className="text-xs font-medium">{label}</span>
+          <span className="text-[10px] font-medium">{label}</span>
         </>
       )}
     </NavLink>
@@ -37,13 +44,22 @@ const NavItem = ({ icon, label, to }: NavItemProps) => {
 };
 
 export const BottomNav = () => {
+  const { getTotalUnreadCount } = useChatContext();
+  const unread = getTotalUnreadCount();
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 safe-area-bottom">
       <div className="flex items-center justify-around max-w-md mx-auto">
         <NavItem icon={<Home className="w-5 h-5" />} label="Home" to="/" />
-        <NavItem icon={<Grid3X3 className="w-5 h-5" />} label="Categories" to="/categories" />
+        <NavItem icon={<Grid3X3 className="w-5 h-5" />} label="Browse" to="/categories" />
         <NavItem icon={<ShoppingBag className="w-5 h-5" />} label="Orders" to="/orders" />
-        <NavItem icon={<Heart className="w-5 h-5" />} label="Wishlist" to="/wishlist" />
+        <NavItem
+          icon={<MessageSquare className="w-5 h-5" />}
+          label="Chat"
+          to="/chat"
+          badge={unread}
+        />
+        <NavItem icon={<Heart className="w-5 h-5" />} label="Saved" to="/wishlist" />
         <NavItem icon={<User className="w-5 h-5" />} label="Profile" to="/profile" />
       </div>
     </nav>

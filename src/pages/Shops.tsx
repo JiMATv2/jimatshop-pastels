@@ -7,7 +7,8 @@ import { useMemo, useState } from "react";
 import { fetchMobileBuyerShops } from "@/lib/api/mobileBuyers";
 import { useLatestLocation } from "@/lib/location/useLocation";
 import { geoNearbyOutlets } from "@/lib/api/geoLocation";
-import { MapPin, Navigation, Ticket } from "lucide-react";
+import { MapPin, MessageSquare, Navigation, Ticket } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { resolveShopperId } from "@/lib/api/shopper";
@@ -293,10 +294,14 @@ export default function Shops() {
               const hasCoins = buyerIdsWithCoins.has(s.id);
               const hasPromo = buyerIdsWithPromo.has(s.id);
               return (
-                <button
+                <div
                   key={s.id}
+                  className="w-full jimat-card p-3 flex gap-3 items-center"
+                >
+                <button
+                  type="button"
                   onClick={() => handleShopClick(s.id)}
-                  className="w-full text-left jimat-card p-3 flex gap-3 items-center transition-colors hover:bg-muted/50 active:bg-muted"
+                  className="flex-1 text-left flex gap-3 items-center min-w-0 transition-colors hover:opacity-90"
                 >
                   {img ? (
                     <img src={img} alt={s.name} className="h-14 w-14 rounded-xl object-cover bg-muted" />
@@ -335,6 +340,19 @@ export default function Shops() {
                     </div>
                   </div>
                 </button>
+                {user ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    aria-label={`Message ${s.name}`}
+                    onClick={() => navigate(`/chat?buyer_id=${encodeURIComponent(s.id)}`)}
+                  >
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                  </Button>
+                ) : null}
+                </div>
               );
             })}
           </div>

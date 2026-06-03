@@ -1199,6 +1199,7 @@ export type Database = {
           last_message_at: string | null
           sales_person_id: string | null
           seller_profile_id: string | null
+          shopper_id: string | null
           status: string | null
           ticket_id: string | null
           updated_at: string
@@ -1212,6 +1213,7 @@ export type Database = {
           last_message_at?: string | null
           sales_person_id?: string | null
           seller_profile_id?: string | null
+          shopper_id?: string | null
           status?: string | null
           ticket_id?: string | null
           updated_at?: string
@@ -1225,6 +1227,7 @@ export type Database = {
           last_message_at?: string | null
           sales_person_id?: string | null
           seller_profile_id?: string | null
+          shopper_id?: string | null
           status?: string | null
           ticket_id?: string | null
           updated_at?: string
@@ -1256,6 +1259,13 @@ export type Database = {
             columns: ["seller_profile_id"]
             isOneToOne: false
             referencedRelation: "seller_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_rooms_shopper_id_fkey"
+            columns: ["shopper_id"]
+            isOneToOne: false
+            referencedRelation: "shoppers"
             referencedColumns: ["id"]
           },
           {

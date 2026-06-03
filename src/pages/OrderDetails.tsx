@@ -15,9 +15,11 @@ type OrderRow = {
   status: string;
   total_amount: unknown;
   created_at: string;
+  updated_at: string;
   shipping_address: unknown;
   payment_status: string;
   payment_method: string | null;
+  refund_status?: string | null;
 };
 
 type OrderItemRow = {
@@ -90,7 +92,7 @@ export default function OrderDetails() {
       // Fetch order and validate ownership by shopper_id.
       const { data: order, error: orderErr } = await supabase
         .from("jimatshop_orders")
-        .select("id,status,total_amount,created_at,shipping_address,shopper_id,payment_status,payment_method")
+        .select("id,status,total_amount,created_at,updated_at,shipping_address,shopper_id,payment_status,payment_method,refund_status")
         .eq("id", id)
         .maybeSingle();
 
@@ -103,9 +105,11 @@ export default function OrderDetails() {
         status: order.status,
         total_amount: order.total_amount,
         created_at: order.created_at,
+        updated_at: (order as any).updated_at,
         shipping_address: (order as any).shipping_address,
         payment_status: (order as any).payment_status ?? "unknown",
         payment_method: (order as any).payment_method ?? null,
+        refund_status: (order as any).refund_status ?? null,
       };
 
       // Items
@@ -277,6 +281,60 @@ export default function OrderDetails() {
                 </div>
               </div>
             </div>
+
+            {/* Refund Status or Request Refund Action */}
+            {data.order.status === "completed" && (() => {
+              const completedDate = data.delivery?.delivery_date 
+                ? new Date(data.delivery.delivery_date) 
+                : new Date(data.order.updated_at);
+              
+              const currentDate = new Date();
+              const daysDifference = Math.floor((currentDate.getTime() - completedDate.getTime()) / (1000 * 3600 * 24));
+              const isWithin7Days = daysDifference < 7;
+              const hasRefund = Boolean(data.order.refund_status);
+
+              if (hasRefund) {
+                let statusColor = "bg-yellow-100 text-yellow-800 border-yellow-200";
+                if (data.order.refund_status === "approved" || data.order.refund_status === "refunded") {
+                  statusColor = "bg-green-100 text-green-800 border-green-200";
+                } else if (data.order.refund_status === "rejected") {
+                  statusColor = "bg-red-100 text-red-800 border-red-200";
+                }
+
+                return (
+                  <div className="jimat-card p-4">
+                    <p className="text-sm font-semibold text-foreground">Refund Information</p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Request Status</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border capitalize font-medium ${statusColor}`}>
+                        {data.order.refund_status}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (isWithin7Days) {
+                return (
+                  <div className="jimat-card p-4 flex flex-col gap-2">
+                    <p className="text-sm font-semibold text-foreground">Need a refund?</p>
+                    <p className="text-xs text-muted-foreground">
+                      You are within the 7-day refund window for this completed order.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/orders/${data.order.id}/refund`)}
+                      className="mt-2 w-full py-2 bg-primary text-primary-foreground hover:bg-primary/90 font-medium rounded-xl text-sm transition-colors text-center font-semibold"
+                      data-testid="request-refund-btn"
+                    >
+                      Request Refund
+                    </button>
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
 
             {/* Shipping */}
             {shippingLines.length ? (

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Mail, Phone, LogOut, Shield, Package, Heart, MapPin, Coins, Bell } from "lucide-react";
+import { Mail, Phone, LogOut, Shield, Package, Heart, MapPin, Coins, Bell, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabase/client";
@@ -578,6 +578,19 @@ const Profile = () => {
               <div className="flex-1 text-left">
                 <p className="font-medium">Wishlist</p>
                 <p className="text-xs text-muted-foreground">Saved items</p>
+              </div>
+            </Button>
+            <Separator />
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-auto py-3"
+              onClick={() => navigate("/user-guide")}
+              data-testid="profile-user-guide-btn"
+            >
+              <BookOpen className="h-5 w-5" />
+              <div className="flex-1 text-left">
+                <p className="font-medium">User Guide</p>
+                <p className="text-xs text-muted-foreground">Learn how to use JimatShop</p>
               </div>
             </Button>
             <Separator />
