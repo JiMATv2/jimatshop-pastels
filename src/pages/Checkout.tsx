@@ -18,6 +18,7 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useNearbyBuyerIds } from "@/lib/shop/useNearbyBuyerIds";
+import { formatJimatshopOrderNumber } from "@/lib/orders/formatOrderNumber";
 
 const formatMYR = (amount: number) =>
   new Intl.NumberFormat("ms-MY", { style: "currency", currency: "MYR" }).format(amount);
@@ -429,7 +430,7 @@ export default function Checkout() {
       if (successfulOrders.length === 1) {
         toast({
           title: "Order placed",
-          description: `Order #${successfulOrders[0].jimatshop_order_id.slice(0, 8)} created.`,
+          description: `Order ${formatJimatshopOrderNumber(successfulOrders[0].jimatshop_order_id)} created.`,
         });
         navigate(`/orders/${successfulOrders[0].jimatshop_order_id}`);
       } else {

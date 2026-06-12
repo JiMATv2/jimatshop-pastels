@@ -52,6 +52,26 @@ const LocationSearch = () => {
   const [autoCompleteError, setAutoCompleteError] = useState<string | null>(null);
   const autoCompleteAbortRef = useRef<AbortController | null>(null);
 
+  const runAutocompleteSearch = async (query: string, signal: AbortSignal) => {
+    const q = query.trim();
+    if (q.length < 3) return;
+
+    setAutoCompleteLoading(true);
+    setAutoCompleteError(null);
+
+    try {
+      const res = await geoAutocomplete(q, undefined, { signal });
+      setAutoCompleteResults(res);
+    } catch (e) {
+      if (signal.aborted) return;
+      const msg = e instanceof Error ? e.message : "Failed to search locations";
+      setAutoCompleteError(msg);
+      setAutoCompleteResults([]);
+    } finally {
+      if (!signal.aborted) setAutoCompleteLoading(false);
+    }
+  };
+
   useEffect(() => {
     setSavedLocation(getSavedLocation());
     // Check permission status on mount
@@ -62,7 +82,6 @@ const LocationSearch = () => {
   useEffect(() => {
     const q = searchQuery.trim();
 
-    // Reset results if query is too short
     if (q.length < 3) {
       setAutoCompleteResults([]);
       setAutoCompleteError(null);
@@ -74,26 +93,11 @@ const LocationSearch = () => {
       return;
     }
 
-    setAutoCompleteLoading(true);
-    setAutoCompleteError(null);
-
-    const timer = window.setTimeout(async () => {
-      // Cancel any in-flight request
+    const timer = window.setTimeout(() => {
       if (autoCompleteAbortRef.current) autoCompleteAbortRef.current.abort();
       const ac = new AbortController();
       autoCompleteAbortRef.current = ac;
-
-      try {
-        const res = await geoAutocomplete(q, undefined, { signal: ac.signal });
-        setAutoCompleteResults(res);
-      } catch (e) {
-        if (ac.signal.aborted) return;
-        const msg = e instanceof Error ? e.message : "Failed to autocomplete location";
-        setAutoCompleteError(msg);
-        setAutoCompleteResults([]);
-      } finally {
-        if (!ac.signal.aborted) setAutoCompleteLoading(false);
-      }
+      runAutocompleteSearch(q, ac.signal);
     }, 3000);
 
     return () => {
@@ -294,25 +298,17 @@ const LocationSearch = () => {
     }
   };
 
-  const handleSearchLocation = () => {
-    if (!searchQuery.trim()) {
-      toast.error("Please enter a location name");
+  const handleSubmitSearch = () => {
+    const q = searchQuery.trim();
+    if (q.length < 3) {
+      toast.error("Please enter at least 3 characters to search");
       return;
     }
 
-    const newLocation: SavedLocation = {
-      name: searchQuery.trim(),
-      address: searchQuery.trim(),
-    };
-
-    saveLocation(newLocation);
-    setSavedLocation(newLocation);
-    toast.success(`Location set to "${searchQuery.trim()}"`);
-    
-    // Navigate back after a short delay
-    setTimeout(() => {
-      navigate(-1);
-    }, 500);
+    if (autoCompleteAbortRef.current) autoCompleteAbortRef.current.abort();
+    const ac = new AbortController();
+    autoCompleteAbortRef.current = ac;
+    runAutocompleteSearch(q, ac.signal);
   };
 
   const handleSelectSavedLocation = (location: SavedLocation) => {
@@ -363,7 +359,7 @@ const LocationSearch = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-24 px-4">
       <Header />
 
       <main className="px-4 py-6 space-y-4">
@@ -468,14 +464,22 @@ const LocationSearch = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      handleSearchLocation();
+                      e.preventDefault();
+                      handleSubmitSearch();
                     }
                   }}
                   className="pl-10"
                 />
               </div>
-              <Button onClick={handleSearchLocation} disabled={!searchQuery.trim()}>
-                Set
+              <Button
+                onClick={handleSubmitSearch}
+                disabled={searchQuery.trim().length < 3 || autoCompleteLoading}
+              >
+                {autoCompleteLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Search"
+                )}
               </Button>
             </div>
           </CardContent>
@@ -490,7 +494,9 @@ const LocationSearch = () => {
                 ? "Searching…"
                 : autoCompleteError
                 ? "Search failed"
-                : "Type 3+ characters and wait 3 seconds"}
+                : autoCompleteResults.length > 0
+                ? "Select a location below"
+                : "Search or type 3+ characters"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -502,20 +508,21 @@ const LocationSearch = () => {
               <div className="text-sm text-muted-foreground">No results.</div>
             ) : (
               autoCompleteResults.slice(0, 8).map((item) => (
-                <Button
+                <div
                   key={item.place_id}
-                  variant="ghost"
-                  className="w-full justify-start gap-3 h-auto py-3"
-                  onClick={() => handleSelectAutocomplete(item)}
+                  className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-3"
                 >
-                  <MapPin className="h-5 w-5 text-muted-foreground" />
-                  <div className="flex-1 text-left">
+                  <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
                     <p className="font-medium text-foreground">{item.main_text}</p>
                     <p className="text-xs text-muted-foreground">
                       {[item.area, item.city, item.secondary_text].filter(Boolean).join(" · ")}
                     </p>
                   </div>
-                </Button>
+                  <Button size="sm" onClick={() => handleSelectAutocomplete(item)}>
+                    Set
+                  </Button>
+                </div>
               ))
             )}
           </CardContent>

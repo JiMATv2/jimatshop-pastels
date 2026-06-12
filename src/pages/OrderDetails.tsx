@@ -10,6 +10,9 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { formatJimatshopOrderNumber } from "@/lib/orders/formatOrderNumber";
+import { formatPaymentMethodLabel } from "@/lib/orders/formatPaymentMethod";
+import { resolveProductImageUrl } from "@/lib/products/imageUrl";
 
 type OrderRow = {
   id: string;
@@ -41,6 +44,7 @@ type ProductRow = {
   name: string;
   image_url?: string | null;
   cover_image_url?: string | null;
+  jimatshop_image_url?: string | null;
 };
 
 type DeliveryRow = {
@@ -175,7 +179,7 @@ export default function OrderDetails() {
         if (productIds.length) {
           const { data: products, error: prodErr } = await supabase
             .from("products")
-            .select("id,name,image_url,cover_image_url")
+            .select("id,name,image_url,cover_image_url,jimatshop_image_url")
             .in("id", productIds);
 
           if (prodErr) throw prodErr;
@@ -236,7 +240,9 @@ export default function OrderDetails() {
           </button>
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-foreground truncate">Order details</h2>
-            <p className="text-xs text-muted-foreground truncate">{id ? `#${id}` : ""}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {id ? formatJimatshopOrderNumber(id) : ""}
+            </p>
           </div>
         </div>
 
@@ -309,7 +315,7 @@ export default function OrderDetails() {
                 <div>
                   <p className="text-xs text-muted-foreground">Method</p>
                   <p className="text-sm font-medium text-foreground">
-                    {data.order.payment_method ? data.order.payment_method : "—"}
+                    {formatPaymentMethodLabel(data.order.payment_method)}
                   </p>
                 </div>
               </div>
@@ -391,7 +397,7 @@ export default function OrderDetails() {
                   const inv = data.inventoryMap.get(it.buyer_inventory_id);
                   const prod = inv ? data.productMap.get(inv.product_id) : undefined;
                   const name = prod?.name ?? "Item";
-                  const imgUrl = prod?.cover_image_url ?? prod?.image_url ?? "/placeholder.svg";
+                  const imgUrl = resolveProductImageUrl(prod) ?? "/placeholder.svg";
                   const unit = asNumber(it.unit_price);
                   const subtotal = asNumber(it.subtotal);
 

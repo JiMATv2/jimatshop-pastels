@@ -11,6 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { ChevronRight } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { formatJimatshopOrderNumber } from "@/lib/orders/formatOrderNumber";
+import { resolveProductImageUrl } from "@/lib/products/imageUrl";
 
 type OrderRow = {
   id: string;
@@ -94,10 +96,12 @@ function OrdersList({ orders, showCompletedDetails }: { orders: OrderRow[]; show
           key={o.id}
           to={`/orders/${o.id}`}
           className="jimat-card p-4 block hover:shadow-md transition-shadow"
-          aria-label={`View order ${o.id}`}
+          aria-label={`View order ${formatJimatshopOrderNumber(o.id)}`}
         >
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-foreground truncate">Order #{o.id.slice(0, 8)}</p>
+            <p className="text-sm font-semibold text-foreground truncate">
+              Order {formatJimatshopOrderNumber(o.id)}
+            </p>
             <div className="flex items-center gap-2">
               <Badge variant={statusVariant(o.status)} className="capitalize">
                 {o.status}
@@ -186,14 +190,15 @@ export default function Orders() {
               business_name,
               outlet_name
             ),
-            jimatshop_order_items (
+            ji:jimatshop_order_items (
               quantity,
               buyer_inventory_id,
-              buyer_inventories (
-                products (
+              bi:buyer_inventories (
+                p:products (
                   name,
-                  image_url,
-                  cover_image_url
+                  jimatshop_image_url,
+                  cover_image_url,
+                  image_url
                 )
               )
             )
@@ -206,16 +211,16 @@ export default function Orders() {
       if (error) throw error;
       return (data ?? []).map((row: any) => {
         const outletName = row?.buyers?.business_name || row?.buyers?.outlet_name || null;
-        const items = (row?.jimatshop_order_items ?? [])
+        const items = (row?.ji ?? row?.jimatshop_order_items ?? [])
           .map((item: any) => {
-            const product = item?.buyer_inventories?.products;
+            const product = item?.bi?.p ?? item?.buyer_inventories?.products;
             const name = product?.name;
             if (!name) return null;
             return {
               name,
               quantity: Number(item?.quantity ?? 0),
               inventoryId: item?.buyer_inventory_id ?? null,
-              imageUrl: product?.cover_image_url || product?.image_url || null,
+              imageUrl: resolveProductImageUrl(product),
             };
           })
           .filter(Boolean);

@@ -483,7 +483,7 @@ export default function ProductDetails() {
         </div>
       </StickyHeader>
 
-      <main className="px-4 py-4 space-y-6 safe-area-x">
+      <main className="px-4 py-4 space-y-6 safe-area-x mx-8">
         {/* Product Image */}
         <div className="relative aspect-square bg-muted rounded-2xl overflow-hidden">
           <img
@@ -574,7 +574,7 @@ export default function ProductDetails() {
         )}
 
         {/* Available Outlets */}
-        <div className="space-y-3" style={{ paddingBottom: "100px" }}>
+        <div className="space-y-3" style={{ paddingBottom: "160px" }}>
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-semibold text-foreground">Available at Outlets</h3>
             <Button
@@ -638,9 +638,9 @@ export default function ProductDetails() {
       </main>
 
       {/* Fixed Bottom Add to Cart */}
-      <div className="fixed bottom-nav-offset left-0 right-0 bg-background border-t p-4 space-y-3 safe-area-x safe-area-bottom">
+      <div className="fixed bottom-nav-offset left-0 right-0 bg-background border-t p-4 space-y-3 safe-area-x safe-area-bottom mb-6">
         {/* Quantity Selector */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-8">
           <span className="text-sm font-medium text-foreground">Quantity</span>
           <div className="flex items-center gap-3">
             <Button
@@ -665,14 +665,17 @@ export default function ProductDetails() {
         </div>
 
         {/* Add to Cart Button */}
+        <div className="px-8">
         <Button 
-          className="w-full h-12 text-base gap-2" 
+          className="w-full h-12 text-base gap-2 " 
           onClick={handleAddToCart}
           disabled={!hasStock}
         >
           <ShoppingCart className="w-5 h-5" />
           Add to Cart · {formatMYR(effectiveUnitPrice * quantity)}
         </Button>
+        </div>
+
       </div>
 
       <BottomNav />

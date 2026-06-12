@@ -16,6 +16,7 @@ import { resolveShopperId } from "@/lib/api/shopper";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { formatJimatshopOrderNumber } from "@/lib/orders/formatOrderNumber";
 
 interface OrderItem {
   id: string;
@@ -398,7 +399,9 @@ export default function RefundRequest() {
           </button>
           <div>
             <h2 className="text-lg font-semibold text-foreground">Request Refund</h2>
-            <p className="text-xs text-muted-foreground">Storefront Order #{order.id.slice(0, 8)}</p>
+            <p className="text-xs text-muted-foreground">
+              Storefront Order {formatJimatshopOrderNumber(order.id)}
+            </p>
           </div>
         </div>
 

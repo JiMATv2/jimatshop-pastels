@@ -433,7 +433,7 @@ export const Header = () => {
     <StickyHeader as="header">
       <div className="container mx-auto px-4 py-3 safe-area-x">
         {/* Logo and Location */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 px-4">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-lg">J</span>

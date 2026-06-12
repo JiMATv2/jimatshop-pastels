@@ -133,7 +133,7 @@ export default function InventoryDetails() {
         </div>
       </StickyHeader>
 
-      <main className="px-4 py-4 space-y-4 safe-area-x">
+      <main className="px-4 py-4 space-y-6 safe-area-x mx-8">
         <div className="relative aspect-square bg-muted rounded-2xl overflow-hidden">
           <img
             src={inv.cover_image_url || "https://via.placeholder.com/400"}
@@ -142,32 +142,27 @@ export default function InventoryDetails() {
           />
         </div>
 
-        <div className="space-y-1">
-          <div className="text-sm text-muted-foreground">Buyer</div>
-          <div className="text-base font-semibold text-foreground">{inv.buyer_name}</div>
-        </div>
-
-        <div className="space-y-1">
-          <div className="text-sm text-muted-foreground">Product</div>
-          <div className="text-lg font-bold text-foreground">{inv.product_name}</div>
-        </div>
-
-        <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-primary">
-            <div className="flex items-baseline gap-2">
-              <span>{formatMYR(unitPrice)}</span>
-              {inv.promotion_price != null &&
-                inv.promotion_price > 0 &&
-                inv.promotion_price !== inv.retail_price && (
-                  <span className="text-xs text-muted-foreground line-through">
-                    {formatMYR(inv.retail_price)}
-                  </span>
-                )}
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-sm text-muted-foreground">{inv.buyer_name}</p>
+              <h1 className="text-xl font-bold text-foreground mt-1">{inv.product_name}</h1>
             </div>
-          </span>
+          </div>
+
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-primary">{formatMYR(unitPrice)}</span>
+            {inv.promotion_price != null &&
+              inv.promotion_price > 0 &&
+              inv.promotion_price !== inv.retail_price && (
+                <span className="text-lg text-muted-foreground line-through">
+                  {formatMYR(inv.retail_price)}
+                </span>
+              )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3" style={{ paddingBottom: "160px" }}>
           <div className="jimat-card p-3">
             <div className="text-xs text-muted-foreground">Stock</div>
             <div className={`text-base font-bold ${isOutOfStock ? "text-destructive" : "text-foreground"}`}>
@@ -192,9 +187,8 @@ export default function InventoryDetails() {
       </main>
 
       {/* Fixed Bottom Add to Cart */}
-      <div className="fixed bottom-nav-offset left-0 right-0 bg-background border-t p-4 space-y-3 safe-area-x safe-area-bottom">
-        {/* Quantity Selector */}
-        <div className="flex items-center justify-between">
+      <div className="fixed bottom-nav-offset left-0 right-0 bg-background border-t p-4 space-y-3 safe-area-x safe-area-bottom mb-6">
+        <div className="flex items-center justify-between px-8">
           <span className="text-sm font-medium text-foreground">Quantity</span>
           <div className="flex items-center gap-3">
             <Button
@@ -219,15 +213,16 @@ export default function InventoryDetails() {
           </div>
         </div>
 
-        {/* Add to Cart Button */}
-        <Button 
-          className="w-full h-12 text-base gap-2" 
-          onClick={handleAddToCart}
-          disabled={isOutOfStock}
-        >
-          <ShoppingCart className="w-5 h-5" />
-          {isOutOfStock ? "Out of Stock" : `Add to Cart · ${formatMYR(unitPrice * quantity)}`}
-        </Button>
+        <div className="px-8">
+          <Button
+            className="w-full h-12 text-base gap-2"
+            onClick={handleAddToCart}
+            disabled={isOutOfStock}
+          >
+            <ShoppingCart className="w-5 h-5" />
+            {isOutOfStock ? "Out of Stock" : `Add to Cart · ${formatMYR(unitPrice * quantity)}`}
+          </Button>
+        </div>
       </div>
 
       <BottomNav />
