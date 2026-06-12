@@ -8,19 +8,18 @@ const STORAGE_KEY = "jimatshop_push_permission_asked";
 
 export function PushPermissionDialog() {
   const [visible, setVisible] = useState(false);
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    // Only show on native platforms
     if (!Capacitor.isNativePlatform()) return;
-
-    // Only show once
+    if (loading) return;
+    if (!user?.id) return;
     if (localStorage.getItem(STORAGE_KEY)) return;
 
-    // Small delay so it doesn't appear instantly on cold start
+    // Small delay so it doesn't appear instantly after sign-in
     const timer = setTimeout(() => setVisible(true), 1500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [loading, user?.id]);
 
   const dismiss = () => {
     localStorage.setItem(STORAGE_KEY, "dismissed");
@@ -28,14 +27,10 @@ export function PushPermissionDialog() {
   };
 
   const handleEnable = async () => {
+    if (!user?.id) return;
     localStorage.setItem(STORAGE_KEY, "asked");
     setVisible(false);
-    if (user?.id) {
-      await notificationService.requestPermissionAndGetToken(user.id);
-    } else {
-      // If not logged in yet, trigger it anyway — native OS will show its own prompt
-      await notificationService.requestPermissionAndGetToken("anonymous");
-    }
+    await notificationService.requestPermissionAndGetToken(user.id);
   };
 
   if (!visible) return null;
