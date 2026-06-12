@@ -7,8 +7,9 @@ import { resolveShopperId } from "@/lib/api/shopper";
 import { supabase } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import { useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 type OrderRow = {
   id: string;
@@ -77,8 +78,40 @@ export default function OrderDetails() {
   const { user } = useAuth();
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handledBillplzReturn = useRef(false);
 
   const id = orderId ?? "";
+
+  useEffect(() => {
+    if (handledBillplzReturn.current) return;
+
+    const billplzPaid =
+      searchParams.get("billplz[paid]") ?? searchParams.get("billplz%5Bpaid%5D");
+    if (billplzPaid == null) return;
+
+    handledBillplzReturn.current = true;
+
+    if (billplzPaid === "true") {
+      toast({
+        title: "Payment received",
+        description: "Your Billplz payment was successful. We're processing your order.",
+      });
+    } else {
+      toast({
+        title: "Payment not completed",
+        description: "Billplz payment was not completed. You can retry from your order details.",
+        variant: "destructive",
+      });
+    }
+
+    const next = new URLSearchParams(searchParams);
+    for (const key of [...next.keys()]) {
+      if (key.includes("billplz")) next.delete(key);
+    }
+    next.delete("payment_type");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["order-details", user?.id, id],

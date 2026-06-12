@@ -51,7 +51,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const handleAppUrl = async (event: { url: string }) => {
         try {
           const url = new URL(event.url);
-          
+
+          // Billplz payment return is handled by PaymentReturnHandler
+          if (url.hostname === "payment-return") {
+            return;
+          }
+
           // Check if this is an OAuth callback
           // Only process if it's not already being handled by mobileAuth.ts
           // (mobileAuth.ts will handle it during active sign-in flows)

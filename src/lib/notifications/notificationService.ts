@@ -22,25 +22,25 @@ class NotificationService {
 
   constructor() {
     this.vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || "";
+    // Enabled on native by default; set VITE_ENABLE_*_PUSH=false to opt out.
     this.androidPushEnabled =
-      (import.meta.env.VITE_ENABLE_ANDROID_PUSH || "").toLowerCase() === "true";
+      (import.meta.env.VITE_ENABLE_ANDROID_PUSH ?? "true").toLowerCase() !== "false";
     this.iosPushEnabled =
-      (import.meta.env.VITE_ENABLE_IOS_PUSH || "").toLowerCase() === "true";
+      (import.meta.env.VITE_ENABLE_IOS_PUSH ?? "true").toLowerCase() !== "false";
+  }
+
+  isNativePushEnabled(): boolean {
+    if (this.isAndroidNative()) return this.androidPushEnabled;
+    if (this.isIOSNative()) return this.iosPushEnabled;
+    return true;
   }
 
   init() {
     if (!this.isAndroidNative() && !this.isIOSNative()) return;
 
-    if (this.isAndroidNative() && !this.androidPushEnabled) {
+    if (!this.isNativePushEnabled()) {
       console.warn(
-        "[notifications] Android push disabled (set VITE_ENABLE_ANDROID_PUSH=true to enable)",
-      );
-      return;
-    }
-
-    if (this.isIOSNative() && !this.iosPushEnabled) {
-      console.warn(
-        "[notifications] iOS push disabled (set VITE_ENABLE_IOS_PUSH=true to enable)",
+        "[notifications] Native push disabled via VITE_ENABLE_ANDROID_PUSH=false or VITE_ENABLE_IOS_PUSH=false",
       );
       return;
     }
@@ -211,17 +211,8 @@ class NotificationService {
   }
 
   async requestPermissionAndGetToken(userId: string) {
-    if (this.isAndroidNative() && !this.androidPushEnabled) {
-      console.warn(
-        "[notifications] Android push disabled (set VITE_ENABLE_ANDROID_PUSH=true to enable)",
-      );
-      return null;
-    }
-
-    if (this.isIOSNative() && !this.iosPushEnabled) {
-      console.warn(
-        "[notifications] iOS push disabled (set VITE_ENABLE_IOS_PUSH=true to enable)",
-      );
+    if ((this.isAndroidNative() || this.isIOSNative()) && !this.isNativePushEnabled()) {
+      console.warn("[notifications] Native push is disabled in app config");
       return null;
     }
 

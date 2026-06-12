@@ -34,6 +34,17 @@
                 <data android:scheme="com.jimatbiz.shop3" android:host="oauth-callback" />
             </intent-filter>
 
+            <!-- Deep link intent filter for Billplz payment return -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="com.jimatbiz.shop3"
+                    android:host="payment-return"
+                    android:pathPrefix="/orders" />
+            </intent-filter>
+
         </activity>
 
         <provider

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 export async function resolveShopperId(args: {
   authUserId: string;
@@ -27,6 +28,34 @@ export async function resolveShopperId(args: {
 
   if (byEmailErr) throw byEmailErr;
   return (byEmail?.[0]?.id as string | undefined) ?? null;
+}
+
+function upsertArgsFromUser(user: User) {
+  const meta = user.user_metadata ?? {};
+  return {
+    first_name:
+      (meta.given_name as string | undefined) ||
+      (meta.full_name as string | undefined) ||
+      (meta.name as string | undefined) ||
+      "",
+    last_name: (meta.family_name as string | undefined) || null,
+    email: user.email || null,
+    phone: user.phone || null,
+  };
+}
+
+/**
+ * Resolves the shopper id, creating/linking a profile via RPC when missing.
+ */
+export async function ensureShopperId(user: User): Promise<string | null> {
+  const existing = await resolveShopperId({ authUserId: user.id, email: user.email });
+  if (existing) return existing;
+
+  const { data, error } = await supabase.rpc("upsert_shopper_for_auth_user", upsertArgsFromUser(user));
+  if (error) throw error;
+  if (typeof data === "string" && data) return data;
+
+  return resolveShopperId({ authUserId: user.id, email: user.email });
 }
 
 

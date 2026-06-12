@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/sonner";
+import { Capacitor } from "@capacitor/core";
 import { notificationService } from "@/lib/notifications/notificationService";
 import { deleteShopperAccount } from "@/lib/api/accountDeletion";
 import { useEffect, useMemo, useState } from "react";
@@ -228,9 +229,18 @@ const Profile = () => {
     setNotificationsEnabled(enabled);
     try {
       if (enabled) {
+        if (!notificationService.isNativePushEnabled() && Capacitor.isNativePlatform()) {
+          throw new Error(
+            "Push notifications are disabled in this build. Set VITE_ENABLE_ANDROID_PUSH=true and rebuild.",
+          );
+        }
         const token = await notificationService.requestPermissionAndGetToken(user.id);
         if (!token) {
-          throw new Error("Notification permission not granted");
+          throw new Error(
+            Capacitor.isNativePlatform()
+              ? "Allow notifications in your device settings, then try again."
+              : "Notification permission not granted",
+          );
         }
       } else {
         const { error } = await supabase

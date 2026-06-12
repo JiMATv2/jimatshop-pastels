@@ -5,9 +5,8 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // Capacitor loads your built app from a local file URL on device.
-  // Using a relative base ensures JS/CSS asset paths resolve correctly.
-  base: "./",
+  // Absolute base so deep routes (/orders/:id) don't resolve assets under /orders/assets/.
+  base: "/",
   server: {
     host: "::",
     port: 8083,

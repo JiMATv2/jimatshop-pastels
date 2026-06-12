@@ -1,4 +1,4 @@
-import { Search, ShoppingCart, MapPin } from "lucide-react";
+import { Search, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,8 @@ import { supabase } from "@/lib/supabase/client";
 import { shopLoginWithGoogleIdToken } from "@/lib/api/jimatshopSession";
 import { getCurrentLocation } from "@/lib/geolocation/geolocation";
 import { toast } from "@/components/ui/sonner";
-import { useCart } from "@/lib/cart/CartProvider";
+import { CartIconButton } from "@/components/cart/CartIconButton";
+import { StickyHeader } from "@/components/layout/StickyHeader";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getSavedLocation } from "@/pages/LocationSearch";
@@ -23,7 +24,6 @@ export const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading, signOut } = useAuth();
-  const { itemCount } = useCart();
   const hasProcessedOAuthLogin = useRef(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authSubmitting, setAuthSubmitting] = useState(false);
@@ -430,8 +430,8 @@ export const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border safe-area-top">
-      <div className="container mx-auto px-4 py-3">
+    <StickyHeader as="header">
+      <div className="container mx-auto px-4 py-3 safe-area-x">
         {/* Logo and Location */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -520,20 +520,7 @@ export const Header = () => {
                 Logout
               </Button>
             ) : null}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative"
-              aria-label="Cart"
-              onClick={() => navigate("/checkout")}
-            >
-              <ShoppingCart className="w-5 h-5" />
-              {itemCount > 0 ? (
-                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                  {itemCount > 99 ? "99+" : itemCount}
-                </span>
-              ) : null}
-            </Button>
+            <CartIconButton aria-label="Cart" />
           </div>
         </div>
 
@@ -551,6 +538,6 @@ export const Header = () => {
           />
         </form>
       </div>
-    </header>
+    </StickyHeader>
   );
 };

@@ -5,6 +5,8 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/lib/cart/CartProvider";
+import { CartIconButton } from "@/components/cart/CartIconButton";
+import { StickyHeader } from "@/components/layout/StickyHeader";
 import { toast } from "@/hooks/use-toast";
 import { fetchMobileProductById } from "@/lib/api/mobileProducts";
 import { fetchInventoriesForProduct, type MobileInventory } from "@/lib/api/mobileInventories";
@@ -309,13 +311,13 @@ export default function ProductDetails() {
   if (error || !product) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
-          <div className="flex items-center justify-between px-4 py-3">
+        <StickyHeader>
+          <div className="flex items-center justify-between px-4 py-3 safe-area-x">
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </div>
-        </div>
+        </StickyHeader>
         <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 gap-4">
           <p className="text-destructive text-center">{error || "Product not found"}</p>
           <Button onClick={() => navigate(-1)}>Go Back</Button>
@@ -347,19 +349,6 @@ export default function ProductDetails() {
       },
       quantity
     );
-    
-    if (firstInventory) {
-      toast({
-        title: "Added to cart",
-        description: `${quantity}x ${product.name} from ${firstInventory.buyer_name} added to your cart`,
-      });
-    } else {
-      toast({
-        title: "Added to cart",
-        description: `${quantity}x ${product.name} added to your cart`,
-        variant: "default",
-      });
-    }
   };
 
   const decreaseQuantity = () => {
@@ -469,10 +458,10 @@ export default function ProductDetails() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-32">
+    <div className="min-h-screen bg-background pb-bottom-nav">
       {/* Header with back button */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
-        <div className="flex items-center justify-between px-4 py-3">
+      <StickyHeader>
+        <div className="flex items-center justify-between px-4 py-3 safe-area-x">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -486,22 +475,15 @@ export default function ProductDetails() {
             >
               <Heart className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/checkout")}
-              aria-label="Go to checkout"
-            >
-              <ShoppingCart className="w-5 h-5" />
-            </Button>
+            <CartIconButton />
             <Button variant="ghost" size="icon">
               <Share2 className="w-5 h-5" />
             </Button>
           </div>
         </div>
-      </div>
+      </StickyHeader>
 
-      <main className="px-4 py-4 space-y-6">
+      <main className="px-4 py-4 space-y-6 safe-area-x">
         {/* Product Image */}
         <div className="relative aspect-square bg-muted rounded-2xl overflow-hidden">
           <img
@@ -656,7 +638,7 @@ export default function ProductDetails() {
       </main>
 
       {/* Fixed Bottom Add to Cart */}
-      <div className="fixed bottom-16 left-0 right-0 bg-background border-t p-4 space-y-3">
+      <div className="fixed bottom-nav-offset left-0 right-0 bg-background border-t p-4 space-y-3 safe-area-x safe-area-bottom">
         {/* Quantity Selector */}
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-foreground">Quantity</span>
