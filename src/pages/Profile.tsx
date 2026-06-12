@@ -17,6 +17,7 @@ import { Capacitor } from "@capacitor/core";
 import { notificationService } from "@/lib/notifications/notificationService";
 import { deleteShopperAccount } from "@/lib/api/accountDeletion";
 import { useEffect, useMemo, useState } from "react";
+import { version } from "../../package.json";
 
 const Profile = () => {
   const { user, loading, signOut } = useAuth();
@@ -643,6 +644,10 @@ const Profile = () => {
             </Button>
           </CardContent>
         </Card>
+
+        <div className="text-center text-xs text-muted-foreground/60 pt-2 pb-4" data-testid="app-version">
+          v{version}
+        </div>
       </main>
 
       <BottomNav />
