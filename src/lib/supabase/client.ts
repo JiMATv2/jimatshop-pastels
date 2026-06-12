@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { uploadToNativeBackend } from './upload';
+import { EX_SUPABASE_ANON_KEY, getSupabaseApiKey, getSupabaseQueryHeaders } from './apiKey';
 
 // Use environment variables for configuration
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? 'https://uurkkuvlpqhzfqjhdyti.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1cmtrdXZscHFoemZxamhkeXRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxODQ4NzEsImV4cCI6MjA3Mzc2MDg3MX0.Y6EbnTGU9CrJGL3S7qnyCDWYrHjqUrx1YSRw4Mb5r6E';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? 'https://ex_supabase.jimatbiz.com';
+const supabaseAnonKey = EX_SUPABASE_ANON_KEY;
 export const supabaseUrlvalue = supabaseUrl;
 
 export const useSupabase = () => {
@@ -76,7 +77,7 @@ class SupabaseQueryBuilder implements PromiseLike<SupabaseResponse> {
   returns<TData = any>() { return this as any; }
   private async execute(): Promise<SupabaseResponse> {
     try {
-      const response = await fetch(QUERY_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': supabaseAnonKey, 'x-api-token': 'jimat_supabase_secret_2025_changeme' }, body: JSON.stringify(this.descriptor) });
+      const response = await fetch(QUERY_ENDPOINT, { method: 'POST', headers: getSupabaseQueryHeaders(), body: JSON.stringify(this.descriptor) });
       const result = await response.json();
       if (!response.ok) { return { data: null, error: result.error || { message: `HTTP ${response.status}` }, count: null }; }
       return { data: result.data ?? null, error: result.error ?? null, count: result.count ?? null };
@@ -196,9 +197,10 @@ class SupabaseProxy {
       if (sessionStr) {
         try {
           const session = JSON.parse(sessionStr);
+          const accessToken = session.access_token || getSupabaseApiKey();
           const response = await fetch(`${EX_SUPABASE_ENDPOINT}/supabase/auth/update-user`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer native_session_${session.user.id}` },
+            headers: { 'Content-Type': 'application/json', apikey: accessToken, 'Authorization': `Bearer ${accessToken}` },
             body: JSON.stringify({ data: attributes.data, user_id: session.user.id })
           });
           const result = await response.json();
@@ -236,11 +238,12 @@ class SupabaseProxy {
       return this.realSupabase.auth.signOut();
     },
     getUser: async (token?: string) => {
-      if (token && token.startsWith('native_session_')) {
-        const userId = token.replace('native_session_', '');
+      if (token) {
         try {
           const response = await fetch(`${EX_SUPABASE_ENDPOINT}/supabase/auth/get-user`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ user_id: userId })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: token, 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({}),
           });
           return await response.json();
         } catch (e) { console.error('Failed to get user via token:', e); }
@@ -302,7 +305,7 @@ class SupabaseProxy {
       try {
         const response = await fetch(QUERY_ENDPOINT, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': supabaseAnonKey, 'x-api-token': 'jimat_supabase_secret_2025_changeme' },
+          headers: getSupabaseQueryHeaders(),
           body: JSON.stringify({ type: 'function', function: functionName, body: options?.body, headers: options?.headers, method: options?.method }),
         });
         const result = await response.json();

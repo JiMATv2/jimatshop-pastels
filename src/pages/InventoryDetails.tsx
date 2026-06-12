@@ -6,6 +6,8 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { fetchMobileInventoryById, type MobileInventory } from "@/lib/api/mobileInventories";
 import { toast } from "@/hooks/use-toast";
 import { useCart } from "@/lib/cart/CartProvider";
+import { CartIconButton } from "@/components/cart/CartIconButton";
+import { StickyHeader } from "@/components/layout/StickyHeader";
 
 const formatMYR = (amount: number) =>
   new Intl.NumberFormat("ms-MY", { style: "currency", currency: "MYR" }).format(amount);
@@ -59,13 +61,13 @@ export default function InventoryDetails() {
   if (error || !inv) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
-          <div className="flex items-center justify-between px-4 py-3">
+        <StickyHeader>
+          <div className="flex items-center justify-between px-4 py-3 safe-area-x">
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </div>
-        </div>
+        </StickyHeader>
         <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 gap-4">
           <p className="text-destructive text-center">{error || "Inventory not found"}</p>
           <Button onClick={() => navigate(-1)}>Go Back</Button>
@@ -100,11 +102,6 @@ export default function InventoryDetails() {
       },
       quantity
     );
-    
-    toast({
-      title: "Added to cart",
-      description: `${quantity}x ${inv.product_name} added to your cart`,
-    });
   };
 
   const decreaseQuantity = () => {
@@ -126,16 +123,17 @@ export default function InventoryDetails() {
   const isOutOfStock = inv.stock_level <= 0;
 
   return (
-    <div className="min-h-screen bg-background pb-32">
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b">
-        <div className="flex items-center justify-between px-4 py-3">
+    <div className="min-h-screen bg-background pb-bottom-nav">
+      <StickyHeader>
+        <div className="flex items-center justify-between px-4 py-3 safe-area-x">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
+          <CartIconButton />
         </div>
-      </div>
+      </StickyHeader>
 
-      <main className="px-4 py-4 space-y-4">
+      <main className="px-4 py-4 space-y-4 safe-area-x">
         <div className="relative aspect-square bg-muted rounded-2xl overflow-hidden">
           <img
             src={inv.cover_image_url || "https://via.placeholder.com/400"}
@@ -194,7 +192,7 @@ export default function InventoryDetails() {
       </main>
 
       {/* Fixed Bottom Add to Cart */}
-      <div className="fixed bottom-16 left-0 right-0 bg-background border-t p-4 space-y-3">
+      <div className="fixed bottom-nav-offset left-0 right-0 bg-background border-t p-4 space-y-3 safe-area-x safe-area-bottom">
         {/* Quantity Selector */}
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-foreground">Quantity</span>

@@ -38,6 +38,10 @@ export type MobileCreateJimatshopOrderRequest = {
   shipping_address?: Record<string, unknown> | null;
   notes?: string | null;
   payment_method?: "pay_in_store" | "jimatshop_coins" | "jimatshop_coins_platform" | "billplz";
+  /** Base for Billplz browser redirect; server appends `/orders/{id}`. */
+  billplz_redirect_base?: string;
+  /** Full Billplz redirect URL override (preferred on native deep links). */
+  billplz_redirect_url?: string;
 };
 
 export type MobileCreateJimatshopOrderResponse =

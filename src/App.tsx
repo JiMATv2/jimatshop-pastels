@@ -21,9 +21,11 @@ import Wishlist from "./pages/Wishlist";
 import NotFound from "./pages/NotFound";
 import JimatshopCampaignDetails from "./pages/JimatshopCampaignDetails";
 import { CapacitorBackHandler } from "@/components/layout/CapacitorBackHandler";
+import { PaymentReturnHandler } from "@/components/payments/PaymentReturnHandler";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { CartProvider } from "@/lib/cart/CartProvider";
 import { PushPermissionDialog } from "@/components/notifications/PushPermissionDialog";
+import { LocationPromptDialog } from "@/components/location/LocationPromptDialog";
 
 const queryClient = new QueryClient();
 
@@ -36,7 +38,9 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <CapacitorBackHandler />
+            <PaymentReturnHandler />
             <PushPermissionDialog />
+            <LocationPromptDialog />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/onboarding" element={<Onboarding />} />

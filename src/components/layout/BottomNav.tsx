@@ -38,7 +38,7 @@ const NavItem = ({ icon, label, to }: NavItemProps) => {
 
 export const BottomNav = () => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 safe-area-bottom safe-area-x">
       <div className="flex items-center justify-around max-w-md mx-auto">
         <NavItem icon={<Home className="w-5 h-5" />} label="Home" to="/" />
         <NavItem icon={<Grid3X3 className="w-5 h-5" />} label="Categories" to="/categories" />

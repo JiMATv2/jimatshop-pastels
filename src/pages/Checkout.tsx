@@ -6,8 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCart } from "@/lib/cart/CartProvider";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { resolveShopperId } from "@/lib/api/shopper";
+import { ensureShopperId } from "@/lib/api/shopper";
 import { createMobileJimatshopOrder } from "@/lib/api/mobileOrders";
+import { getBillplzRedirectBase } from "@/lib/payments/billplzRedirect";
+import { openBillplzPayment } from "@/lib/payments/openBillplzPayment";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/client";
 import { Minus, Plus, Trash2 } from "lucide-react";
@@ -103,14 +105,21 @@ export default function Checkout() {
     "pay_in_store" | "jimatshop_coins" | "jimatshop_coins_platform" | "billplz"
   >("pay_in_store");
 
-  const { data: shopperId } = useQuery({
+  const {
+    data: shopperId,
+    isLoading: isShopperLoading,
+    isError: isShopperError,
+    error: shopperError,
+    refetch: refetchShopperId,
+  } = useQuery({
     queryKey: ["checkout-shopper-id", user?.id ?? null],
     queryFn: async () => {
       if (!user) return null;
-      return await resolveShopperId({ authUserId: user.id, email: user.email });
+      return await ensureShopperId(user);
     },
     enabled: Boolean(user),
     staleTime: 60_000,
+    retry: 1,
   });
 
   type BuyerCoinBalance = {
@@ -252,12 +261,11 @@ export default function Checkout() {
 
     setSubmitting(true);
     try {
-      const resolvedShopperId =
-        shopperId ?? (await resolveShopperId({ authUserId: user.id, email: user.email }));
+      const resolvedShopperId = shopperId ?? (await ensureShopperId(user));
       if (!resolvedShopperId) {
         toast({
           title: "Profile not ready",
-          description: "We couldn't find your shopper profile yet. Please sign out and sign in again.",
+          description: "We couldn't set up your shopper profile. Please try again.",
         });
         return;
       }
@@ -310,20 +318,27 @@ export default function Checkout() {
             buyer_id: buyerId,
             shopper_id: resolvedShopperId,
             items: buyerItems.map((it) => ({ product_id: it.productId, quantity: it.quantity })),
-            // Pickup-only for now
             shipping_address: null,
             notes: notes.trim() || null,
             payment_method: paymentMethod,
-          })
-        )
+            ...(paymentMethod === "billplz"
+              ? { billplz_redirect_base: getBillplzRedirectBase() }
+              : {}),
+          }),
+        ),
       );
 
       // Check for failures
-      const failures = orderResults.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success));
+      const failures = orderResults.filter(
+        (r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.success),
+      );
       if (failures.length > 0) {
-        const errorMsg = failures[0].status === 'fulfilled' 
-          ? (failures[0].value as any).message || (failures[0].value as any).error || "Unable to place order."
-          : "Failed to create order";
+        const errorMsg =
+          failures[0].status === "fulfilled"
+            ? (failures[0].value as { message?: string; error?: string }).message ||
+              (failures[0].value as { error?: string }).error ||
+              "Unable to place order."
+            : "Failed to create order";
         toast({
           title: "Checkout failed",
           description: errorMsg,
@@ -334,8 +349,10 @@ export default function Checkout() {
 
       // Get successful order IDs
       const successfulOrders = orderResults
-        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && r.value.success)
-        .map(r => r.value.data);
+        .filter((r): r is PromiseFulfilledResult<{ success: true; data: { jimatshop_order_id: string; billplz_url?: string | null } }> =>
+          r.status === "fulfilled" && r.value.success,
+        )
+        .map((r) => r.value.data);
 
       clear();
 
@@ -343,8 +360,9 @@ export default function Checkout() {
       if (paymentMethod === "billplz") {
         const billUrl = successfulOrders?.[0]?.billplz_url as string | null | undefined;
         if (billUrl) {
+          const orderId = successfulOrders[0].jimatshop_order_id;
           toast({ title: "Redirecting to Billplz", description: "Complete your payment to confirm the order." });
-          window.location.href = billUrl;
+          await openBillplzPayment(billUrl, orderId);
           return;
         }
         // If billUrl is missing, backend did not generate a bill URL (treat as an error, but keep the order created).
@@ -535,7 +553,15 @@ export default function Checkout() {
           )}
           <p className="text-xs text-muted-foreground">
             {user ? (
-              shopperId ? (
+              isShopperLoading ? (
+                "Loading shopper profile..."
+              ) : isShopperError ? (
+                <span className="text-destructive">
+                  {shopperError instanceof Error
+                    ? shopperError.message
+                    : "Couldn't load your shopper profile."}
+                </span>
+              ) : shopperId ? (
                 isCoinLoading || isPlatformCoinLoading ? (
                   "Loading coin balance..."
                 ) : (
@@ -563,12 +589,23 @@ export default function Checkout() {
                   </>
                 )
               ) : (
-                "Sign-in is ready; preparing shopper profile..."
+                "Shopper profile not found."
               )
             ) : (
               "Sign in to view your JiMATShop coin balance."
             )}
           </p>
+          {user && isShopperError ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => void refetchShopperId()}
+            >
+              Retry
+            </Button>
+          ) : null}
         </div>
 
         <div className="jimat-card p-4 space-y-2">
