@@ -12,6 +12,8 @@ import { isMobilePlatform, signInWithGoogleNative } from "@/lib/auth/mobileAuth"
 import { toast } from "@/components/ui/sonner";
 import { useOnboarding } from "@/hooks/useOnboarding";
 
+import { version } from "../../package.json";
+
 const slides = [
   {
     image: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80",
@@ -258,6 +260,10 @@ export default function Onboarding() {
             >
               Teruskan sebagai tetamu
             </Button>
+
+            <div className="text-center text-xs text-muted-foreground/60 pt-4" data-testid="app-version">
+              v{version}
+            </div>
           </div>
         </div>
       </div>
