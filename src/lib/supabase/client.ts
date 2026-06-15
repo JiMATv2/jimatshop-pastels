@@ -1,6 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { uploadToNativeBackend } from './upload';
 import { EX_SUPABASE_ANON_KEY, getSupabaseApiKey, getSupabaseQueryHeaders } from './apiKey';
+import {
+  clearNativeSession,
+  ensureValidNativeSession,
+  readNativeSession,
+  writeNativeSession,
+} from './session';
 
 // Use environment variables for configuration
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? 'https://ex_supabase.jimatbiz.com';
@@ -123,27 +129,44 @@ class SupabaseProxy {
     this.authListeners.forEach(listener => listener(event, session));
   };
 
+  private persistSession = (session: any, event: string) => {
+    writeNativeSession(session);
+    this.notifyAuthListeners(event, session);
+  };
+
   auth = {
     getSession: async () => {
-      const sessionStr = localStorage.getItem('native_session');
-      if (sessionStr) {
-        try {
-          const session = JSON.parse(sessionStr);
-          return { data: { session }, error: null };
-        } catch (e) {
+      try {
+        const previous = readNativeSession();
+        const session = await ensureValidNativeSession();
+        if (!session) {
+          if (previous) {
+            this.notifyAuthListeners('SIGNED_OUT', null);
+          }
           return { data: { session: null }, error: null };
         }
+        if (previous && session.access_token !== previous.access_token) {
+          this.notifyAuthListeners('TOKEN_REFRESHED', session);
+        }
+        return { data: { session }, error: null };
+      } catch {
+        clearNativeSession();
+        this.notifyAuthListeners('SIGNED_OUT', null);
+        return { data: { session: null }, error: null };
       }
-      return { data: { session: null }, error: null };
+    },
+    refreshSession: async () => {
+      const previous = readNativeSession();
+      const session = await ensureValidNativeSession();
+      if (session && previous && session.access_token !== previous.access_token) {
+        this.notifyAuthListeners('TOKEN_REFRESHED', session);
+      } else if (!session) {
+        this.notifyAuthListeners('SIGNED_OUT', null);
+      }
+      return { data: { session }, error: session ? null : { message: 'Session expired' } };
     },
     onAuthStateChange: (callback: (event: string, session: any) => void) => {
       this.authListeners.push(callback);
-      const sessionStr = localStorage.getItem('native_session');
-      if (sessionStr) {
-        try {
-          callback('INITIAL_SESSION', JSON.parse(sessionStr));
-        } catch (e) {}
-      }
       return { data: { subscription: { unsubscribe: () => { this.authListeners = this.authListeners.filter(l => l !== callback); } } } };
     },
     signInWithPassword: async (options: { email: string; password: string }) => {
@@ -158,8 +181,7 @@ class SupabaseProxy {
           return { data: { user: null, session: null }, error: result.error || { message: 'Login failed' } };
         }
         if (result.data?.session) {
-          localStorage.setItem('native_session', JSON.stringify(result.data.session));
-          this.notifyAuthListeners('SIGNED_IN', result.data.session);
+          this.persistSession(result.data.session, 'SIGNED_IN');
         }
         return { data: result.data, error: null };
       } catch (error: any) {
@@ -183,8 +205,7 @@ class SupabaseProxy {
           return { data: { user: null, session: null }, error: result.error || { message: 'Signup failed' } };
         }
         if (result.data?.session) {
-          localStorage.setItem('native_session', JSON.stringify(result.data.session));
-          this.notifyAuthListeners('SIGNED_IN', result.data.session);
+          this.persistSession(result.data.session, 'SIGNED_IN');
         }
         return { data: result.data, error: null };
       } catch (error: any) {
@@ -193,20 +214,20 @@ class SupabaseProxy {
     },
     resetPasswordForEmail: (email: string, options: any) => this.realSupabase.auth.resetPasswordForEmail(email, options),
     updateUser: async (attributes: any) => {
-      const sessionStr = localStorage.getItem('native_session');
-      if (sessionStr) {
+      const session = await ensureValidNativeSession();
+      if (session) {
         try {
-          const session = JSON.parse(sessionStr);
           const accessToken = session.access_token || getSupabaseApiKey();
           const response = await fetch(`${EX_SUPABASE_ENDPOINT}/supabase/auth/update-user`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', apikey: accessToken, 'Authorization': `Bearer ${accessToken}` },
-            body: JSON.stringify({ data: attributes.data, user_id: session.user.id })
+            body: JSON.stringify({ data: attributes.data, user_id: session.user?.id })
           });
           const result = await response.json();
           if (result.data?.user) {
+            session.user = session.user || { id: result.data.user.id };
             session.user.user_metadata = result.data.user.user_metadata;
-            localStorage.setItem('native_session', JSON.stringify(session));
+            writeNativeSession(session);
             this.notifyAuthListeners('USER_UPDATED', session);
           }
           return result;
@@ -219,21 +240,19 @@ class SupabaseProxy {
     setSession: async (sessionInfo: any) => {
       const result = await this.realSupabase.auth.setSession(sessionInfo);
       if (result.data?.session) {
-        localStorage.setItem('native_session', JSON.stringify(result.data.session));
-        this.notifyAuthListeners('SIGNED_IN', result.data.session);
+        this.persistSession(result.data.session, 'SIGNED_IN');
       }
       return result;
     },
     exchangeCodeForSession: async (code: string) => {
       const result = await this.realSupabase.auth.exchangeCodeForSession(code);
       if (result.data?.session) {
-        localStorage.setItem('native_session', JSON.stringify(result.data.session));
-        this.notifyAuthListeners('SIGNED_IN', result.data.session);
+        this.persistSession(result.data.session, 'SIGNED_IN');
       }
       return result;
     },
     signOut: async () => {
-      localStorage.removeItem('native_session');
+      clearNativeSession();
       this.notifyAuthListeners('SIGNED_OUT', null);
       return this.realSupabase.auth.signOut();
     },
@@ -248,16 +267,11 @@ class SupabaseProxy {
           return await response.json();
         } catch (e) { console.error('Failed to get user via token:', e); }
       }
-      const sessionStr = localStorage.getItem('native_session');
-      if (sessionStr) {
-        try {
-          const session = JSON.parse(sessionStr);
-          return { data: { user: session.user }, error: null };
-        } catch (e) {
-          return { data: { user: null }, error: null };
-        }
+      const session = await ensureValidNativeSession();
+      if (session?.user) {
+        return { data: { user: session.user }, error: null };
       }
-      return this.realSupabase.auth.getUser(token);
+      return { data: { user: null }, error: null };
     },
     signInWithIdToken: async (options: { provider: string; token: string }) => {
       try {
@@ -269,8 +283,7 @@ class SupabaseProxy {
           return { data: { user: null, session: null }, error: result.error || { message: 'Google login failed' } };
         }
         if (result.data?.session) {
-          localStorage.setItem('native_session', JSON.stringify(result.data.session));
-          this.notifyAuthListeners('SIGNED_IN', result.data.session);
+          this.persistSession(result.data.session, 'SIGNED_IN');
         }
         return { data: result.data, error: null };
       } catch (error: any) {
