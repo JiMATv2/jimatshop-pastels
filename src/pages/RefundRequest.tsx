@@ -257,8 +257,13 @@ export default function RefundRequest() {
           .upload(filePath, file);
 
         if (error) throw error;
-        if (data?.publicUrl) {
-          urls.push(data.publicUrl);
+
+        const { data: urlData } = supabase.storage
+          .from("refunds")
+          .getPublicUrl(filePath);
+
+        if (urlData?.publicUrl) {
+          urls.push(urlData.publicUrl);
         }
       }
       return urls;
