@@ -9,19 +9,87 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Mail, Phone, LogOut, Shield, Package, Heart, MapPin, Coins, Bell, BookOpen } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { Capacitor } from "@capacitor/core";
 import { notificationService } from "@/lib/notifications/notificationService";
 import { deleteShopperAccount } from "@/lib/api/accountDeletion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { getSavedLocation } from "@/pages/LocationSearch";
+import type { SavedLocation } from "@/pages/LocationSearch";
+import { useLatestLocation } from "@/lib/location/useLocation";
 import { version } from "../../package.json";
 
 const Profile = () => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const { location: sqliteLocation, refresh: refreshLocation } = useLatestLocation();
+  const refreshLocationRef = useRef(refreshLocation);
+  const [currentLocation, setCurrentLocation] = useState<SavedLocation | null>(
+    sqliteLocation || getSavedLocation()
+  );
+
+  // Keep ref updated with latest refresh function
+  useEffect(() => {
+    refreshLocationRef.current = refreshLocation;
+  }, [refreshLocation]);
+
+  // Update location when SQLite location changes
+  useEffect(() => {
+    if (sqliteLocation) {
+      setCurrentLocation((prev) => {
+        // Only update if location actually changed
+        if (prev?.coordinates?.latitude === sqliteLocation.coordinates?.latitude &&
+            prev?.coordinates?.longitude === sqliteLocation.coordinates?.longitude) {
+          return prev;
+        }
+        return sqliteLocation;
+      });
+    }
+  }, [sqliteLocation]);
+
+  // Update location when returning from location search page
+  useEffect(() => {
+    if (location.pathname === "/location-search") {
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      refreshLocationRef.current();
+      setCurrentLocation(getSavedLocation());
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
+
+  // Also listen for storage changes (for cross-tab updates)
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "jimatshop_selected_location") {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        timeoutId = setTimeout(() => {
+          refreshLocationRef.current();
+          setCurrentLocation(getSavedLocation());
+        }, 100);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
 
   const shopperSelectCols =
     "id, first_name, last_name, email, phone, member_no, ic_no, tax_identification_number";
@@ -605,8 +673,20 @@ const Profile = () => {
               </div>
             </Button>
             <Separator />
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-auto py-3"
+              onClick={() => navigate("/location-search")}
+            >
+              <MapPin className="h-5 w-5 text-muted-foreground" />
+              <div className="flex-1 text-left">
+                <p className="font-medium">Current Location</p>
+                <p className="text-xs text-muted-foreground">{currentLocation?.name || "Kuala Lumpur"}</p>
+              </div>
+            </Button>
+            <Separator />
             <Button variant="ghost" className="w-full justify-start gap-3 h-auto py-3">
-              <MapPin className="h-5 w-5" />
+              <MapPin className="h-5 w-5 text-muted-foreground" />
               <div className="flex-1 text-left">
                 <p className="font-medium">Delivery Addresses</p>
                 <p className="text-xs text-muted-foreground">Manage addresses</p>

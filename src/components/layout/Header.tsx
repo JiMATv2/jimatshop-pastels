@@ -1,4 +1,4 @@
-import { Search, MapPin } from "lucide-react";
+import { Search, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,9 +15,6 @@ import { CartIconButton } from "@/components/cart/CartIconButton";
 import { StickyHeader } from "@/components/layout/StickyHeader";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { getSavedLocation } from "@/pages/LocationSearch";
-import type { SavedLocation } from "@/pages/LocationSearch";
-import { useLatestLocation } from "@/lib/location/useLocation";
 import { saveCurrentLocation } from "@/lib/location/storage";
 
 export const Header = () => {
@@ -29,17 +26,7 @@ export const Header = () => {
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { location: sqliteLocation, refresh: refreshLocation } = useLatestLocation();
-  const refreshLocationRef = useRef(refreshLocation);
-  const [currentLocation, setCurrentLocation] = useState<SavedLocation | null>(
-    sqliteLocation || getSavedLocation()
-  );
   const [searchValue, setSearchValue] = useState("");
-
-  // Keep ref updated with latest refresh function
-  useEffect(() => {
-    refreshLocationRef.current = refreshLocation;
-  }, [refreshLocation]);
 
   // Reset flag when user logs out
   useEffect(() => {
@@ -47,63 +34,6 @@ export const Header = () => {
       hasProcessedOAuthLogin.current = false;
     }
   }, [user]);
-
-  // Update location when SQLite location changes
-  useEffect(() => {
-    if (sqliteLocation) {
-      setCurrentLocation((prev) => {
-        // Only update if location actually changed
-        if (prev?.coordinates?.latitude === sqliteLocation.coordinates?.latitude &&
-            prev?.coordinates?.longitude === sqliteLocation.coordinates?.longitude) {
-          return prev;
-        }
-        return sqliteLocation;
-      });
-    }
-  }, [sqliteLocation]);
-
-  // Update location when returning from location search page
-  useEffect(() => {
-    // Only refresh if we're coming from location search page
-    if (location.pathname === "/location-search") {
-      return; // Don't refresh while on the page
-    }
-    
-    // Refresh location when navigating away from location search
-    const timer = setTimeout(() => {
-      refreshLocationRef.current();
-      setCurrentLocation(getSavedLocation());
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, [location.pathname]); // Removed refreshLocation from deps
-
-  // Also listen for storage changes (for cross-tab updates)
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
-    
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "jimatshop_selected_location") {
-        // Clear any pending timeout
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-        // Debounce to prevent rapid updates
-        timeoutId = setTimeout(() => {
-          refreshLocationRef.current();
-          setCurrentLocation(getSavedLocation());
-        }, 100);
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, []); // Empty deps - using ref for refreshLocation
 
   // Keep search input in sync with URL (?q=...) so it works as a global header across pages.
   useEffect(() => {
@@ -174,8 +104,6 @@ export const Header = () => {
           try {
             await saveCurrentLocation(location);
             console.log("[auth] Location saved to SQLite");
-            // Refresh location in header
-            refreshLocationRef.current();
           } catch (saveError) {
             console.warn("[auth] Failed to save location to SQLite:", saveError);
           }
@@ -277,7 +205,6 @@ export const Header = () => {
           });
           try {
             await saveCurrentLocation(location);
-            refreshLocationRef.current();
           } catch (saveError) {
             console.warn("[auth] Failed to save location to SQLite:", saveError);
           }
@@ -371,7 +298,6 @@ export const Header = () => {
         try {
           await saveCurrentLocation(location);
           console.log("[auth] Location saved to SQLite");
-          refreshLocationRef.current();
         } catch (saveError) {
           console.warn("[auth] Failed to save location to SQLite:", saveError);
         }
@@ -432,24 +358,8 @@ export const Header = () => {
   return (
     <StickyHeader as="header">
       <div className="container mx-auto px-4 py-3 safe-area-x">
-        {/* Logo and Location */}
-        <div className="flex items-center justify-between mb-3 px-4">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">J</span>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-foreground">JimatShop</h1>
-              <Button
-                variant="ghost"
-                className="h-auto p-0 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => navigate("/location-search")}
-              >
-                <MapPin className="w-3 h-3" />
-                <span>{currentLocation?.name || "Kuala Lumpur"}</span>
-              </Button>
-            </div>
-          </div>
+        {/* Header Actions */}
+        <div className="flex items-center justify-end mb-3 px-4">
           <div className="flex items-center gap-2">
             {!loading && !user ? (
               <>
@@ -516,8 +426,9 @@ export const Header = () => {
               </>
             ) : null}
             {!loading && user ? (
-              <Button variant="ghost" size="sm" onClick={onLogout}>
-                Logout
+              <Button variant="ghost" size="sm" onClick={onLogout} className="gap-2">
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
               </Button>
             ) : null}
             <CartIconButton aria-label="Cart" />
