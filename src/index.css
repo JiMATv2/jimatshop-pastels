@@ -156,6 +156,7 @@
   html {
     /* viewport-fit=cover in index.html enables env(safe-area-inset-*) on iOS */
     min-height: 100%;
+    font-size: 0.8rem;
   }
 
   body {
