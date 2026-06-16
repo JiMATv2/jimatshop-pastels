@@ -14,6 +14,7 @@ import { Loader2, Upload, X, ArrowLeft, Calendar } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { resolveShopperId } from "@/lib/api/shopper";
 import { supabase } from "@/lib/supabase/client";
+import { uploadToNativeBackend } from "@/lib/supabase/upload";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { formatJimatshopOrderNumber } from "@/lib/orders/formatOrderNumber";
@@ -252,19 +253,8 @@ export default function RefundRequest() {
         const uniqueName = `${crypto.randomUUID()}-${file.name.replace(/\s/g, "_")}`;
         const filePath = `shopper-refund-${id}/${uniqueName}`;
 
-        const { data, error } = await supabase.storage
-          .from("refunds")
-          .upload(filePath, file);
-
-        if (error) throw error;
-
-        const { data: urlData } = supabase.storage
-          .from("refunds")
-          .getPublicUrl(filePath);
-
-        if (urlData?.publicUrl) {
-          urls.push(urlData.publicUrl);
-        }
+        const publicUrl = await uploadToNativeBackend(file, "refunds", filePath);
+        urls.push(publicUrl);
       }
       return urls;
     } catch (e) {
