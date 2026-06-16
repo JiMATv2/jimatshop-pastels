@@ -22,6 +22,7 @@ import Wishlist from "./pages/Wishlist";
 import NotFound from "./pages/NotFound";
 import JimatshopCampaignDetails from "./pages/JimatshopCampaignDetails";
 import UserGuide from "./pages/UserGuide";
+import AccountSettings from "./pages/AccountSettings";
 import { CapacitorBackHandler } from "@/components/layout/CapacitorBackHandler";
 import { PaymentReturnHandler } from "@/components/payments/PaymentReturnHandler";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="/orders/:orderId" element={<OrderDetails />} />
               <Route path="/orders/:orderId/refund" element={<RefundRequest />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/account-settings" element={<AccountSettings />} />
               <Route path="/wishlist" element={<Wishlist />} />
               <Route path="/campaigns/:campaignId" element={<JimatshopCampaignDetails />} />
               <Route path="/jimatshop-coins" element={<JimatshopCoins />} />
