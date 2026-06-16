@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2, Minus, Plus, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Loader2, Minus, Plus, ShoppingCart, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { fetchMobileInventoryById, type MobileInventory } from "@/lib/api/mobileInventories";
@@ -145,7 +145,18 @@ export default function InventoryDetails() {
         <div className="space-y-3">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <p className="text-sm text-muted-foreground">{inv.buyer_name}</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm text-muted-foreground">{inv.buyer_name}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-8 text-xs"
+                  onClick={() => navigate(`/products?buyer_id=${inv.buyer_id}`)}
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  View Seller
+                </Button>
+              </div>
               <h1 className="text-xl font-bold text-foreground mt-1">{inv.product_name}</h1>
             </div>
           </div>
