@@ -6,8 +6,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/lib/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Heart } from "lucide-react";
+import { Heart, Store } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 type WishlistRow = {
   id: string;
@@ -20,6 +22,20 @@ type WishlistRow = {
     cover_image_url: string | null;
     category: string | null;
     sub_category: string | null;
+  } | null;
+};
+
+type FollowedRetailerRow = {
+  id: string;
+  created_at: string;
+  buyer: {
+    id: string;
+    business_name: string;
+    outlet_name: string | null;
+    address: string | null;
+    shop_photo_url: string | null;
+    state: string | null;
+    city: string | null;
   } | null;
 };
 
@@ -38,6 +54,7 @@ function asNumber(v: unknown): number {
 export default function Wishlist() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<"products" | "retailers">("products");
 
   const { data: shopperId, isLoading: shopperLoading } = useQuery({
     queryKey: ["shopper-id", user?.id ?? null, "wishlist"],
@@ -81,6 +98,27 @@ export default function Wishlist() {
     staleTime: 30_000,
   });
 
+  const {
+    data: followedRetailers = [],
+    isLoading: followedLoading,
+  } = useQuery({
+    queryKey: ["followed-retailers", shopperId ?? null],
+    queryFn: async () => {
+      if (!shopperId) return [];
+      const { data, error } = await supabase
+        .from("buyer_followers")
+        .select(
+          "id, created_at, buyer:buyer_id (id, business_name, outlet_name, address, shop_photo_url, state, city)",
+        )
+        .eq("shopper_id", shopperId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as FollowedRetailerRow[];
+    },
+    enabled: Boolean(shopperId),
+    staleTime: 30_000,
+  });
+
   if (!user) {
     return (
       <div className="min-h-screen bg-background pb-24">
@@ -100,8 +138,9 @@ export default function Wishlist() {
     );
   }
 
-  const isLoading = shopperLoading || wishlistLoading;
+  const isLoading = shopperLoading || wishlistLoading || followedLoading;
   const hasItems = wishlistItems.some((row) => row.product?.id);
+  const hasRetailers = followedRetailers.some((row) => row.buyer?.id);
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -112,67 +151,152 @@ export default function Wishlist() {
           <h1 className="text-xl font-semibold text-foreground">Wishlist</h1>
         </div>
 
-        {isLoading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {Array.from({ length: 4 }).map((_, idx) => (
-              <Skeleton key={idx} className="h-44 w-full rounded-xl" />
-            ))}
-          </div>
-        ) : hasItems ? (
-          <div className="grid grid-cols-2 gap-3">
-            {wishlistItems.map((item) => {
-              const product = item.product;
-              if (!product) return null;
-              const promoPrice = product.promotion_price != null ? asNumber(product.promotion_price) : null;
-              const normalPrice = asNumber(product.normal_price);
-              const displayPrice = promoPrice && promoPrice > 0 ? promoPrice : normalPrice;
-              const showOriginal = promoPrice != null && promoPrice > 0 && normalPrice > promoPrice;
+        {/* Tab Controls */}
+        <div className="flex border-b border-border">
+          <button
+            className={cn(
+              "flex-1 py-2 text-center text-sm font-semibold border-b-2 transition-colors",
+              activeTab === "products"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+            onClick={() => setActiveTab("products")}
+          >
+            Products ({wishlistItems.length})
+          </button>
+          <button
+            className={cn(
+              "flex-1 py-2 text-center text-sm font-semibold border-b-2 transition-colors",
+              activeTab === "retailers"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+            onClick={() => setActiveTab("retailers")}
+          >
+            Retailers ({followedRetailers.length})
+          </button>
+        </div>
 
-              return (
-                <div
-                  key={item.id}
-                  className="jimat-card cursor-pointer"
-                  onClick={() => navigate(`/product/${product.id}`)}
-                >
-                  <div className="p-3">
-                    <div className="aspect-square bg-muted rounded-xl mb-3 flex items-center justify-center overflow-hidden">
-                      <img
-                        src={product.cover_image_url || "https://via.placeholder.com/400"}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-medium text-foreground line-clamp-2 min-h-[2.5rem]">
-                        {product.name}
-                      </h4>
-                      <p className="text-xs text-muted-foreground">
-                        {product.sub_category || product.category || "1 unit"}
-                      </p>
-                      <div className="flex items-center gap-1 pt-1">
-                        <span className="text-base font-bold text-primary">{formatMYR(displayPrice)}</span>
-                        {showOriginal ? (
-                          <span className="text-xs text-muted-foreground line-through">
-                            {formatMYR(normalPrice)}
-                          </span>
-                        ) : null}
+        {isLoading ? (
+          activeTab === "products" ? (
+            <div className="grid grid-cols-2 gap-3">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <Skeleton key={idx} className="h-44 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, idx) => (
+                <Skeleton key={idx} className="h-24 w-full rounded-xl" />
+              ))}
+            </div>
+          )
+        ) : activeTab === "products" ? (
+          hasItems ? (
+            <div className="grid grid-cols-2 gap-3">
+              {wishlistItems.map((item) => {
+                const product = item.product;
+                if (!product) return null;
+                const promoPrice = product.promotion_price != null ? asNumber(product.promotion_price) : null;
+                const normalPrice = asNumber(product.normal_price);
+                const displayPrice = promoPrice && promoPrice > 0 ? promoPrice : normalPrice;
+                const showOriginal = promoPrice != null && promoPrice > 0 && normalPrice > promoPrice;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="jimat-card cursor-pointer"
+                    onClick={() => navigate(`/product/${product.id}`)}
+                  >
+                    <div className="p-3">
+                      <div className="aspect-square bg-muted rounded-xl mb-3 flex items-center justify-center overflow-hidden">
+                        <img
+                          src={product.cover_image_url || "https://via.placeholder.com/400"}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium text-foreground line-clamp-2 min-h-[2.5rem]">
+                          {product.name}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          {product.sub_category || product.category || "1 unit"}
+                        </p>
+                        <div className="flex items-center gap-1 pt-1">
+                          <span className="text-base font-bold text-primary">{formatMYR(displayPrice)}</span>
+                          {showOriginal ? (
+                            <span className="text-xs text-muted-foreground line-through">
+                              {formatMYR(normalPrice)}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                );
+              })}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <Heart className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                <h2 className="text-lg font-semibold text-foreground">No saved items yet</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Save items you love and they will appear here.
+                </p>
+                <Button className="mt-4" onClick={() => navigate("/products")}>
+                  Browse products
+                </Button>
+              </CardContent>
+            </Card>
+          )
+        ) : hasRetailers ? (
+          <div className="space-y-3">
+            {followedRetailers.map((item) => {
+              const buyer = item.buyer;
+              if (!buyer) return null;
+              const name = buyer.business_name || buyer.outlet_name || "Retailer";
+              const address = [buyer.address, buyer.city, buyer.state].filter(Boolean).join(", ") || "—";
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(`/products?buyer_id=${buyer.id}`)}
+                  className="w-full text-left jimat-card p-0 overflow-hidden transition-colors hover:bg-muted/50 active:bg-muted"
+                >
+                  <div className="p-4 grid grid-cols-4 md:grid-cols-12 items-center">
+                    <div className="col-span-1 md:col-span-2 flex justify-center">
+                      <div className="h-16 w-16 rounded-xl bg-jimat-green/15 flex items-center justify-center text-jimat-darkgreen overflow-hidden">
+                        <img
+                          src={buyer.shop_photo_url || "https://jimatshop.com/images/icons/store.svg"}
+                          alt="Store"
+                          className="h-10 w-10 object-cover rounded-lg"
+                        />
+                      </div>
+                    </div>
+                    <div className="col-span-3 md:col-span-10 ml-3 min-w-0">
+                      <h5 className="text-sm font-semibold text-foreground leading-5 truncate">
+                        {name}
+                      </h5>
+                      <p className="py-1 text-xs text-muted-foreground leading-tight truncate">
+                        {address}
+                      </p>
+                    </div>
+                  </div>
+                </button>
               );
             })}
           </div>
         ) : (
           <Card>
             <CardContent className="py-10 text-center">
-              <Heart className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-              <h2 className="text-lg font-semibold text-foreground">No saved items yet</h2>
+              <Store className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+              <h2 className="text-lg font-semibold text-foreground">No followed retailers yet</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Save items you love and they will appear here.
+                Follow retailers you shop at and they will appear here.
               </p>
-              <Button className="mt-4" onClick={() => navigate("/products")}>
-                Browse products
+              <Button className="mt-4" onClick={() => navigate("/shops")}>
+                Browse outlets
               </Button>
             </CardContent>
           </Card>
@@ -182,4 +306,3 @@ export default function Wishlist() {
     </div>
   );
 }
-
