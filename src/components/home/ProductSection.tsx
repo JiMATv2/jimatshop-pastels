@@ -101,7 +101,7 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
             : resp.data.filter((p) => p.is_fast_moving);
 
         const picked = filtered.length ? filtered : resp.data;
-        return picked.map(toUiProduct).slice(0, 4);
+        return picked.map(toUiProduct).slice(0, 12);
       } catch (e) {
         console.warn("Mobile products API failed; falling back to local catalog", e);
         return loadLocal();
@@ -125,9 +125,9 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {isLoading || buyerIdsLoading ? (
-          Array.from({ length: 4 }).map((_, idx) => (
+          Array.from({ length: 12 }).map((_, idx) => (
             <div key={idx} className="jimat-card">
               <div className="p-3 space-y-3">
                 <Skeleton className="aspect-square rounded-xl" />
