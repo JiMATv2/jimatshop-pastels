@@ -39,7 +39,7 @@ const Index = () => {
       <main>
         <ProductSection title="🔥 Hot Deals" products="featured" />
         <ProductSection title="⭐ Popular Items" products="popular" />
-        <ShopperWidgets />
+
         <NearbyOutlets />
 
         <HeroBanner />

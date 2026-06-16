@@ -236,7 +236,7 @@ const Profile = () => {
       <Header />
 
       <main className="px-4 py-6 space-y-4">
-        <ShopperWidgets />
+
         {/* Profile Header Card */}
         <Card>
           <CardContent className="pt-6">
@@ -259,6 +259,8 @@ const Profile = () => {
           </CardContent>
         </Card>
 
+        <ShopperWidgets />
+
         {/* Quick Actions */}
         <Card>
           <CardHeader>
@@ -276,6 +278,19 @@ const Profile = () => {
                 <p className="text-xs text-muted-foreground">Manage profile details and notifications</p>
               </div>
             </Button>
+            <Separator />
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-auto py-3"
+              onClick={() => navigate("/location-search")}
+            >
+              <MapPin className="h-5 w-5 text-muted-foreground" />
+              <div className="flex-1 text-left">
+                <p className="font-medium">Current Location</p>
+                <p className="text-xs text-muted-foreground">{currentLocation?.name || "Kuala Lumpur"}</p>
+              </div>
+            </Button>
+
             <Separator />
             <Button
               variant="ghost"
@@ -325,26 +340,8 @@ const Profile = () => {
                 <p className="text-xs text-muted-foreground">Learn how to use JimatShop</p>
               </div>
             </Button>
-            <Separator />
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 h-auto py-3"
-              onClick={() => navigate("/location-search")}
-            >
-              <MapPin className="h-5 w-5 text-muted-foreground" />
-              <div className="flex-1 text-left">
-                <p className="font-medium">Current Location</p>
-                <p className="text-xs text-muted-foreground">{currentLocation?.name || "Kuala Lumpur"}</p>
-              </div>
-            </Button>
-            <Separator />
-            <Button variant="ghost" className="w-full justify-start gap-3 h-auto py-3">
-              <MapPin className="h-5 w-5 text-muted-foreground" />
-              <div className="flex-1 text-left">
-                <p className="font-medium">Delivery Addresses</p>
-                <p className="text-xs text-muted-foreground">Manage addresses</p>
-              </div>
-            </Button>
+
+
           </CardContent>
         </Card>
 
