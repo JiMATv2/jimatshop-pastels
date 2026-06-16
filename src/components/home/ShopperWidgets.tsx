@@ -1,7 +1,9 @@
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { fetchShopperSummary } from "@/lib/api/shopperSummary";
+import { resolveShopperId } from "@/lib/api/shopper";
+import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-import { Clock, ShoppingBag, Ticket, Package, Wallet, ChevronRight } from "lucide-react";
+import { Clock, ShoppingBag, Coins, Package, Wallet, ChevronRight } from "lucide-react";
 import type { ComponentType } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -18,11 +20,20 @@ type Widget = {
 const formatMYR = (amount: number) =>
   new Intl.NumberFormat("ms-MY", { style: "currency", currency: "MYR" }).format(amount);
 
+function asNumber(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (typeof v === "string") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+}
+
 export function ShopperWidgets() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const { data, isLoading, isError } = useQuery({
+  const { data: summaryData, isLoading: isSummaryLoading, isError: isSummaryError } = useQuery({
     queryKey: ["shopper-summary", user?.id],
     queryFn: async () => {
       if (!user) throw new Error("Not signed in");
@@ -32,11 +43,29 @@ export function ShopperWidgets() {
     staleTime: 30_000,
   });
 
-  const totalOrders = data?.totalOrders ?? 0;
-  const totalSpend = data?.totalSpend ?? 0;
-  const processingOrders = data?.processingOrders ?? 0;
-  const availableVouchers = data?.availableVouchers ?? 0;
-  const readyForPickupOrders = data?.readyForPickupOrders ?? 0;
+  const { data: coinsTotal = 0, isLoading: isCoinsLoading } = useQuery({
+    queryKey: ["shopper-jimatshop-coins-total", user?.id],
+    queryFn: async () => {
+      if (!user) return 0;
+      const shopperId = await resolveShopperId({ authUserId: user.id, email: user.email });
+      if (!shopperId) return 0;
+
+      const { data, error } = await supabase
+        .from("jimatshop_coins")
+        .select("balance")
+        .eq("shopper_id", shopperId);
+
+      if (error) throw error;
+      return (data ?? []).reduce((sum, r) => sum + asNumber(r.balance), 0);
+    },
+    enabled: Boolean(user),
+    staleTime: 15_000,
+  });
+
+  const totalOrders = summaryData?.totalOrders ?? 0;
+  const totalSpend = summaryData?.totalSpend ?? 0;
+  const processingOrders = summaryData?.processingOrders ?? 0;
+  const readyForPickupOrders = summaryData?.readyForPickupOrders ?? 0;
 
   const widgets: Widget[] = [
     {
@@ -64,10 +93,10 @@ export function ShopperWidgets() {
       iconBg: "bg-primary",
     },
     {
-      title: "Vouchers",
-      value: `${availableVouchers}`,
-      subtitle: "redeemable",
-      Icon: Ticket,
+      title: "JiMATSHOP Coins",
+      value: formatMYR(coinsTotal),
+      subtitle: "total balance",
+      Icon: Coins,
       gradient: "",
       iconBg: "bg-primary",
     },
@@ -100,6 +129,9 @@ export function ShopperWidgets() {
     );
   }
 
+  const isLoading = isSummaryLoading || isCoinsLoading;
+  const isError = isSummaryError;
+
   return (
     <section className="px-4 py-4">
       <div className="flex items-baseline justify-between gap-3 mb-3">
@@ -115,6 +147,7 @@ export function ShopperWidgets() {
       <div className="grid grid-cols-2 gap-3 mb-3">
         {widgets.map((w) => {
           const isOrdersWidget = w.title === "Orders";
+          const isCoinsWidget = w.title === "JiMATSHOP Coins";
 
           const commonProps = isOrdersWidget
             ? {
@@ -129,14 +162,27 @@ export function ShopperWidgets() {
                 },
                 "aria-label": "View order history",
               }
-            : {};
+            : isCoinsWidget
+              ? {
+                  onClick: () => navigate("/jimatshop-coins"),
+                  role: "button",
+                  tabIndex: 0,
+                  onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      navigate("/jimatshop-coins");
+                    }
+                  },
+                  "aria-label": "View JiMATSHOP coins",
+                }
+              : {};
 
           return (
             <div
               key={w.title}
               className={cn(
                 "relative overflow-hidden rounded-2xl p-4 bg-white border-2 border-primary",
-                isOrdersWidget && "cursor-pointer hover:shadow-md transition-shadow",
+                (isOrdersWidget || isCoinsWidget) && "cursor-pointer hover:shadow-md transition-shadow",
                 w.gradient
               )}
               {...commonProps}
