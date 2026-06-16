@@ -1,4 +1,5 @@
-import { Search, LogOut } from "lucide-react";
+import { Search, LogOut, MessageSquare } from "lucide-react";
+import { useChatContext } from "@/contexts/ChatContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,8 @@ export const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading, signOut } = useAuth();
+  const { getTotalUnreadCount } = useChatContext();
+  const unread = getTotalUnreadCount();
   const hasProcessedOAuthLogin = useRef(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authSubmitting, setAuthSubmitting] = useState(false);
@@ -431,6 +434,20 @@ export const Header = () => {
                 <span>Logout</span>
               </Button>
             ) : null}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              aria-label="Chat"
+              onClick={() => navigate("/chat")}
+            >
+              <MessageSquare className="w-5 h-5" />
+              {unread > 0 ? (
+                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              ) : null}
+            </Button>
             <CartIconButton aria-label="Cart" />
           </div>
         </div>

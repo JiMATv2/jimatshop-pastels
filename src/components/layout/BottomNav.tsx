@@ -1,5 +1,4 @@
-import { Home, Grid3X3, Heart, User, ShoppingBag, MessageSquare } from "lucide-react";
-import { useChatContext } from "@/contexts/ChatContext";
+import { Home, Grid3X3, Heart, User, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NavLink } from "react-router-dom";
 
@@ -44,21 +43,12 @@ const NavItem = ({ icon, label, to, badge }: NavItemProps) => {
 };
 
 export const BottomNav = () => {
-  const { getTotalUnreadCount } = useChatContext();
-  const unread = getTotalUnreadCount();
-
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 safe-area-bottom safe-area-x">
       <div className="flex items-center justify-around max-w-md mx-auto">
         <NavItem icon={<Home className="w-5 h-5" />} label="Home" to="/" />
         <NavItem icon={<Grid3X3 className="w-5 h-5" />} label="Browse" to="/categories" />
         <NavItem icon={<ShoppingBag className="w-5 h-5" />} label="Orders" to="/orders" />
-        <NavItem
-          icon={<MessageSquare className="w-5 h-5" />}
-          label="Chat"
-          to="/chat"
-          badge={unread}
-        />
         <NavItem icon={<Heart className="w-5 h-5" />} label="Saved" to="/wishlist" />
         <NavItem icon={<User className="w-5 h-5" />} label="Profile" to="/profile" />
       </div>

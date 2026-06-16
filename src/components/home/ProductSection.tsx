@@ -1,7 +1,7 @@
 import { ProductCard } from "./ProductCard";
 import { getProductsBySection } from "@/lib/catalog/seed";
 import { useQuery } from "@tanstack/react-query";
- 
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import {
@@ -63,7 +63,7 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
             originalPrice: row.originalPrice ?? undefined,
             badge: row.badge ?? undefined,
           }))
-          .slice(0, 4) as Product[];
+          .slice(0, 12) as Product[];
       };
 
       // If token isn't configured, keep local seed catalog behavior (offline/dev friendly).

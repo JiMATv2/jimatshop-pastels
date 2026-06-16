@@ -35,17 +35,17 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       <Header />
-      
+
       <main>
-      
+        <ProductSection title="🔥 Hot Deals" products="featured" />
+        <ProductSection title="⭐ Popular Items" products="popular" />
         <ShopperWidgets />
         <NearbyOutlets />
 
         <HeroBanner />
         <CategoryGrid />
-     
-        <ProductSection title="🔥 Hot Deals" products="featured" />
-        <ProductSection title="⭐ Popular Items" products="popular" />
+
+
       </main>
 
       <BottomNav />
