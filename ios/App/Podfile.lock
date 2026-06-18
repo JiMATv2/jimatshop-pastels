@@ -5,25 +5,27 @@ PODS:
   - AppAuth/Core (1.7.6)
   - AppAuth/ExternalUserAgent (1.7.6):
     - AppAuth/Core
-  - Capacitor (8.0.2):
+  - Capacitor (8.3.0):
     - CapacitorCordova
-  - CapacitorApp (8.0.0):
+  - CapacitorApp (8.1.0):
     - Capacitor
-  - CapacitorBrowser (8.0.0):
+  - CapacitorBrowser (8.0.3):
     - Capacitor
-  - CapacitorCommunitySqlite (7.0.2):
+  - CapacitorCommunitySqlite (7.0.3):
     - Capacitor
     - SQLCipher
     - ZIPFoundation
-  - CapacitorCordova (8.0.2)
-  - CapacitorGeolocation (8.0.0):
+  - CapacitorCordova (8.3.0)
+  - CapacitorGeolocation (8.2.0):
     - Capacitor
-    - IONGeolocationLib (= 2.0.0)
-  - CapacitorLocalNotifications (8.0.0):
+    - IONGeolocationLib (= 2.1.0)
+  - CapacitorLocalNotifications (8.0.2):
     - Capacitor
   - CapacitorPreferences (8.0.1):
     - Capacitor
-  - CapacitorPushNotifications (8.0.0):
+  - CapacitorPushNotifications (8.0.3):
+    - Capacitor
+  - CapacitorStatusBar (8.0.2):
     - Capacitor
   - CodetrixStudioCapacitorGoogleAuth (0.0.1):
     - Capacitor
@@ -139,7 +141,7 @@ PODS:
     - AppAuth/Core (~> 1.6)
     - GTMSessionFetcher/Core (< 3.0, >= 1.5)
   - GTMSessionFetcher/Core (2.3.0)
-  - IONGeolocationLib (2.0.0)
+  - IONGeolocationLib (2.1.0)
   - nanopb (3.30910.0):
     - nanopb/decode (= 3.30910.0)
     - nanopb/encode (= 3.30910.0)
@@ -154,16 +156,17 @@ PODS:
   - ZIPFoundation (0.9.20)
 
 DEPENDENCIES:
-  - "Capacitor (from `../../node_modules/@capacitor/ios`)"
-  - "CapacitorApp (from `../../node_modules/@capacitor/app`)"
-  - "CapacitorBrowser (from `../../node_modules/@capacitor/browser`)"
-  - "CapacitorCommunitySqlite (from `../../node_modules/@capacitor-community/sqlite`)"
-  - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
-  - "CapacitorGeolocation (from `../../node_modules/@capacitor/geolocation`)"
-  - "CapacitorLocalNotifications (from `../../node_modules/@capacitor/local-notifications`)"
-  - "CapacitorPreferences (from `../../node_modules/@capacitor/preferences`)"
-  - "CapacitorPushNotifications (from `../../node_modules/@capacitor/push-notifications`)"
-  - "CodetrixStudioCapacitorGoogleAuth (from `../../node_modules/@codetrix-studio/capacitor-google-auth`)"
+  - "Capacitor (from `../../node_modules/.pnpm/@capacitor+ios@8.3.0_@capacitor+core@8.3.0/node_modules/@capacitor/ios`)"
+  - "CapacitorApp (from `../../node_modules/.pnpm/@capacitor+app@8.1.0_@capacitor+core@8.3.0/node_modules/@capacitor/app`)"
+  - "CapacitorBrowser (from `../../node_modules/.pnpm/@capacitor+browser@8.0.3_@capacitor+core@8.3.0/node_modules/@capacitor/browser`)"
+  - "CapacitorCommunitySqlite (from `../../node_modules/.pnpm/@capacitor-community+sqlite@7.0.3_@capacitor+core@8.3.0/node_modules/@capacitor-community/sqlite`)"
+  - "CapacitorCordova (from `../../node_modules/.pnpm/@capacitor+ios@8.3.0_@capacitor+core@8.3.0/node_modules/@capacitor/ios`)"
+  - "CapacitorGeolocation (from `../../node_modules/.pnpm/@capacitor+geolocation@8.2.0_@capacitor+core@8.3.0/node_modules/@capacitor/geolocation`)"
+  - "CapacitorLocalNotifications (from `../../node_modules/.pnpm/@capacitor+local-notifications@8.0.2_@capacitor+core@8.3.0/node_modules/@capacitor/local-notifications`)"
+  - "CapacitorPreferences (from `../../node_modules/.pnpm/@capacitor+preferences@8.0.1_@capacitor+core@8.3.0/node_modules/@capacitor/preferences`)"
+  - "CapacitorPushNotifications (from `../../node_modules/.pnpm/@capacitor+push-notifications@8.0.3_@capacitor+core@8.3.0/node_modules/@capacitor/push-notifications`)"
+  - "CapacitorStatusBar (from `../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.3.0/node_modules/@capacitor/status-bar`)"
+  - "CodetrixStudioCapacitorGoogleAuth (from `../../node_modules/.pnpm/@codetrix-studio+capacitor-google-auth@3.4.0-rc.4_@capacitor+core@8.3.0/node_modules/@codetrix-studio/capacitor-google-auth`)"
   - Firebase/Core
   - Firebase/Messaging
 
@@ -191,38 +194,41 @@ SPEC REPOS:
 
 EXTERNAL SOURCES:
   Capacitor:
-    :path: "../../node_modules/@capacitor/ios"
+    :path: "../../node_modules/.pnpm/@capacitor+ios@8.3.0_@capacitor+core@8.3.0/node_modules/@capacitor/ios"
   CapacitorApp:
-    :path: "../../node_modules/@capacitor/app"
+    :path: "../../node_modules/.pnpm/@capacitor+app@8.1.0_@capacitor+core@8.3.0/node_modules/@capacitor/app"
   CapacitorBrowser:
-    :path: "../../node_modules/@capacitor/browser"
+    :path: "../../node_modules/.pnpm/@capacitor+browser@8.0.3_@capacitor+core@8.3.0/node_modules/@capacitor/browser"
   CapacitorCommunitySqlite:
-    :path: "../../node_modules/@capacitor-community/sqlite"
+    :path: "../../node_modules/.pnpm/@capacitor-community+sqlite@7.0.3_@capacitor+core@8.3.0/node_modules/@capacitor-community/sqlite"
   CapacitorCordova:
-    :path: "../../node_modules/@capacitor/ios"
+    :path: "../../node_modules/.pnpm/@capacitor+ios@8.3.0_@capacitor+core@8.3.0/node_modules/@capacitor/ios"
   CapacitorGeolocation:
-    :path: "../../node_modules/@capacitor/geolocation"
+    :path: "../../node_modules/.pnpm/@capacitor+geolocation@8.2.0_@capacitor+core@8.3.0/node_modules/@capacitor/geolocation"
   CapacitorLocalNotifications:
-    :path: "../../node_modules/@capacitor/local-notifications"
+    :path: "../../node_modules/.pnpm/@capacitor+local-notifications@8.0.2_@capacitor+core@8.3.0/node_modules/@capacitor/local-notifications"
   CapacitorPreferences:
-    :path: "../../node_modules/@capacitor/preferences"
+    :path: "../../node_modules/.pnpm/@capacitor+preferences@8.0.1_@capacitor+core@8.3.0/node_modules/@capacitor/preferences"
   CapacitorPushNotifications:
-    :path: "../../node_modules/@capacitor/push-notifications"
+    :path: "../../node_modules/.pnpm/@capacitor+push-notifications@8.0.3_@capacitor+core@8.3.0/node_modules/@capacitor/push-notifications"
+  CapacitorStatusBar:
+    :path: "../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.3.0/node_modules/@capacitor/status-bar"
   CodetrixStudioCapacitorGoogleAuth:
-    :path: "../../node_modules/@codetrix-studio/capacitor-google-auth"
+    :path: "../../node_modules/.pnpm/@codetrix-studio+capacitor-google-auth@3.4.0-rc.4_@capacitor+core@8.3.0/node_modules/@codetrix-studio/capacitor-google-auth"
 
 SPEC CHECKSUMS:
   AppAuth: d4f13a8fe0baf391b2108511793e4b479691fb73
-  Capacitor: cfc1ce4a70dbc19fdc4e66e17808937088029752
-  CapacitorApp: cfa0120a1f3a6f69d4d37d3041782aa5c5167d0b
-  CapacitorBrowser: 7452c73a202716d9c9035e5dbe5c5d8d07737f22
-  CapacitorCommunitySqlite: b8e23cd2fd5bff7da8cb2a3a1cb3a6ffb9714a32
-  CapacitorCordova: 921bdb690ebe82421b24fce45552fd3dea2ae43a
-  CapacitorGeolocation: a8381371f7b460e6be569576557285e70f0c9d6c
-  CapacitorLocalNotifications: b0003a1b69c95badd88f9cb56b1965ace20eb346
-  CapacitorPreferences: 0fa33b3affebf12d96358b491ed7c2b39bec3270
-  CapacitorPushNotifications: 49cd6c474cb03ee171494636693f6f06209469a0
-  CodetrixStudioCapacitorGoogleAuth: fcce058390347c1ce5d8ac4764bdf1f5c1ee233b
+  Capacitor: 22e541237135648c9aa736232bb4d2eec35fddcb
+  CapacitorApp: 449ffe26375e96f8aaaee625ac6e01e5c57c8650
+  CapacitorBrowser: c987c73d09d8bd3b5ec13f06338b1e14d5d2be69
+  CapacitorCommunitySqlite: 4813d82ad33001e612a39d313cb5d28066cbafda
+  CapacitorCordova: 2e1e2bb93b2f365309dc4ff18b72b9a69a7814a9
+  CapacitorGeolocation: b36f6287bfc9f2eefa04dc900496f2c8ae666136
+  CapacitorLocalNotifications: 4db83a7f6bdd2f30dcedf5c6f92c415065467a24
+  CapacitorPreferences: cca2021f386efb75947c850334447d9ff22b14f1
+  CapacitorPushNotifications: e4437b4ec1b2070685bf032c210f346432214c5f
+  CapacitorStatusBar: 01d5763b4ed720de5ce2edbc938de6a98f4c8f32
+  CodetrixStudioCapacitorGoogleAuth: 9dcfabfb7dd804ad6231a1513bc6e81e620cbec6
   Firebase: 3c3a624c4eb42b091c32590a87678cfee193c9c5
   FirebaseAnalytics: 2513f181a22ba7d5ba547ce0a65f82352cc8a0c9
   FirebaseCore: 1b39aa6e67b4b4d5771045abf9c9a57a585ff1e7
@@ -236,12 +242,12 @@ SPEC CHECKSUMS:
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   GTMAppAuth: 0ff230db599948a9ad7470ca667337803b3fc4dd
   GTMSessionFetcher: 3a63d75eecd6aa32c2fc79f578064e1214dfdec2
-  IONGeolocationLib: a5e40b54edc2ee9902036eda5aaa41ddf07bb68d
+  IONGeolocationLib: 6a7b6f76063fb1b01cfb14fae7d0f526e3c9b271
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   SQLCipher: eb79c64049cb002b4e9fcb30edb7979bf4706dfc
   ZIPFoundation: dfd3d681c4053ff7e2f7350bc4e53b5dba3f5351
 
-PODFILE CHECKSUM: a36a237f83cdc8dad9a74794006953f4aab2911e
+PODFILE CHECKSUM: 017b61634c5171ec2f6da28de429f793bd044fa6
 
 COCOAPODS: 1.16.2

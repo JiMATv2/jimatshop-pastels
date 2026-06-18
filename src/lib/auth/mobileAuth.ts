@@ -48,13 +48,19 @@ export async function signInWithGoogleNative(): Promise<{
     (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ||
     "552393042714-oioegtu0b4rntqj2ol015jm86va9jaoj.apps.googleusercontent.com";
 
+  const iosClientId =
+    (import.meta.env.VITE_GOOGLE_CLIENT_ID_IOS as string | undefined) ||
+    "552393042714-cjtit54f5qogspi1q6544gh7m2s8t9lk.apps.googleusercontent.com";
+
+  const platformClientId = Capacitor.getPlatform() === "ios" ? iosClientId : webClientId;
+
   // Dynamic import so web builds don't pull in the native plugin shim.
   const { GoogleAuth } = await import("@codetrix-studio/capacitor-google-auth");
 
   try {
     // Safe to call multiple times – plugin is idempotent.
     await GoogleAuth.initialize({
-      clientId: webClientId,
+      clientId: platformClientId,
       scopes: ["profile", "email"],
       grantOfflineAccess: true,
     });
