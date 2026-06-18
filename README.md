@@ -89,4 +89,4 @@ npm run android:logs
  1964  npx cap run android -l --host 10.0.2.2 --port 8080 --target Medium_Phone_API_36.1
  cd android && ./gradlew assembleDebug
 
- ./gradlew bundleRelease
+ cd android && ./gradlew bundleRelease
