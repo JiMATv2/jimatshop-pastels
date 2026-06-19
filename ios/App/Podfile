@@ -27,6 +27,15 @@ target 'App' do
   # Firebase - required for FCM push notifications on iOS
   pod 'Firebase/Core'
   pod 'Firebase/Messaging'
+
+  # Privacy manifest fix: Apple requires GoogleSignIn, GTMAppAuth and
+  # GTMSessionFetcher to ship PrivacyInfo.xcprivacy. The plugin
+  # CodetrixStudioCapacitorGoogleAuth pins GoogleSignIn ~> 6.2.4, whose
+  # transitive dependencies do not include manifests. Override to GoogleSignIn
+  # 7.1.0 and matching GTMAppAuth / GTMSessionFetcher versions that do.
+  pod 'GoogleSignIn', '7.1.0'
+  pod 'GTMAppAuth', '4.1.1'
+  pod 'GTMSessionFetcher/Core', '3.3.0'
 end
 
 post_install do |installer|

@@ -24,6 +24,7 @@ interface Product {
 interface ProductSectionProps {
   title: string;
   products: "featured" | "popular";
+  variant?: "mobile" | "tablet";
 }
 
 function toUiProduct(p: MobileProduct): Product {
@@ -49,15 +50,24 @@ function toUiProduct(p: MobileProduct): Product {
   };
 }
 
-export const ProductSection = ({ title, products }: ProductSectionProps) => {
+export const ProductSection = ({ title, products, variant = "mobile" }: ProductSectionProps) => {
   const cfg = getMobileProductsClientConfig();
   const { buyerIds, isLoading: buyerIdsLoading, hasLocation } = useNearbyBuyerIds();
   const { data: productList = [], isLoading, error } = useQuery({
     queryKey: ["mobile-products", products, buyerIds],
     queryFn: async () => {
       const loadLocal = async () => {
-        const rows = await getProductsBySection(products);
-        return (rows as any[])
+        type LocalProductRow = {
+          id: string;
+          name: string;
+          price: number;
+          originalPrice?: number | null;
+          unit: string;
+          image: string;
+          badge?: Product["badge"] | null;
+        };
+        const rows = (await getProductsBySection(products)) as LocalProductRow[];
+        return rows
           .map((row) => ({
             ...row,
             originalPrice: row.originalPrice ?? undefined,
@@ -113,10 +123,12 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
 
 
 
+  const isTablet = variant === "tablet";
+
   return (
-    <section className="px-4 py-4">
+    <section className={isTablet ? "py-4" : "px-4 py-4"}>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <h3 className={isTablet ? "text-xl font-semibold text-foreground" : "text-lg font-semibold text-foreground"}>{title}</h3>
         <Link
           to={`/products?section=${products}`}
           className="text-sm text-primary font-medium"
@@ -125,17 +137,23 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
         </Link>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div
+        className={
+          isTablet
+            ? "grid grid-cols-4 gap-4"
+            : "grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4"
+        }
+      >
         {isLoading || buyerIdsLoading ? (
           Array.from({ length: 12 }).map((_, idx) => (
             <div key={idx} className="jimat-card">
-              <div className="p-3 space-y-3">
+              <div className={isTablet ? "p-4 space-y-3" : "p-3 space-y-3"}>
                 <Skeleton className="aspect-square rounded-xl" />
                 <div className="space-y-2">
-                  <Skeleton className="h-4 w-4/5" />
-                  <Skeleton className="h-3 w-2/5" />
+                  <Skeleton className={isTablet ? "h-5 w-4/5" : "h-4 w-4/5"} />
+                  <Skeleton className={isTablet ? "h-4 w-2/5" : "h-3 w-2/5"} />
                   <div className="flex items-center justify-between pt-2">
-                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className={isTablet ? "h-6 w-28" : "h-5 w-24"} />
                     <Skeleton className="h-8 w-8 rounded-full" />
                   </div>
                 </div>
@@ -144,7 +162,7 @@ export const ProductSection = ({ title, products }: ProductSectionProps) => {
           ))
         ) : (
           productList.map((product, index) => (
-            <ProductCard key={product.id} {...product} delay={index * 100} />
+            <ProductCard key={product.id} {...product} delay={index * 100} variant={variant} />
           ))
         )}
       </div>

@@ -360,9 +360,9 @@ export const Header = () => {
 
   return (
     <StickyHeader as="header">
-      <div className="container mx-auto px-4 py-3 safe-area-x">
+      <div className="container mx-auto px-4 py-3 safe-area-x md:max-w-5xl md:flex md:items-center md:gap-4">
         {/* Header Actions */}
-        <div className="flex items-center justify-end mb-3 px-4">
+        <div className="flex items-center justify-end mb-3 px-4 md:mb-0 md:px-0 md:shrink-0 md:order-2">
           <div className="flex items-center gap-2">
             {!loading && !user ? (
               <>
@@ -453,7 +453,7 @@ export const Header = () => {
         </div>
 
         {/* Search Bar */}
-        <form className="relative" onSubmit={onSubmitSearch}>
+        <form className="relative md:flex-1" onSubmit={onSubmitSearch}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={searchValue}

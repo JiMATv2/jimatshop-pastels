@@ -8,7 +8,11 @@ interface Category {
   image_url: string | null;
 }
 
-export const CategoryGrid = () => {
+interface CategoryGridProps {
+  variant?: "mobile" | "tablet";
+}
+
+export const CategoryGrid = ({ variant = "mobile" }: CategoryGridProps) => {
   const navigate = useNavigate();
   const { data: categories = [], isLoading, isError } = useQuery({
     queryKey: ["home-categories"],
@@ -26,10 +30,12 @@ export const CategoryGrid = () => {
     staleTime: 5 * 60_000,
   });
 
+  const isTablet = variant === "tablet";
+
   return (
-    <section className="px-4 py-4">
+    <section className={isTablet ? "py-4" : "px-4 py-4"}>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-foreground">Categories</h3>
+        <h3 className={isTablet ? "text-xl font-semibold text-foreground" : "text-lg font-semibold text-foreground"}>Categories</h3>
         <button className="text-sm text-primary font-medium">See All</button>
       </div>
 
@@ -39,6 +45,38 @@ export const CategoryGrid = () => {
         <div className="text-sm text-destructive">Failed to load categories.</div>
       ) : categories.length === 0 ? (
         <div className="text-sm text-muted-foreground">No categories available.</div>
+      ) : isTablet ? (
+        <div className="space-y-2">
+          {categories.map((category) => {
+            const search = new URLSearchParams({
+              section: "featured",
+              category: category.name,
+            }).toString();
+            return (
+              <button
+                key={category.id}
+                onClick={() => navigate(`/products?${search}`)}
+                className="w-full flex items-center gap-4 p-3 rounded-2xl transition-colors hover:bg-muted/50 animate-fade-in bg-card text-left"
+              >
+                <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                  {category.image_url ? (
+                    <img
+                      src={category.image_url}
+                      alt={category.name}
+                      className="h-8 w-8 object-contain"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="text-lg font-semibold text-foreground">
+                      {category.name?.trim()?.charAt(0)?.toUpperCase() ?? "?"}
+                    </span>
+                  )}
+                </div>
+                <span className="text-sm font-medium text-foreground">{category.name}</span>
+              </button>
+            );
+          })}
+        </div>
       ) : (
         <div className="grid grid-cols-4 gap-3">
           {categories.map((category, index) => {

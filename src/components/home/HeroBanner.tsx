@@ -29,7 +29,7 @@ export const HeroBanner = () => {
       {campaign?.cover_image_url && (
         <div className="absolute inset-0 bg-black/10" />
       )}
-      <div className="relative flex items-end justify-center z-10 h-[320px]">
+      <div className="relative flex items-end justify-center z-10 h-[320px] md:h-[260px]">
       
         <Button className="group" onClick={handleAction}>
           {campaign ? "View Campaign" : "Shop Now"}

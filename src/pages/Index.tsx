@@ -10,6 +10,7 @@ import { ShopperWidgets } from "@/components/home/ShopperWidgets";
 import { NearbyOutlets } from "@/components/home/NearbyOutlets";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { Link } from "react-router-dom";
+import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -33,23 +34,52 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <Header />
+    <ResponsivePage
+      mobile={
+        <div className="min-h-screen bg-background pb-24">
+          <Header />
+          <main>
+            <ProductSection title="🔥 Hot Deals" products="featured" />
+            <ProductSection title="⭐ Popular Items" products="popular" />
+            <NearbyOutlets />
+            <HeroBanner />
+            <CategoryGrid />
+          </main>
+          <BottomNav />
+        </div>
+      }
+      tablet={
+        <div className="min-h-screen bg-background pb-28">
+          <Header />
+          <TabletContainer>
+            <main className="space-y-4 py-4">
+              <HeroBanner />
 
-      <main>
-        <ProductSection title="🔥 Hot Deals" products="featured" />
-        <ProductSection title="⭐ Popular Items" products="popular" />
+              {/** md–lg: stacked professional layout */}
+              <div className="block lg:hidden space-y-4">
+                <CategoryGrid variant="tablet" />
+                <ProductSection title="🔥 Hot Deals" products="featured" variant="tablet" />
+                <ProductSection title="⭐ Popular Items" products="popular" variant="tablet" />
+                <NearbyOutlets variant="tablet" />
+              </div>
 
-        <NearbyOutlets />
-
-        <HeroBanner />
-        <CategoryGrid />
-
-
-      </main>
-
-      <BottomNav />
-    </div>
+              {/** lg+: two-column layout */}
+              <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
+                <div className="lg:col-span-8 space-y-4">
+                  <ProductSection title="🔥 Hot Deals" products="featured" variant="tablet" />
+                  <ProductSection title="⭐ Popular Items" products="popular" variant="tablet" />
+                </div>
+                <div className="lg:col-span-4 space-y-4">
+                  <CategoryGrid variant="tablet" />
+                  <NearbyOutlets variant="tablet" />
+                </div>
+              </div>
+            </main>
+          </TabletContainer>
+          <BottomNav />
+        </div>
+      }
+    />
   );
 };
 

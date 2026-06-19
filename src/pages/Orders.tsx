@@ -13,6 +13,7 @@ import { ChevronRight } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatJimatshopOrderNumber } from "@/lib/orders/formatOrderNumber";
 import { resolveProductImageUrl } from "@/lib/products/imageUrl";
+import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
 
 type OrderRow = {
   id: string;
@@ -78,7 +79,15 @@ function formatOrderItems(items: OrderRow["items"]): string | null {
   return remaining > 0 ? `${parts.join(", ")} +${remaining} more` : parts.join(", ");
 }
 
-function OrdersList({ orders, showCompletedDetails }: { orders: OrderRow[]; showCompletedDetails: boolean }) {
+function OrdersList({
+  orders,
+  showCompletedDetails,
+  variant = "mobile",
+}: {
+  orders: OrderRow[];
+  showCompletedDetails: boolean;
+  variant?: "mobile" | "tablet";
+}) {
   const navigate = useNavigate();
 
   if (orders.length === 0) {
@@ -90,7 +99,7 @@ function OrdersList({ orders, showCompletedDetails }: { orders: OrderRow[]; show
   }
 
   return (
-    <div className="space-y-3">
+    <div className={variant === "tablet" ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : "space-y-3"}>
       {orders.map((o) => (
         <Link
           key={o.id}
@@ -209,10 +218,35 @@ export default function Orders() {
         .limit(50);
 
       if (error) throw error;
-      return (data ?? []).map((row: any) => {
+
+      type RawProduct = {
+        name?: string | null;
+        jimatshop_image_url?: string | null;
+        cover_image_url?: string | null;
+        image_url?: string | null;
+      };
+
+      type RawOrderItem = {
+        quantity?: unknown;
+        buyer_inventory_id?: string | null;
+        bi?: { p?: RawProduct };
+        buyer_inventories?: { products?: RawProduct };
+      };
+
+      type RawOrderRow = {
+        id: string;
+        status: string;
+        total_amount: unknown;
+        created_at: string;
+        buyers?: { business_name?: string | null; outlet_name?: string | null };
+        ji?: RawOrderItem[];
+        jimatshop_order_items?: RawOrderItem[];
+      };
+
+      return (data ?? []).map((row: RawOrderRow) => {
         const outletName = row?.buyers?.business_name || row?.buyers?.outlet_name || null;
         const items = (row?.ji ?? row?.jimatshop_order_items ?? [])
-          .map((item: any) => {
+          .map((item: RawOrderItem) => {
             const product = item?.bi?.p ?? item?.buyer_inventories?.products;
             const name = product?.name;
             if (!name) return null;
@@ -271,69 +305,114 @@ export default function Orders() {
     return "all";
   }, [tabFromUrl, tabs]);
 
-  return (
-    <div className="min-h-screen bg-background pb-24">
-      <Header />
-
-      <main className="px-4 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Orders</h2>
-          {!user ? <span className="text-xs text-muted-foreground">Sign in to see your orders</span> : null}
-        </div>
-
-        {!user ? (
-          <div className="jimat-card p-4">
-            <p className="text-sm text-muted-foreground">
-              Please sign in to view your order history.
-            </p>
-          </div>
-        ) : isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 6 }).map((_, idx) => (
-              <div key={idx} className="jimat-card p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-5 w-20 rounded-full" />
-                </div>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-28" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : isError ? (
-          <div className="jimat-card p-4">
-            <p className="text-sm text-muted-foreground">Failed to load orders.</p>
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="jimat-card p-4">
-            <p className="text-sm text-muted-foreground">No orders yet.</p>
-          </div>
-        ) : (
-          <Tabs defaultValue={defaultTab} className="w-full">
-            <div className="-mx-4 px-4 overflow-x-auto pb-2">
-              <TabsList className="w-max">
-                {tabs.map((t) => (
-                  <TabsTrigger key={t} value={t} className="gap-2">
-                    <span>{formatTabLabel(t)}</span>
-                    <span className="text-xs text-muted-foreground">{grouped[t].length}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
-
-            {tabs.map((t) => (
-              <TabsContent key={t} value={t} className="mt-3">
-                <OrdersList orders={grouped[t]} showCompletedDetails={t === "completed"} />
-              </TabsContent>
-            ))}
-          </Tabs>
-        )}
-      </main>
-
-      <BottomNav />
+  const pageStates = !user ? (
+    <div className="jimat-card p-4">
+      <p className="text-sm text-muted-foreground">
+        Please sign in to view your order history.
+      </p>
     </div>
+  ) : isLoading ? (
+    <div className="space-y-3">
+      {Array.from({ length: 6 }).map((_, idx) => (
+        <div key={idx} className="jimat-card p-4">
+          <div className="flex items-center justify-between gap-3">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : isError ? (
+    <div className="jimat-card p-4">
+      <p className="text-sm text-muted-foreground">Failed to load orders.</p>
+    </div>
+  ) : orders.length === 0 ? (
+    <div className="jimat-card p-4">
+      <p className="text-sm text-muted-foreground">No orders yet.</p>
+    </div>
+  ) : null;
+
+  const mobileTabs = pageStates ? null : (
+    <Tabs defaultValue={defaultTab} className="w-full">
+      <div className="-mx-4 px-4 overflow-x-auto pb-2">
+        <TabsList className="w-max">
+          {tabs.map((t) => (
+            <TabsTrigger key={t} value={t} className="gap-2">
+              <span>{formatTabLabel(t)}</span>
+              <span className="text-xs text-muted-foreground">{grouped[t].length}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </div>
+
+      {tabs.map((t) => (
+        <TabsContent key={t} value={t} className="mt-3">
+          <OrdersList orders={grouped[t]} showCompletedDetails={t === "completed"} />
+        </TabsContent>
+      ))}
+    </Tabs>
+  );
+
+  const tabletTabs = pageStates ? null : (
+    <Tabs defaultValue={defaultTab} className="w-full">
+      <TabsList className="w-full md:w-auto md:inline-flex">
+        {tabs.map((t) => (
+          <TabsTrigger key={t} value={t} className="gap-2 flex-1 md:flex-initial">
+            <span>{formatTabLabel(t)}</span>
+            <span className="text-xs text-muted-foreground">{grouped[t].length}</span>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+
+      {tabs.map((t) => (
+        <TabsContent key={t} value={t} className="mt-4">
+          <OrdersList
+            orders={grouped[t]}
+            showCompletedDetails={t === "completed"}
+            variant="tablet"
+          />
+        </TabsContent>
+      ))}
+    </Tabs>
+  );
+
+  return (
+    <ResponsivePage
+      mobile={
+        <div className="min-h-screen bg-background pb-24">
+          <Header />
+          <main className="px-4 py-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Orders</h2>
+              {!user ? <span className="text-xs text-muted-foreground">Sign in to see your orders</span> : null}
+            </div>
+            {pageStates}
+            {mobileTabs}
+          </main>
+          <BottomNav />
+        </div>
+      }
+      tablet={
+        <div className="min-h-screen bg-background pb-28">
+          <Header />
+          <TabletContainer>
+            <main className="py-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-foreground">Orders</h2>
+                {!user ? <span className="text-sm text-muted-foreground">Sign in to see your orders</span> : null}
+              </div>
+              {pageStates}
+              {tabletTabs}
+            </main>
+          </TabletContainer>
+          <BottomNav />
+        </div>
+      }
+    />
   );
 }
 
