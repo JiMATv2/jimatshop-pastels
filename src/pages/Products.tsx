@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { toast } from "@/hooks/use-toast";
 import { notificationService } from "@/lib/notifications/notificationService";
 import { supabase } from "@/lib/supabase/client";
+import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
 
 type SectionKey = "featured" | "popular";
 
@@ -39,6 +40,19 @@ export default function Products() {
   // Use buyer_id from URL if provided, otherwise use nearby buyer IDs
   const buyerIds = buyerIdParam ? [buyerIdParam] : nearbyBuyerIds;
   const [page, setPage] = useState(1);
+
+  // Detect tablet viewport
+  const [isTablet, setIsTablet] = useState(() => window.innerWidth >= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsTablet(window.innerWidth >= 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const limitCount = isTablet ? 20 : 12;
 
   // Find the specific buyer outlet info if buyer_id is provided
   const selectedBuyerOutlet = buyerIdParam 
@@ -179,7 +193,7 @@ export default function Products() {
   }, [section, buyerIds.join(","), searchQuery, categoryFilter]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["mobile-products-buyer-catalog", section, buyerIds, page, searchQuery, categoryFilter],
+    queryKey: ["mobile-products-buyer-catalog", section, buyerIds, page, searchQuery, categoryFilter, limitCount],
     queryFn: async () => {
       if (!cfg.apiToken) return { items: [] as MobileProduct[], pagination: undefined };
       // If buyer_id is provided, don't require location
@@ -200,7 +214,7 @@ export default function Products() {
       const resp = await fetchMobileProducts(
         {
           page,
-          limit_count: 12,
+          limit_count: limitCount,
           search_query: searchQuery,
           category_filter: categoryFilter || undefined,
           source: "buyer_inventory",
@@ -276,255 +290,274 @@ export default function Products() {
     return map;
   }, [promoResp?.buyer_promos]);
 
-  return (
-    <div className="min-h-screen bg-background pb-24">
-      <Header />
-
-      <main className="px-4 py-4">
-
-
-        {/* Shop details on top */}
-        {buyerIdParam ? (
-          <section className="jimat-card p-3 mb-4">
-            <div className="flex items-start gap-3">
-              <img
-                src={selectedBuyerShop?.shop_photo_url || selectedBuyerShop?.signboard_photo_url || "/placeholder.svg"}
-                alt={selectedBuyerShop?.business_name || selectedBuyerOutlet?.name || "Shop"}
-                className="h-12 w-12 rounded-xl object-cover bg-muted flex-shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-foreground truncate">
-                      {selectedBuyerShop?.business_name || selectedBuyerOutlet?.name || "Shop"}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1 truncate">
-                      {selectedBuyerShop?.address || selectedBuyerOutlet?.address || "—"}
-                    </div>
-                    {typeof selectedBuyerOutlet?.distance_in_km === "number" ? (
-                      <div className="text-xs font-medium text-primary mt-1">
-                        {selectedBuyerOutlet.distance_in_km.toFixed(1)} km away
-                      </div>
-                    ) : null}
-                  </div>
-                  <Button
-                    size="sm"
-                    variant={isFollowing ? "secondary" : "default"}
-                    className="shrink-0"
-                    onClick={handleFollow}
-                    disabled={Boolean(isFollowing) || isFollowSaving || isFollowLoading}
-                  >
-                    {isFollowing ? "Following" : isFollowSaving ? "Following…" : "Follow"}
-                  </Button>
-                </div>
+  const shopDetailsCard = buyerIdParam ? (
+    <section className="jimat-card p-3 mb-4">
+      <div className="flex items-start gap-3">
+        <img
+          src={selectedBuyerShop?.shop_photo_url || selectedBuyerShop?.signboard_photo_url || "/placeholder.svg"}
+          alt={selectedBuyerShop?.business_name || selectedBuyerOutlet?.name || "Shop"}
+          className="h-12 w-12 rounded-xl object-cover bg-muted flex-shrink-0"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-foreground truncate">
+                {selectedBuyerShop?.business_name || selectedBuyerOutlet?.name || "Shop"}
               </div>
-            </div>
-          </section>
-        ) : (
-          <section className="jimat-card p-3 mb-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-semibold text-foreground">Nearest shop</div>
-              {nearestOutlet && typeof nearestOutlet.distance_in_km === "number" ? (
-                <div className="text-xs font-medium text-primary whitespace-nowrap">
-                  {nearestOutlet.distance_in_km.toFixed(1)} km
+              <div className="text-xs text-muted-foreground mt-1 truncate">
+                {selectedBuyerShop?.address || selectedBuyerOutlet?.address || "—"}
+              </div>
+              {typeof selectedBuyerOutlet?.distance_in_km === "number" ? (
+                <div className="text-xs font-medium text-primary mt-1">
+                  {selectedBuyerOutlet.distance_in_km.toFixed(1)} km away
                 </div>
               ) : null}
             </div>
-            {buyerIdsLoading ? (
-              <div className="text-xs text-muted-foreground mt-1">Finding nearby buyers…</div>
-            ) : !hasLocation ? (
-              <div className="text-xs text-muted-foreground mt-1">Location not set.</div>
-            ) : nearestOutlet ? (
-              <>
-                <div className="text-sm font-medium text-foreground mt-2 truncate">
-                  {nearestOutlet.name || "Buyer"}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1 truncate">
-                  {nearestOutlet.address || "—"}
-                </div>
-              </>
-            ) : (
-              <div className="text-xs text-muted-foreground mt-1">No buyers found within 20km.</div>
-            )}
-          </section>
-        )}
-
-        <div className="grid grid-cols-3 gap-3">
-          {isLoading ? (
-            Array.from({ length: 12 }).map((_, idx) => (
-              <div key={idx} className="jimat-card">
-                <div className="p-3 space-y-3">
-                  <Skeleton className="aspect-square rounded-xl" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-4/5" />
-                    <Skeleton className="h-3 w-2/5" />
-                    <div className="flex items-center justify-between pt-2">
-                      <Skeleton className="h-5 w-24" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            items.map((product, idx) => {
-              const productId = String(product.id);
-              const campaignPromoPrice = campaignPromoPrices.get(productId);
-              const buyerPromoPrice = buyerPromoPrices.get(productId);
-              const promoPrice = campaignPromoPrice ?? buyerPromoPrice ?? null;
-              const hasPromo = promoPrice != null && Number.isFinite(promoPrice);
-              // Prefer promo price when available; otherwise use catalog price.
-              const displayPrice = hasPromo
-                ? (promoPrice as number)
-                : product.promotion_price != null
-                ? product.promotion_price
-                : product.normal_price;
-              const originalPrice = hasPromo
-                ? product.normal_price
-                : product.promotion_price != null
-                ? product.normal_price
-                : undefined;
-              const outletsWithStock =
-                typeof product.outlets_with_stock === "number"
-                  ? product.outlets_with_stock
-                  : product.stock_level > 0
-                  ? 1
-                  : 0;
-              const totalOutlets =
-                typeof product.total_outlets === "number" ? product.total_outlets : outletsWithStock;
-              const totalQuantitySold =
-                typeof product.total_quantity_sold === "number"
-                  ? product.total_quantity_sold
-                  : product.products_sold;
-              return (
-                <ProductCard
-                  key={product.id}
-                  productId={product.id}
-                  productName={product.name}
-                  price={displayPrice}
-                  originalPrice={originalPrice}
-                  coverImageUrl={product.cover_image_url}
-                  outletsWithStock={outletsWithStock}
-                  totalOutlets={totalOutlets}
-                  totalQuantitySold={totalQuantitySold}
-                  promoBadge={
-                    campaignPromoProductIds.has(productId)
-                      ? "campaign"
-                      : buyerPromoProductIds.has(productId)
-                      ? "buyer_promo"
-                      : undefined
-                  }
-                  delay={idx * 25}
-                />
-              );
-            })
-          )}
-        </div>
-
-        {pagination && pagination.total_pages > 1 ? (
-          <div className="mt-4 flex items-center justify-between gap-3">
             <Button
-              variant="outline"
               size="sm"
-              onClick={() => {
-                setPage((prev) => Math.max(1, prev - 1));
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              disabled={isLoading || !pagination.has_previous_page}
+              variant={isFollowing ? "secondary" : "default"}
+              className="shrink-0"
+              onClick={handleFollow}
+              disabled={Boolean(isFollowing) || isFollowSaving || isFollowLoading}
             >
-              Prev
-            </Button>
-            <div className="text-xs text-muted-foreground">
-              Page {pagination.current_page} of {pagination.total_pages} · {pagination.total_count} items
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => 
-                {
-                  setPage((prev) => prev + 1);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }
-              disabled={isLoading || !pagination.has_next_page}
-            >
-              Next
+              {isFollowing ? "Following" : isFollowSaving ? "Following…" : "Follow"}
             </Button>
           </div>
+        </div>
+      </div>
+    </section>
+  ) : (
+    <section className="jimat-card p-3 mb-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm font-semibold text-foreground">Nearest shop</div>
+        {nearestOutlet && typeof nearestOutlet.distance_in_km === "number" ? (
+          <div className="text-xs font-medium text-primary whitespace-nowrap">
+            {nearestOutlet.distance_in_km.toFixed(1)} km
+          </div>
         ) : null}
+      </div>
+      {buyerIdsLoading ? (
+        <div className="text-xs text-muted-foreground mt-1">Finding nearby buyers…</div>
+      ) : !hasLocation ? (
+        <div className="text-xs text-muted-foreground mt-1">Location not set.</div>
+      ) : nearestOutlet ? (
+        <>
+          <div className="text-sm font-medium text-foreground mt-2 truncate">
+            {nearestOutlet.name || "Buyer"}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1 truncate">
+            {nearestOutlet.address || "—"}
+          </div>
+        </>
+      ) : (
+        <div className="text-xs text-muted-foreground mt-1">No buyers found within 20km.</div>
+      )}
+    </section>
+  );
 
-        {error ? (
-          <p className="mt-3 text-xs text-muted-foreground">
-            Failed to load inventories.
-          </p>
-        ) : null}
-
-        {!cfg.apiToken ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            API token not configured (VITE_SUPABASE_API_TOKEN).
-          </p>
-        ) : null}
-
-        {/* Move nearby outlets list to bottom */}
-        {!buyerIdParam ? (
-          <section className="jimat-card p-3 mt-6">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-semibold text-foreground">
-                Nearby buyer outlets (20km)
-              </div>
-              {!buyerIdsLoading && buyerIds.length > 0 && (
-                <div className="text-xs text-muted-foreground">
-                  {buyerIds.length} {buyerIds.length === 1 ? "outlet" : "outlets"}
-                </div>
-              )}
-            </div>
-            {!hasLocation ? (
-              <div className="text-xs text-muted-foreground mt-1">Location not set.</div>
-            ) : buyerIdsLoading ? (
-              <div className="text-xs text-muted-foreground mt-1">Finding nearby buyers…</div>
-            ) : outlets.length === 0 ? (
-              <div className="text-xs text-muted-foreground mt-1">
-                No buyers found within 20km.
-              </div>
-            ) : (
-              <>
-                <div className="mt-2 space-y-2">
-                  {outlets.slice(0, 6).map((o) => (
-                    <div key={String(o.id)} className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">
-                          {o.name || "Buyer"}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {o.address || "—"}
-                        </div>
-                        {typeof o.lat === "number" && typeof o.lng === "number" ? (
-                          <div className="text-[11px] text-muted-foreground">
-                            {o.lat.toFixed(6)}, {o.lng.toFixed(6)}
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="text-xs font-medium text-primary whitespace-nowrap">
-                        {typeof o.distance_in_km === "number" ? `${o.distance_in_km.toFixed(1)} km` : ""}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {items.length > 0 ? (
-                  <div className="mt-3 pt-3 border-t">
-                    <div className="text-xs text-muted-foreground">
-                      Showing {items.length} product{items.length !== 1 ? "s" : ""} from {buyerIds.length}{" "}
-                      {buyerIds.length === 1 ? "outlet" : "outlets"}
-                    </div>
+  const nearbyOutletsSection = !buyerIdParam ? (
+    <section className="jimat-card p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm font-semibold text-foreground">
+          Nearby buyer outlets (20km)
+        </div>
+        {!buyerIdsLoading && buyerIds.length > 0 && (
+          <div className="text-xs text-muted-foreground">
+            {buyerIds.length} {buyerIds.length === 1 ? "outlet" : "outlets"}
+          </div>
+        )}
+      </div>
+      {!hasLocation ? (
+        <div className="text-xs text-muted-foreground mt-1">Location not set.</div>
+      ) : buyerIdsLoading ? (
+        <div className="text-xs text-muted-foreground mt-1">Finding nearby buyers…</div>
+      ) : outlets.length === 0 ? (
+        <div className="text-xs text-muted-foreground mt-1">
+          No buyers found within 20km.
+        </div>
+      ) : (
+        <>
+          <div className="mt-2 space-y-2">
+            {outlets.slice(0, 6).map((o) => (
+              <div key={String(o.id)} className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-foreground truncate">
+                    {o.name || "Buyer"}
                   </div>
-                ) : null}
-              </>
-            )}
-          </section>
-        ) : null}
-      </main>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {o.address || "—"}
+                  </div>
+                  {typeof o.lat === "number" && typeof o.lng === "number" ? (
+                    <div className="text-[11px] text-muted-foreground">
+                      {o.lat.toFixed(6)}, {o.lng.toFixed(6)}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="text-xs font-medium text-primary whitespace-nowrap">
+                  {typeof o.distance_in_km === "number" ? `${o.distance_in_km.toFixed(1)} km` : ""}
+                </div>
+              </div>
+            ))}
+          </div>
+          {items.length > 0 ? (
+            <div className="mt-3 pt-3 border-t">
+              <div className="text-xs text-muted-foreground">
+                Showing {items.length} product{items.length !== 1 ? "s" : ""} from {buyerIds.length}{" "}
+                {buyerIds.length === 1 ? "outlet" : "outlets"}
+              </div>
+            </div>
+          ) : null}
+        </>
+      )}
+    </section>
+  ) : null;
 
-      <BottomNav />
+  const renderProductsGrid = (colsClass: string, skeletonCount: number) => (
+    <div className={`grid ${colsClass} gap-3`}>
+      {isLoading ? (
+        Array.from({ length: skeletonCount }).map((_, idx) => (
+          <div key={idx} className="jimat-card">
+            <div className="p-3 space-y-3">
+              <Skeleton className="aspect-square rounded-xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-4/5" />
+                <Skeleton className="h-3 w-2/5" />
+                <div className="flex items-center justify-between pt-2">
+                  <Skeleton className="h-5 w-24" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))
+      ) : (
+        items.map((product, idx) => {
+          const productId = String(product.id);
+          const campaignPromoPrice = campaignPromoPrices.get(productId);
+          const buyerPromoPrice = buyerPromoPrices.get(productId);
+          const promoPrice = campaignPromoPrice ?? buyerPromoPrice ?? null;
+          const hasPromo = promoPrice != null && Number.isFinite(promoPrice);
+          // Prefer promo price when available; otherwise use catalog price.
+          const displayPrice = hasPromo
+            ? (promoPrice as number)
+            : product.promotion_price != null
+            ? product.promotion_price
+            : product.normal_price;
+          const originalPrice = hasPromo
+            ? product.normal_price
+            : product.promotion_price != null
+            ? product.normal_price
+            : undefined;
+          const outletsWithStock =
+            typeof product.outlets_with_stock === "number"
+              ? product.outlets_with_stock
+              : product.stock_level > 0
+              ? 1
+              : 0;
+          const totalOutlets =
+            typeof product.total_outlets === "number" ? product.total_outlets : outletsWithStock;
+          const totalQuantitySold =
+            typeof product.total_quantity_sold === "number"
+              ? product.total_quantity_sold
+              : product.products_sold;
+          return (
+            <ProductCard
+              key={product.id}
+              productId={product.id}
+              productName={product.name}
+              price={displayPrice}
+              originalPrice={originalPrice}
+              coverImageUrl={product.cover_image_url}
+              outletsWithStock={outletsWithStock}
+              totalOutlets={totalOutlets}
+              totalQuantitySold={totalQuantitySold}
+              promoBadge={
+                campaignPromoProductIds.has(productId)
+                  ? "campaign"
+                  : buyerPromoProductIds.has(productId)
+                  ? "buyer_promo"
+                  : undefined
+              }
+              delay={idx * 25}
+            />
+          );
+        })
+      )}
     </div>
+  );
+
+  const paginationControls = pagination && pagination.total_pages > 1 ? (
+    <div className="mt-4 flex items-center justify-between gap-3">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          setPage((prev) => Math.max(1, prev - 1));
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        disabled={isLoading || !pagination.has_previous_page}
+      >
+        Prev
+      </Button>
+      <div className="text-xs text-muted-foreground">
+        Page {pagination.current_page} of {pagination.total_pages} · {pagination.total_count} items
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          setPage((prev) => prev + 1);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        disabled={isLoading || !pagination.has_next_page}
+      >
+        Next
+      </Button>
+    </div>
+  ) : null;
+
+  return (
+    <ResponsivePage
+      mobile={
+        <div className="min-h-screen bg-background pb-24">
+          <Header />
+          <main className="px-4 py-4">
+            <h2 className="text-lg font-semibold text-foreground mb-4">{title}</h2>
+            {shopDetailsCard}
+            {renderProductsGrid("grid-cols-3", 12)}
+            {paginationControls}
+            {error && <p className="mt-3 text-xs text-muted-foreground">Failed to load inventories.</p>}
+            {!cfg.apiToken && <p className="mt-2 text-xs text-muted-foreground">API token not configured.</p>}
+            {!buyerIdParam && <div className="mt-6">{nearbyOutletsSection}</div>}
+          </main>
+          <BottomNav />
+        </div>
+      }
+      tablet={
+        <div className="min-h-screen bg-background pb-28">
+          <Header />
+          <TabletContainer>
+            <main className="py-6">
+              <h2 className="text-xl font-semibold text-foreground mb-6">{title}</h2>
+              <div className="grid grid-cols-12 gap-6 items-start">
+                {/* Left Panel */}
+                <div className="col-span-4 space-y-4">
+                  {shopDetailsCard}
+                  {!buyerIdParam && nearbyOutletsSection}
+                </div>
+                {/* Right Panel */}
+                <div className="col-span-8 space-y-4">
+                  {renderProductsGrid("grid-cols-5", 20)}
+                  {paginationControls}
+                  {error && <p className="mt-3 text-xs text-muted-foreground">Failed to load inventories.</p>}
+                  {!cfg.apiToken && <p className="mt-2 text-xs text-muted-foreground">API token not configured.</p>}
+                </div>
+              </div>
+            </main>
+          </TabletContainer>
+          <BottomNav />
+        </div>
+      }
+    />
   );
 }
 
