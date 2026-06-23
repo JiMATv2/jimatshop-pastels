@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { formatJimatshopOrderNumber } from "@/lib/orders/formatOrderNumber";
 import { formatPaymentMethodLabel } from "@/lib/orders/formatPaymentMethod";
 import { resolveProductImageUrl } from "@/lib/products/imageUrl";
+import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
 
 type OrderRow = {
   id: string;
@@ -224,208 +225,267 @@ export default function OrderDetails() {
     ].filter((s): s is string => Boolean(s && s.trim()));
   }, [data?.order?.shipping_address]);
 
-  return (
-    <div className="min-h-screen bg-background pb-24">
-      <Header />
+  const orderHeader = (
+    <div className="flex items-center gap-3 mb-4">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="p-2 rounded-xl hover:bg-muted transition-colors"
+        aria-label="Back"
+      >
+        <ArrowLeft className="w-5 h-5" />
+      </button>
+      <div className="min-w-0">
+        <h2 className="text-lg font-semibold text-foreground truncate">Order details</h2>
+        <p className="text-xs text-muted-foreground truncate">
+          {id ? formatJimatshopOrderNumber(id) : ""}
+        </p>
+      </div>
+    </div>
+  );
 
-      <main className="px-4 py-4">
-        <div className="flex items-center gap-3 mb-4">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-xl hover:bg-muted transition-colors"
-            aria-label="Back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-foreground truncate">Order details</h2>
-            <p className="text-xs text-muted-foreground truncate">
-              {id ? formatJimatshopOrderNumber(id) : ""}
-            </p>
+  const summaryCard = data ? (
+    <div className="jimat-card p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-foreground">Summary</p>
+        <Badge variant={statusVariant(data.order.status)} className="capitalize">
+          {data.order.status}
+        </Badge>
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          {new Intl.DateTimeFormat("ms-MY", {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+          }).format(new Date(data.order.created_at))}
+        </p>
+        <p className="text-sm font-bold text-primary">{formatMYR(asNumber(data.order.total_amount))}</p>
+      </div>
+
+      {data.delivery ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Delivery: <span className="capitalize">{data.delivery.status}</span>
+          {data.delivery.delivery_ref ? ` • Ref: ${data.delivery.delivery_ref}` : ""}
+        </p>
+      ) : null}
+    </div>
+  ) : null;
+
+  const paymentCard = data ? (
+    <div className="jimat-card p-4">
+      <p className="text-sm font-semibold text-foreground">Payment</p>
+      <div className="mt-2 grid grid-cols-2 gap-3">
+        <div>
+          <p className="text-xs text-muted-foreground">Status</p>
+          <p className="text-sm font-medium text-foreground capitalize">{data.order.payment_status}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Method</p>
+          <p className="text-sm font-medium text-foreground">
+            {formatPaymentMethodLabel(data.order.payment_method)}
+          </p>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const refundCard = data?.order.status === "completed" ? (() => {
+    const completedDate = data.delivery?.delivery_date 
+      ? new Date(data.delivery.delivery_date) 
+      : new Date(data.order.updated_at);
+    
+    const currentDate = new Date();
+    const daysDifference = Math.floor((currentDate.getTime() - completedDate.getTime()) / (1000 * 3600 * 24));
+    const isWithin7Days = daysDifference < 7;
+    const hasRefund = Boolean(data.order.refund_status);
+
+    if (hasRefund) {
+      let statusColor = "bg-yellow-100 text-yellow-800 border-yellow-200";
+      if (data.order.refund_status === "approved" || data.order.refund_status === "refunded") {
+        statusColor = "bg-green-100 text-green-800 border-green-200";
+      } else if (data.order.refund_status === "rejected") {
+        statusColor = "bg-red-100 text-red-800 border-red-200";
+      }
+
+      return (
+        <div className="jimat-card p-4">
+          <p className="text-sm font-semibold text-foreground">Refund Information</p>
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Request Status</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full border capitalize font-medium ${statusColor}`}>
+              {data.order.refund_status}
+            </span>
           </div>
         </div>
+      );
+    }
 
-        {!user ? (
-          <div className="jimat-card p-4">
-            <p className="text-sm text-muted-foreground">Please sign in to view order details.</p>
-          </div>
-        ) : isLoading ? (
-          <div className="space-y-3">
-            <div className="jimat-card p-4">
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="mt-3 h-4 w-28" />
-            </div>
-            <div className="jimat-card p-4">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="mt-3 h-16 w-full" />
-            </div>
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, idx) => (
-                <div key={idx} className="jimat-card p-4">
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="mt-2 h-4 w-24" />
+    if (isWithin7Days) {
+      return (
+        <div className="jimat-card p-4 flex flex-col gap-2">
+          <p className="text-sm font-semibold text-foreground">Need a refund?</p>
+          <p className="text-xs text-muted-foreground">
+            You are within the 7-day refund window for this completed order.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate(`/orders/${data.order.id}/refund`)}
+            className="mt-2 w-full py-2 bg-primary text-primary-foreground hover:bg-primary/90 font-medium rounded-xl text-sm transition-colors text-center font-semibold"
+            data-testid="request-refund-btn"
+          >
+            Request Refund
+          </button>
+        </div>
+      );
+    }
+
+    return null;
+  })() : null;
+
+  const shippingCard = shippingLines.length ? (
+    <div className="jimat-card p-4">
+      <p className="text-sm font-semibold text-foreground">Shipping address</p>
+      <div className="mt-2 space-y-1">
+        {shippingLines.map((line) => (
+          <p key={line} className="text-sm text-muted-foreground">
+            {line}
+          </p>
+        ))}
+      </div>
+    </div>
+  ) : null;
+
+  const itemsCard = data ? (
+    <div className="jimat-card p-4">
+      <p className="text-sm font-semibold text-foreground">Items</p>
+      <div className="mt-3 space-y-3">
+        {data.items.map((it) => {
+          const inv = data.inventoryMap.get(it.buyer_inventory_id);
+          const prod = inv ? data.productMap.get(inv.product_id) : undefined;
+          const name = prod?.name ?? "Item";
+          const imgUrl = resolveProductImageUrl(prod) ?? "/placeholder.svg";
+          const unit = asNumber(it.unit_price);
+          const subtotal = asNumber(it.subtotal);
+
+          return (
+            <div key={it.id} className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-xl bg-muted overflow-hidden flex-shrink-0">
+                  <img src={imgUrl} alt={name} className="w-full h-full object-cover" loading="lazy" />
                 </div>
-              ))}
-            </div>
-          </div>
-        ) : isError || !data ? (
-          <div className="jimat-card p-4">
-            <p className="text-sm text-muted-foreground">
-              {error instanceof Error ? error.message : "Failed to load order."}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {/* Summary */}
-            <div className="jimat-card p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-foreground">Summary</p>
-                <Badge variant={statusVariant(data.order.status)} className="capitalize">
-                  {data.order.status}
-                </Badge>
-              </div>
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <p className="text-xs text-muted-foreground">
-                  {new Intl.DateTimeFormat("ms-MY", {
-                    year: "numeric",
-                    month: "short",
-                    day: "2-digit",
-                  }).format(new Date(data.order.created_at))}
-                </p>
-                <p className="text-sm font-bold text-primary">{formatMYR(asNumber(data.order.total_amount))}</p>
-              </div>
-
-              {data.delivery ? (
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Delivery: <span className="capitalize">{data.delivery.status}</span>
-                  {data.delivery.delivery_ref ? ` • Ref: ${data.delivery.delivery_ref}` : ""}
-                </p>
-              ) : null}
-            </div>
-
-            {/* Payment */}
-            <div className="jimat-card p-4">
-              <p className="text-sm font-semibold text-foreground">Payment</p>
-              <div className="mt-2 grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">Status</p>
-                  <p className="text-sm font-medium text-foreground capitalize">{data.order.payment_status}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Method</p>
-                  <p className="text-sm font-medium text-foreground">
-                    {formatPaymentMethodLabel(data.order.payment_method)}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Qty: {it.quantity} • Unit: {formatMYR(unit)}
                   </p>
                 </div>
               </div>
+              <p className="text-sm font-semibold text-foreground">{formatMYR(subtotal)}</p>
             </div>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
 
-            {/* Refund Status or Request Refund Action */}
-            {data.order.status === "completed" && (() => {
-              const completedDate = data.delivery?.delivery_date 
-                ? new Date(data.delivery.delivery_date) 
-                : new Date(data.order.updated_at);
-              
-              const currentDate = new Date();
-              const daysDifference = Math.floor((currentDate.getTime() - completedDate.getTime()) / (1000 * 3600 * 24));
-              const isWithin7Days = daysDifference < 7;
-              const hasRefund = Boolean(data.order.refund_status);
-
-              if (hasRefund) {
-                let statusColor = "bg-yellow-100 text-yellow-800 border-yellow-200";
-                if (data.order.refund_status === "approved" || data.order.refund_status === "refunded") {
-                  statusColor = "bg-green-100 text-green-800 border-green-200";
-                } else if (data.order.refund_status === "rejected") {
-                  statusColor = "bg-red-100 text-red-800 border-red-200";
-                }
-
-                return (
-                  <div className="jimat-card p-4">
-                    <p className="text-sm font-semibold text-foreground">Refund Information</p>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Request Status</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full border capitalize font-medium ${statusColor}`}>
-                        {data.order.refund_status}
-                      </span>
-                    </div>
-                  </div>
-                );
-              }
-
-              if (isWithin7Days) {
-                return (
-                  <div className="jimat-card p-4 flex flex-col gap-2">
-                    <p className="text-sm font-semibold text-foreground">Need a refund?</p>
-                    <p className="text-xs text-muted-foreground">
-                      You are within the 7-day refund window for this completed order.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/orders/${data.order.id}/refund`)}
-                      className="mt-2 w-full py-2 bg-primary text-primary-foreground hover:bg-primary/90 font-medium rounded-xl text-sm transition-colors text-center font-semibold"
-                      data-testid="request-refund-btn"
-                    >
-                      Request Refund
-                    </button>
-                  </div>
-                );
-              }
-
-              return null;
-            })()}
-
-            {/* Shipping */}
-            {shippingLines.length ? (
+  return (
+    <ResponsivePage
+      mobile={
+        <div className="min-h-screen bg-background pb-24">
+          <Header />
+          <main className="px-4 py-4">
+            {orderHeader}
+            {!user ? (
               <div className="jimat-card p-4">
-                <p className="text-sm font-semibold text-foreground">Shipping address</p>
-                <div className="mt-2 space-y-1">
-                  {shippingLines.map((line) => (
-                    <p key={line} className="text-sm text-muted-foreground">
-                      {line}
-                    </p>
+                <p className="text-sm text-muted-foreground">Please sign in to view order details.</p>
+              </div>
+            ) : isLoading ? (
+              <div className="space-y-3">
+                <div className="jimat-card p-4">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="mt-3 h-4 w-28" />
+                </div>
+                <div className="jimat-card p-4">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="mt-3 h-16 w-full" />
+                </div>
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} className="jimat-card p-4">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="mt-2 h-4 w-24" />
+                    </div>
                   ))}
                 </div>
               </div>
-            ) : null}
-
-            {/* Items */}
-            <div className="jimat-card p-4">
-              <p className="text-sm font-semibold text-foreground">Items</p>
-              <div className="mt-3 space-y-3">
-                {data.items.map((it) => {
-                  const inv = data.inventoryMap.get(it.buyer_inventory_id);
-                  const prod = inv ? data.productMap.get(inv.product_id) : undefined;
-                  const name = prod?.name ?? "Item";
-                  const imgUrl = resolveProductImageUrl(prod) ?? "/placeholder.svg";
-                  const unit = asNumber(it.unit_price);
-                  const subtotal = asNumber(it.subtotal);
-
-                  return (
-                    <div key={it.id} className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className="w-12 h-12 rounded-xl bg-muted overflow-hidden flex-shrink-0">
-                          <img src={imgUrl} alt={name} className="w-full h-full object-cover" loading="lazy" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Qty: {it.quantity} • Unit: {formatMYR(unit)}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="text-sm font-semibold text-foreground">{formatMYR(subtotal)}</p>
-                    </div>
-                  );
-                })}
+            ) : isError || !data ? (
+              <div className="jimat-card p-4">
+                <p className="text-sm text-muted-foreground">
+                  {error instanceof Error ? error.message : "Failed to load order."}
+                </p>
               </div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      <BottomNav />
-    </div>
+            ) : (
+              <div className="space-y-3">
+                {summaryCard}
+                {paymentCard}
+                {refundCard}
+                {shippingCard}
+                {itemsCard}
+              </div>
+            )}
+          </main>
+          <BottomNav />
+        </div>
+      }
+      tablet={
+        <div className="min-h-screen bg-background pb-28">
+          <Header />
+          <TabletContainer>
+            <main className="py-6 space-y-6">
+              {orderHeader}
+              {!user ? (
+                <div className="jimat-card p-4">
+                  <p className="text-sm text-muted-foreground">Please sign in to view order details.</p>
+                </div>
+              ) : isLoading ? (
+                <div className="grid grid-cols-12 gap-6">
+                  <div className="col-span-8 space-y-3">
+                    <Skeleton className="h-48 w-full rounded-xl" />
+                    <Skeleton className="h-32 w-full rounded-xl" />
+                  </div>
+                  <div className="col-span-4 space-y-3">
+                    <Skeleton className="h-32 w-full rounded-xl" />
+                    <Skeleton className="h-32 w-full rounded-xl" />
+                  </div>
+                </div>
+              ) : isError || !data ? (
+                <div className="jimat-card p-4">
+                  <p className="text-sm text-muted-foreground">
+                    {error instanceof Error ? error.message : "Failed to load order."}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-12 gap-6 items-start">
+                  {/* Left Column */}
+                  <div className="col-span-8 space-y-4">
+                    {itemsCard}
+                    {shippingCard}
+                  </div>
+                  {/* Right Column */}
+                  <div className="col-span-4 space-y-4">
+                    {summaryCard}
+                    {paymentCard}
+                    {refundCard}
+                  </div>
+                </div>
+              )}
+            </main>
+          </TabletContainer>
+          <BottomNav />
+        </div>
+      }
+    />
   );
 }
 

@@ -20,6 +20,8 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { saveCurrentLocation } from "@/lib/location/storage";
 
+import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
+
 export interface SavedLocation {
   name: string;
   coordinates?: LocationCoordinates;
@@ -142,7 +144,7 @@ const LocationSearch = () => {
     // Monitor app state to detect if app goes to background
     let appStateListener: { remove: () => void } | null = null;
     let wentToBackground = false;
-
+ 
     try {
       // Set up app state listener on mobile platforms
       if (Capacitor.isNativePlatform()) {
@@ -159,13 +161,13 @@ const LocationSearch = () => {
           console.warn("[location] Failed to set up app state listener", listenerError);
         }
       }
-
+ 
       // Show initial toast
       toast.info("Getting your location...", { duration: 2000 });
-
+ 
       // Small delay to ensure UI is ready
       await new Promise((resolve) => setTimeout(resolve, 100));
-
+ 
       // Check permission status first
       const currentPermissionStatus = await checkLocationPermission();
       setPermissionStatus(currentPermissionStatus);
@@ -180,7 +182,7 @@ const LocationSearch = () => {
           throw new Error("Location permission denied. Please grant location permission to use GPS location.");
         }
       }
-
+ 
       // Request location - try network location first (more reliable, less likely to crash)
       // Network location uses WiFi/cell towers and is faster and more stable
       // If it fails, getCurrentLocation will automatically try high accuracy GPS
@@ -190,7 +192,7 @@ const LocationSearch = () => {
         maximumAge: 60000, // Accept cached location up to 1 minute old
         requestPermission: false, // We already requested permission above
       });
-
+ 
       // Remove app state listener
       if (appStateListener) {
         try {
@@ -199,18 +201,18 @@ const LocationSearch = () => {
           // Ignore errors removing listener
         }
       }
-
+ 
       if (wentToBackground) {
         toast.warning("App went to background during location request. Please try again.");
         setIsGettingLocation(false);
         return;
       }
-
+ 
       // Validate location data
       if (!location || typeof location.latitude !== "number" || typeof location.longitude !== "number") {
         throw new Error("Invalid location data received");
       }
-
+ 
       // Save location to SQLite
       try {
         await saveCurrentLocation(location);
@@ -219,7 +221,7 @@ const LocationSearch = () => {
         console.warn("[location] Failed to save location to SQLite:", sqliteError);
         // Continue with localStorage save even if SQLite fails
       }
-
+ 
       // Fetch nearby outlets using the location coordinates
       try {
         console.log("[location] Fetching nearby outlets for coordinates:", {
@@ -246,7 +248,7 @@ const LocationSearch = () => {
         console.warn("[location] Failed to fetch nearby outlets:", outletError);
         // Continue with saving location even if outlet fetch fails
       }
-
+ 
       // Reverse geocode to get address name (simplified - in production, use a geocoding API)
       // For now, we'll use coordinates and let user enter a name
       const newLocation: SavedLocation = {
@@ -254,7 +256,7 @@ const LocationSearch = () => {
         coordinates: location,
         address: `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`,
       };
-
+ 
       saveLocation(newLocation);
       setSavedLocation(newLocation);
       toast.success("Location set successfully");
@@ -297,27 +299,27 @@ const LocationSearch = () => {
       setIsGettingLocation(false);
     }
   };
-
+ 
   const handleSubmitSearch = () => {
     const q = searchQuery.trim();
     if (q.length < 3) {
       toast.error("Please enter at least 3 characters to search");
       return;
     }
-
+ 
     if (autoCompleteAbortRef.current) autoCompleteAbortRef.current.abort();
     const ac = new AbortController();
     autoCompleteAbortRef.current = ac;
     runAutocompleteSearch(q, ac.signal);
   };
-
+ 
   const handleSelectSavedLocation = (location: SavedLocation) => {
     saveLocation(location);
     setSavedLocation(location);
     toast.success(`Location set to "${location.name}"`);
     navigate(-1);
   };
-
+ 
   const handleSelectAutocomplete = async (item: GeoAutocompleteItem) => {
     try {
       const place = await geoPlace(item.place_id);
@@ -325,7 +327,7 @@ const LocationSearch = () => {
       if (!coords || typeof coords.lat !== "number" || typeof coords.lng !== "number") {
         throw new Error("Invalid coordinates returned by place lookup");
       }
-
+ 
       const newLocation: SavedLocation = {
         name:_attachName(item),
         address: [item.main_text, item.secondary_text].filter(Boolean).join(", "),
@@ -334,13 +336,13 @@ const LocationSearch = () => {
           longitude: coords.lng,
         },
       };
-
+ 
       // Persist to SQLite so the rest of the app (useLatestLocation) picks it up as the current location.
       await saveCurrentLocation({
         latitude: coords.lat,
         longitude: coords.lng,
       });
-
+ 
       saveLocation(newLocation);
       setSavedLocation(newLocation);
       toast.success(`Location set to "${newLocation.name}"`);
@@ -350,7 +352,7 @@ const LocationSearch = () => {
       toast.error(msg);
     }
   };
-
+ 
   function _attachName(item: GeoAutocompleteItem) {
     // Prefer a short user-friendly label
     if (item.area && item.city) return `${item.area}, ${item.city}`;
@@ -358,181 +360,221 @@ const LocationSearch = () => {
     return item.secondary_text || "Selected Location";
   }
 
-  return (
-    <div className="min-h-screen bg-background pb-24 px-4">
-      <Header />
+  const pageTitle = (
+    <div>
+      <h1 className="text-2xl font-bold text-foreground mb-2">Select Location</h1>
+      <p className="text-sm text-muted-foreground">
+        Choose your delivery location to see available products and shops
+      </p>
+    </div>
+  );
 
-      <main className="px-4 py-6 space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Select Location</h1>
-          <p className="text-sm text-muted-foreground">
-            Choose your delivery location to see available products and shops
-          </p>
-        </div>
-
-        {/* Current Location */}
-        {savedLocation && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Current Location</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3">
-                <MapPin className="h-5 w-5 text-primary" />
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">{savedLocation.name}</p>
-                  {savedLocation.address && (
-                    <p className="text-sm text-muted-foreground">{savedLocation.address}</p>
-                  )}
-                  {savedLocation.coordinates && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {savedLocation.coordinates.latitude.toFixed(6)},{" "}
-                      {savedLocation.coordinates.longitude.toFixed(6)}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Use GPS Location */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Use Current Location</CardTitle>
-            <CardDescription>
-              {permissionStatus === "granted" 
-                ? "Get your location using GPS"
-                : permissionStatus === "denied"
-                ? "Location permission is denied. Please enable it in app settings."
-                : "Location permission is required to use GPS"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {permissionStatus !== "granted" && (
-              <Button
-                className="w-full gap-2"
-                variant="outline"
-                onClick={handleRequestPermission}
-              >
-                <MapPin className="h-4 w-4" />
-                {permissionStatus === "denied" 
-                  ? "Open App Settings"
-                  : "Grant Location Permission"}
-              </Button>
+  const currentLocationCard = savedLocation && (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Current Location</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-3">
+          <MapPin className="h-5 w-5 text-primary" />
+          <div className="flex-1">
+            <p className="font-medium text-foreground">{savedLocation.name}</p>
+            {savedLocation.address && (
+              <p className="text-sm text-muted-foreground">{savedLocation.address}</p>
             )}
-            <Button
-              className="w-full gap-2"
-              onClick={handleUseGeolocation}
-              disabled={isGettingLocation || permissionStatus === "denied"}
-            >
-              {isGettingLocation ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Getting location...
-                </>
-              ) : (
-                <>
-                  <Navigation className="h-4 w-4" />
-                  Use GPS Location
-                </>
-              )}
-            </Button>
-            {permissionStatus === "denied" && (
-              <p className="text-xs text-muted-foreground text-center">
-                Location permission is permanently denied. Please enable it in your device settings.
+            {savedLocation.coordinates && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {savedLocation.coordinates.latitude.toFixed(6)},{" "}
+                {savedLocation.coordinates.longitude.toFixed(6)}
               </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
-        <Separator />
+  const gpsLocationCard = (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Use Current Location</CardTitle>
+        <CardDescription>
+          {permissionStatus === "granted" 
+            ? "Get your location using GPS"
+            : permissionStatus === "denied"
+            ? "Location permission is denied. Please enable it in app settings."
+            : "Location permission is required to use GPS"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {permissionStatus !== "granted" && (
+          <Button
+            className="w-full gap-2"
+            variant="outline"
+            onClick={handleRequestPermission}
+            data-testid="grant-location-permission-btn"
+          >
+            <MapPin className="h-4 w-4" />
+            {permissionStatus === "denied" 
+              ? "Open App Settings"
+              : "Grant Location Permission"}
+          </Button>
+        )}
+        <Button
+          className="w-full gap-2"
+          onClick={handleUseGeolocation}
+          disabled={isGettingLocation || permissionStatus === "denied"}
+          data-testid="use-gps-location-btn"
+        >
+          {isGettingLocation ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Getting location...
+            </>
+          ) : (
+            <>
+              <Navigation className="h-4 w-4" />
+              Use GPS Location
+            </>
+          )}
+        </Button>
+        {permissionStatus === "denied" && (
+          <p className="text-xs text-muted-foreground text-center">
+            Location permission is permanently denied. Please enable it in your device settings.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
 
-        {/* Search Location */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Search Location</CardTitle>
-            <CardDescription>Enter a location name or address</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Enter location name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleSubmitSearch();
-                    }
-                  }}
-                  className="pl-10"
-                />
+  const searchLocationCard = (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Search Location</CardTitle>
+        <CardDescription>Enter a location name or address</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Enter location name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSubmitSearch();
+                }
+              }}
+              className="pl-10"
+              data-testid="location-search-input"
+            />
+          </div>
+          <Button
+            onClick={handleSubmitSearch}
+            disabled={searchQuery.trim().length < 3 || autoCompleteLoading}
+            data-testid="location-search-submit"
+          >
+            {autoCompleteLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Search"
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const locationResultsCard = (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Location Results</CardTitle>
+        <CardDescription>
+          {autoCompleteLoading
+            ? "Searching…"
+            : autoCompleteError
+            ? "Search failed"
+            : autoCompleteResults.length > 0
+            ? "Select a location below"
+            : "Search or type 3+ characters"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {autoCompleteError ? (
+          <div className="text-sm text-destructive">{autoCompleteError}</div>
+        ) : autoCompleteLoading ? (
+          <div className="text-sm text-muted-foreground">Searching locations…</div>
+        ) : autoCompleteResults.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No results.</div>
+        ) : (
+          autoCompleteResults.slice(0, 8).map((item) => (
+            <div
+              key={item.place_id}
+              className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-3"
+            >
+              <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-foreground">{item.main_text}</p>
+                <p className="text-xs text-muted-foreground">
+                  {[item.area, item.city, item.secondary_text].filter(Boolean).join(" · ")}
+                </p>
               </div>
-              <Button
-                onClick={handleSubmitSearch}
-                disabled={searchQuery.trim().length < 3 || autoCompleteLoading}
-              >
-                {autoCompleteLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Search"
-                )}
+              <Button size="sm" onClick={() => handleSelectAutocomplete(item)} data-testid={`set-location-btn-${item.place_id}`}>
+                Set
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
 
-        {/* Common Locations */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Location Results</CardTitle>
-            <CardDescription>
-              {autoCompleteLoading
-                ? "Searching…"
-                : autoCompleteError
-                ? "Search failed"
-                : autoCompleteResults.length > 0
-                ? "Select a location below"
-                : "Search or type 3+ characters"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {autoCompleteError ? (
-              <div className="text-sm text-destructive">{autoCompleteError}</div>
-            ) : autoCompleteLoading ? (
-              <div className="text-sm text-muted-foreground">Searching locations…</div>
-            ) : autoCompleteResults.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No results.</div>
-            ) : (
-              autoCompleteResults.slice(0, 8).map((item) => (
-                <div
-                  key={item.place_id}
-                  className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-3"
-                >
-                  <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground">{item.main_text}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {[item.area, item.city, item.secondary_text].filter(Boolean).join(" · ")}
-                    </p>
-                  </div>
-                  <Button size="sm" onClick={() => handleSelectAutocomplete(item)}>
-                    Set
-                  </Button>
+  return (
+    <ResponsivePage
+      mobile={
+        <div className="min-h-screen bg-background pb-24 px-4">
+          <Header />
+          <main className="px-4 py-6 space-y-4">
+            {pageTitle}
+            {currentLocationCard}
+            {gpsLocationCard}
+            <Separator />
+            {searchLocationCard}
+            {locationResultsCard}
+          </main>
+          <BottomNav />
+        </div>
+      }
+      tablet={
+        <div className="min-h-screen bg-background pb-28">
+          <Header />
+          <TabletContainer>
+            <main className="py-6 space-y-6">
+              {pageTitle}
+              <div className="grid grid-cols-12 gap-8 items-start">
+                {/* Left Side: GPS/Current Location */}
+                <div className="col-span-5 space-y-6">
+                  {currentLocationCard}
+                  {gpsLocationCard}
                 </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </main>
 
-      <BottomNav />
-    </div>
+                {/* Right Side: Search Input and Results */}
+                <div className="col-span-7 space-y-6">
+                  {searchLocationCard}
+                  {locationResultsCard}
+                </div>
+              </div>
+            </main>
+          </TabletContainer>
+          <BottomNav />
+        </div>
+      }
+    />
   );
 };
 
 export default LocationSearch;
+
 

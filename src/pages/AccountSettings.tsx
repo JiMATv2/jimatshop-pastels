@@ -16,6 +16,7 @@ import { Capacitor } from "@capacitor/core";
 import { notificationService } from "@/lib/notifications/notificationService";
 import { deleteShopperAccount } from "@/lib/api/accountDeletion";
 import { useEffect, useState } from "react";
+import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
 
 const AccountSettings = () => {
   const { user, loading, signOut } = useAuth();
@@ -296,245 +297,292 @@ const AccountSettings = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background pb-24">
-      <Header />
+  const backButtonAndTitle = (
+    <div className="flex items-center gap-2 mb-2">
+      <Button variant="ghost" size="sm" onClick={() => navigate("/profile")} className="gap-2" data-testid="back-to-profile-btn">
+        <ArrowLeft className="h-4 w-4" />
+        Back to Profile
+      </Button>
+      <h1 className="text-xl font-bold">Account Settings</h1>
+    </div>
+  );
 
-      <main className="px-4 py-6 space-y-4">
-        {/* Back Button */}
-        <div className="flex items-center gap-2 mb-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/profile")} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Profile
-          </Button>
-          <h1 className="text-xl font-bold">Account Settings</h1>
-        </div>
-
-        {/* Account Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Account Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {user.email && (
-              <div className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">Login Email</p>
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
-                </div>
-              </div>
-            )}
-            {(contactEmail || shopperLoading) && (
-              <>
-                <Separator />
-                <div className="flex items-center gap-3">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Contact Email</p>
-                    <p className="text-sm text-muted-foreground">
-                      {shopperLoading ? "Loading..." : contactEmail || "—"}
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
-            {(contactPhone || shopperLoading) && (
-              <>
-                <Separator />
-                <div className="flex items-center gap-3">
-                  <Phone className="h-5 w-5 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Contact Phone</p>
-                    <p className="text-sm text-muted-foreground">
-                      {shopperLoading ? "Loading..." : contactPhone || "—"}
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
+  const accountInfoCard = (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Account Information</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {user.email && (
+          <div className="flex items-center gap-3">
+            <Mail className="h-5 w-5 text-muted-foreground" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Login Email</p>
+              <p className="text-sm text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+        )}
+        {(contactEmail || shopperLoading) && (
+          <>
             <Separator />
             <div className="flex items-center gap-3">
-              <Shield className="h-5 w-5 text-muted-foreground" />
+              <Mail className="h-5 w-5 text-muted-foreground" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Account ID</p>
-                <p className="text-sm text-muted-foreground font-mono text-xs">
-                  {user.id.slice(0, 8)}...
+                <p className="text-sm font-medium text-foreground">Contact Email</p>
+                <p className="text-sm text-muted-foreground">
+                  {shopperLoading ? "Loading..." : contactEmail || "—"}
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </>
+        )}
+        {(contactPhone || shopperLoading) && (
+          <>
+            <Separator />
+            <div className="flex items-center gap-3">
+              <Phone className="h-5 w-5 text-muted-foreground" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Contact Phone</p>
+                <p className="text-sm text-muted-foreground">
+                  {shopperLoading ? "Loading..." : contactPhone || "—"}
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+        <Separator />
+        <div className="flex items-center gap-3">
+          <Shield className="h-5 w-5 text-muted-foreground" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-foreground">Account ID</p>
+            <p className="text-sm text-muted-foreground font-mono text-xs">
+              {user.id.slice(0, 8)}...
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
-        {/* Shopper Details (editable) */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+  const shopperDetailsCard = (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <div>
+          <CardTitle className="text-lg">Shopper Details</CardTitle>
+          <CardDescription>Update the details used for orders and loyalty coins.</CardDescription>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => setIsEditingShopper((v) => !v)}
+          disabled={shopperLoading || isSavingShopper}
+          data-testid="edit-shopper-details-btn"
+        >
+          {isEditingShopper ? "Cancel" : "Edit"}
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {shopper?.member_no ? (
+          <div className="text-xs text-muted-foreground">
+            Member No: <span className="font-mono">{shopper.member_no}</span>
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="shopper_first_name">First name</Label>
+            <Input
+              id="shopper_first_name"
+              value={shopperForm.firstName}
+              onChange={(e) => setShopperForm((p) => ({ ...p, firstName: e.target.value }))}
+              disabled={!isEditingShopper || isSavingShopper}
+              placeholder="First name"
+              data-testid="shopper-first-name-input"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="shopper_last_name">Last name</Label>
+            <Input
+              id="shopper_last_name"
+              value={shopperForm.lastName}
+              onChange={(e) => setShopperForm((p) => ({ ...p, lastName: e.target.value }))}
+              disabled={!isEditingShopper || isSavingShopper}
+              placeholder="Last name"
+              data-testid="shopper-last-name-input"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="shopper_email">Contact email</Label>
+            <Input
+              id="shopper_email"
+              type="email"
+              value={shopperForm.email}
+              onChange={(e) => setShopperForm((p) => ({ ...p, email: e.target.value }))}
+              disabled={!isEditingShopper || isSavingShopper || Boolean(loginEmail)}
+              placeholder={loginEmail || "Email"}
+              data-testid="shopper-email-input"
+            />
+            {loginEmail ? (
+              <p className="text-xs text-muted-foreground">Uses your login email.</p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="shopper_phone">Contact phone</Label>
+            <Input
+              id="shopper_phone"
+              value={shopperForm.phone}
+              onChange={(e) => setShopperForm((p) => ({ ...p, phone: e.target.value }))}
+              disabled={!isEditingShopper || isSavingShopper}
+              placeholder={loginPhone || "Phone"}
+              data-testid="shopper-phone-input"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="shopper_ic_no">IC No</Label>
+            <Input
+              id="shopper_ic_no"
+              value={shopperForm.icNo}
+              onChange={(e) => setShopperForm((p) => ({ ...p, icNo: e.target.value }))}
+              disabled={!isEditingShopper || isSavingShopper}
+              placeholder="IC No"
+              autoComplete="off"
+              data-testid="shopper-ic-no-input"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="shopper_tin">Tax Identification Number (TIN)</Label>
+            <Input
+              id="shopper_tin"
+              value={shopperForm.taxIdentificationNumber}
+              onChange={(e) =>
+                setShopperForm((p) => ({ ...p, taxIdentificationNumber: e.target.value }))
+              }
+              disabled={!isEditingShopper || isSavingShopper}
+              placeholder="TIN"
+              autoComplete="off"
+              data-testid="shopper-tin-input"
+            />
+          </div>
+        </div>
+
+        {isEditingShopper ? (
+          <Button className="w-full" onClick={handleShopperSave} disabled={isSavingShopper} data-testid="save-shopper-details-btn">
+            {isSavingShopper ? "Saving..." : "Save shopper details"}
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+
+  const notificationsCard = (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Notifications</CardTitle>
+        <CardDescription>Manage order updates and promotional alerts.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Bell className="h-5 w-5 text-muted-foreground mt-0.5" />
             <div>
-              <CardTitle className="text-lg">Shopper Details</CardTitle>
-              <CardDescription>Update the details used for orders and loyalty coins.</CardDescription>
+              <p className="text-sm font-medium text-foreground">Push notifications</p>
+              <p className="text-xs text-muted-foreground">
+                {notificationsLoading
+                  ? "Loading status..."
+                  : notificationsEnabled
+                    ? "Enabled on this device"
+                    : "Disabled"}
+              </p>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditingShopper((v) => !v)}
-              disabled={shopperLoading || isSavingShopper}
-            >
-              {isEditingShopper ? "Cancel" : "Edit"}
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {shopper?.member_no ? (
-              <div className="text-xs text-muted-foreground">
-                Member No: <span className="font-mono">{shopper.member_no}</span>
-              </div>
-            ) : null}
+          </div>
+          <Switch
+            checked={notificationsEnabled}
+            onCheckedChange={handleNotificationsToggle}
+            disabled={notificationsLoading || notificationsSaving}
+            aria-label="Toggle push notifications"
+            data-testid="toggle-push-notifications-switch"
+          />
+        </div>
+        {notificationsSaving ? (
+          <p className="text-xs text-muted-foreground">Saving notification preference...</p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="shopper_first_name">First name</Label>
-                <Input
-                  id="shopper_first_name"
-                  value={shopperForm.firstName}
-                  onChange={(e) => setShopperForm((p) => ({ ...p, firstName: e.target.value }))}
-                  disabled={!isEditingShopper || isSavingShopper}
-                  placeholder="First name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="shopper_last_name">Last name</Label>
-                <Input
-                  id="shopper_last_name"
-                  value={shopperForm.lastName}
-                  onChange={(e) => setShopperForm((p) => ({ ...p, lastName: e.target.value }))}
-                  disabled={!isEditingShopper || isSavingShopper}
-                  placeholder="Last name"
-                />
-              </div>
-            </div>
+  const dangerZoneCard = (
+    <Card className="border-destructive/50">
+      <CardHeader>
+        <CardTitle className="text-lg text-destructive">Danger Zone</CardTitle>
+        <CardDescription>Actions that can result in account deletion.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-foreground">Delete my account</p>
+            <p className="text-xs text-muted-foreground">Request permanent account deletion.</p>
+          </div>
+          <Button
+            variant="destructive"
+            onClick={handleDeleteAccount}
+            disabled={isDeletingAccount}
+            className="w-full sm:w-auto"
+            data-testid="delete-account-btn"
+          >
+            {isDeletingAccount ? "Deleting..." : "Delete Account"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="shopper_email">Contact email</Label>
-                <Input
-                  id="shopper_email"
-                  type="email"
-                  value={shopperForm.email}
-                  onChange={(e) => setShopperForm((p) => ({ ...p, email: e.target.value }))}
-                  disabled={!isEditingShopper || isSavingShopper || Boolean(loginEmail)}
-                  placeholder={loginEmail || "Email"}
-                />
-                {loginEmail ? (
-                  <p className="text-xs text-muted-foreground">Uses your login email.</p>
-                ) : null}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="shopper_phone">Contact phone</Label>
-                <Input
-                  id="shopper_phone"
-                  value={shopperForm.phone}
-                  onChange={(e) => setShopperForm((p) => ({ ...p, phone: e.target.value }))}
-                  disabled={!isEditingShopper || isSavingShopper}
-                  placeholder={loginPhone || "Phone"}
-                />
-              </div>
-            </div>
+  return (
+    <ResponsivePage
+      mobile={
+        <div className="min-h-screen bg-background pb-24 px-4">
+          <Header />
+          <main className="px-4 py-6 space-y-4">
+            {backButtonAndTitle}
+            {accountInfoCard}
+            {shopperDetailsCard}
+            {notificationsCard}
+            {dangerZoneCard}
+          </main>
+          <BottomNav />
+        </div>
+      }
+      tablet={
+        <div className="min-h-screen bg-background pb-28">
+          <Header />
+          <TabletContainer>
+            <main className="py-6 space-y-6">
+              {backButtonAndTitle}
+              <div className="grid grid-cols-12 gap-8 items-start">
+                {/* Left Side: Account Info + Notifications */}
+                <div className="col-span-5 space-y-6">
+                  {accountInfoCard}
+                  {notificationsCard}
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="shopper_ic_no">IC No</Label>
-                <Input
-                  id="shopper_ic_no"
-                  value={shopperForm.icNo}
-                  onChange={(e) => setShopperForm((p) => ({ ...p, icNo: e.target.value }))}
-                  disabled={!isEditingShopper || isSavingShopper}
-                  placeholder="IC No"
-                  autoComplete="off"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="shopper_tin">Tax Identification Number (TIN)</Label>
-                <Input
-                  id="shopper_tin"
-                  value={shopperForm.taxIdentificationNumber}
-                  onChange={(e) =>
-                    setShopperForm((p) => ({ ...p, taxIdentificationNumber: e.target.value }))
-                  }
-                  disabled={!isEditingShopper || isSavingShopper}
-                  placeholder="TIN"
-                  autoComplete="off"
-                />
-              </div>
-            </div>
-
-            {isEditingShopper ? (
-              <Button className="w-full" onClick={handleShopperSave} disabled={isSavingShopper}>
-                {isSavingShopper ? "Saving..." : "Save shopper details"}
-              </Button>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        {/* Notification Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Notifications</CardTitle>
-            <CardDescription>Manage order updates and promotional alerts.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <Bell className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">Push notifications</p>
-                  <p className="text-xs text-muted-foreground">
-                    {notificationsLoading
-                      ? "Loading status..."
-                      : notificationsEnabled
-                        ? "Enabled on this device"
-                        : "Disabled"}
-                  </p>
+                {/* Right Side: Editable Shopper Details + Danger Zone */}
+                <div className="col-span-7 space-y-6">
+                  {shopperDetailsCard}
+                  {dangerZoneCard}
                 </div>
               </div>
-              <Switch
-                checked={notificationsEnabled}
-                onCheckedChange={handleNotificationsToggle}
-                disabled={notificationsLoading || notificationsSaving}
-                aria-label="Toggle push notifications"
-              />
-            </div>
-            {notificationsSaving ? (
-              <p className="text-xs text-muted-foreground">Saving notification preference...</p>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        {/* Danger Zone */}
-        <Card className="border-destructive/50">
-          <CardHeader>
-            <CardTitle className="text-lg text-destructive">Danger Zone</CardTitle>
-            <CardDescription>Actions that can result in account deletion.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-foreground">Delete my account</p>
-                <p className="text-xs text-muted-foreground">Request permanent account deletion.</p>
-              </div>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteAccount}
-                disabled={isDeletingAccount}
-                className="w-full sm:w-auto"
-              >
-                {isDeletingAccount ? "Deleting..." : "Delete Account"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
-
-      <BottomNav />
-    </div>
+            </main>
+          </TabletContainer>
+          <BottomNav />
+        </div>
+      }
+    />
   );
 };
 
 export default AccountSettings;
+

@@ -16,6 +16,7 @@ import type { SavedLocation } from "@/pages/LocationSearch";
 import { useLatestLocation } from "@/lib/location/useLocation";
 import { version } from "../../package.json";
 import { ShopperWidgets } from "@/components/home/ShopperWidgets";
+import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
 
 const Profile = () => {
   const { user, loading, signOut } = useAuth();
@@ -231,142 +232,173 @@ const Profile = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background pb-24">
-      <Header />
-
-      <main className="px-4 py-6 space-y-4">
-
-        {/* Profile Header Card */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center gap-4">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={avatarUrl} alt={displayName} />
-                <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="text-center">
-                <h2 className="text-xl font-semibold text-foreground">
-                  {shopperLoading ? "Loading name..." : displayNameFromShopper || displayName}
-                </h2>
-                {user.email && (
-                  <p className="text-sm text-muted-foreground mt-1">{user.email}</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <ShopperWidgets />
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 h-auto py-3"
-              onClick={() => navigate("/account-settings")}
-            >
-              <Settings className="h-5 w-5" />
-              <div className="flex-1 text-left">
-                <p className="font-medium">Account Settings</p>
-                <p className="text-xs text-muted-foreground">Manage profile details and notifications</p>
-              </div>
-            </Button>
-            <Separator />
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 h-auto py-3"
-              onClick={() => navigate("/location-search")}
-            >
-              <MapPin className="h-5 w-5 text-muted-foreground" />
-              <div className="flex-1 text-left">
-                <p className="font-medium">Current Location</p>
-                <p className="text-xs text-muted-foreground">{currentLocation?.name || "Kuala Lumpur"}</p>
-              </div>
-            </Button>
-
-            <Separator />
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 h-auto py-3"
-              onClick={() => navigate("/orders")}
-            >
-              <Package className="h-5 w-5" />
-              <div className="flex-1 text-left">
-                <p className="font-medium">My Orders</p>
-                <p className="text-xs text-muted-foreground">View order history</p>
-              </div>
-            </Button>
-            <Separator />
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 h-auto py-3"
-              onClick={() => navigate("/jimatshop-coins")}
-            >
-              <Coins className="h-5 w-5" />
-              <div className="flex-1 text-left">
-                <p className="font-medium">JiMATShop Coins</p>
-                <p className="text-xs text-muted-foreground">View your coin balances</p>
-              </div>
-            </Button>
-            <Separator />
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 h-auto py-3"
-              onClick={() => navigate("/wishlist")}
-            >
-              <Heart className="h-5 w-5" />
-              <div className="flex-1 text-left">
-                <p className="font-medium">Wishlist</p>
-                <p className="text-xs text-muted-foreground">Saved items</p>
-              </div>
-            </Button>
-            <Separator />
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 h-auto py-3"
-              onClick={() => navigate("/user-guide")}
-              data-testid="profile-user-guide-btn"
-            >
-              <BookOpen className="h-5 w-5" />
-              <div className="flex-1 text-left">
-                <p className="font-medium">User Guide</p>
-                <p className="text-xs text-muted-foreground">Learn how to use JimatShop</p>
-              </div>
-            </Button>
-
-
-          </CardContent>
-        </Card>
-
-        {/* Sign Out */}
-        <Card>
-          <CardContent className="pt-6">
-            <Button
-              variant="destructive"
-              className="w-full gap-2"
-              onClick={handleSignOut}
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </Button>
-          </CardContent>
-        </Card>
-
-        <div className="text-center text-xs text-muted-foreground/60 pt-2 pb-4" data-testid="app-version">
-          v{version}
+  const profileHeaderCard = (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex flex-col items-center gap-4">
+          <Avatar className="h-24 w-24">
+            <AvatarImage src={avatarUrl} alt={displayName} />
+            <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-foreground">
+              {shopperLoading ? "Loading name..." : displayNameFromShopper || displayName}
+            </h2>
+            {user.email && (
+              <p className="text-sm text-muted-foreground mt-1">{user.email}</p>
+            )}
+          </div>
         </div>
-      </main>
+      </CardContent>
+    </Card>
+  );
 
-      <BottomNav />
-    </div>
+  const quickActionsCard = (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Quick Actions</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 h-auto py-3"
+          onClick={() => navigate("/account-settings")}
+        >
+          <Settings className="h-5 w-5" />
+          <div className="flex-1 text-left">
+            <p className="font-medium">Account Settings</p>
+            <p className="text-xs text-muted-foreground">Manage profile details and notifications</p>
+          </div>
+        </Button>
+        <Separator />
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 h-auto py-3"
+          onClick={() => navigate("/location-search")}
+        >
+          <MapPin className="h-5 w-5 text-muted-foreground" />
+          <div className="flex-1 text-left">
+            <p className="font-medium">Current Location</p>
+            <p className="text-xs text-muted-foreground">{currentLocation?.name || "Kuala Lumpur"}</p>
+          </div>
+        </Button>
+
+        <Separator />
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 h-auto py-3"
+          onClick={() => navigate("/orders")}
+        >
+          <Package className="h-5 w-5" />
+          <div className="flex-1 text-left">
+            <p className="font-medium">My Orders</p>
+            <p className="text-xs text-muted-foreground">View order history</p>
+          </div>
+        </Button>
+        <Separator />
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 h-auto py-3"
+          onClick={() => navigate("/jimatshop-coins")}
+        >
+          <Coins className="h-5 w-5" />
+          <div className="flex-1 text-left">
+            <p className="font-medium">JiMATShop Coins</p>
+            <p className="text-xs text-muted-foreground">View your coin balances</p>
+          </div>
+        </Button>
+        <Separator />
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 h-auto py-3"
+          onClick={() => navigate("/wishlist")}
+        >
+          <Heart className="h-5 w-5" />
+          <div className="flex-1 text-left">
+            <p className="font-medium">Wishlist</p>
+            <p className="text-xs text-muted-foreground">Saved items</p>
+          </div>
+        </Button>
+        <Separator />
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 h-auto py-3"
+          onClick={() => navigate("/user-guide")}
+          data-testid="profile-user-guide-btn"
+        >
+          <BookOpen className="h-5 w-5" />
+          <div className="flex-1 text-left">
+            <p className="font-medium">User Guide</p>
+            <p className="text-xs text-muted-foreground">Learn how to use JimatShop</p>
+          </div>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  const signOutCard = (
+    <Card>
+      <CardContent className="pt-6">
+        <Button
+          variant="destructive"
+          className="w-full gap-2"
+          onClick={handleSignOut}
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <ResponsivePage
+      mobile={
+        <div className="min-h-screen bg-background pb-24">
+          <Header />
+          <main className="px-4 py-6 space-y-4">
+            {profileHeaderCard}
+            <ShopperWidgets />
+            {quickActionsCard}
+            {signOutCard}
+            <div className="text-center text-xs text-muted-foreground/60 pt-2 pb-4" data-testid="app-version">
+              v{version}
+            </div>
+          </main>
+          <BottomNav />
+        </div>
+      }
+      tablet={
+        <div className="min-h-screen bg-background pb-28">
+          <Header />
+          <TabletContainer>
+            <main className="py-6 space-y-6">
+              <div className="grid grid-cols-12 gap-8 items-start">
+                {/* Left Side: Profile info & Sign Out */}
+                <div className="col-span-4 space-y-6">
+                  {profileHeaderCard}
+                  {signOutCard}
+                  <div className="text-center text-xs text-muted-foreground/60 pt-2" data-testid="app-version">
+                    v{version}
+                  </div>
+                </div>
+
+                {/* Right Side: Widgets & Quick Actions */}
+                <div className="col-span-8 space-y-6">
+                  <ShopperWidgets />
+                  {quickActionsCard}
+                </div>
+              </div>
+            </main>
+          </TabletContainer>
+          <BottomNav />
+        </div>
+      }
+    />
   );
 };
 
 export default Profile;
+
