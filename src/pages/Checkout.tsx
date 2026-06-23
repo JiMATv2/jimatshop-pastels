@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useNearbyBuyerIds } from "@/lib/shop/useNearbyBuyerIds";
 import { formatJimatshopOrderNumber } from "@/lib/orders/formatOrderNumber";
+import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
 
 const formatMYR = (amount: number) =>
   new Intl.NumberFormat("ms-MY", { style: "currency", currency: "MYR" }).format(amount);
@@ -452,254 +453,308 @@ export default function Checkout() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background pb-24">
-      <Header />
+  const checkoutTitle = (
+    <div className="flex items-center justify-between">
+      <h2 className="text-lg md:text-xl font-semibold text-foreground">Checkout</h2>
+      <Button variant="outline" size="sm" onClick={() => clear()} disabled={items.length === 0}>
+        Clear
+      </Button>
+    </div>
+  );
 
-      <main className="px-4 py-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Checkout</h2>
-          <Button variant="outline" size="sm" onClick={() => clear()} disabled={items.length === 0}>
-            Clear
-          </Button>
-        </div>
+  const locationAlert = (!hasLocation || buyerIdsLoading) ? (
+    <div className="jimat-card p-4">
+      <p className="text-sm text-muted-foreground">
+        {buyerIdsLoading ? "Loading nearby shops..." : "Please set your location to checkout."}
+      </p>
+    </div>
+  ) : !primaryBuyerId ? (
+    <div className="jimat-card p-4">
+      <p className="text-sm text-muted-foreground">
+        No nearby shops found. Please update your location.
+      </p>
+    </div>
+  ) : null;
 
-        {!hasLocation || buyerIdsLoading ? (
-          <div className="jimat-card p-4">
-            <p className="text-sm text-muted-foreground">
-              {buyerIdsLoading ? "Loading nearby shops..." : "Please set your location to checkout."}
-            </p>
-          </div>
-        ) : !primaryBuyerId ? (
-          <div className="jimat-card p-4">
-            <p className="text-sm text-muted-foreground">
-              No nearby shops found. Please update your location.
-            </p>
-          </div>
-        ) : null}
+  const cartItemsList = items.length === 0 ? (
+    <div className="jimat-card p-4">
+      <p className="text-sm text-muted-foreground">Your cart is empty.</p>
+      <Button className="mt-3" onClick={() => navigate("/products")}>
+        Browse products
+      </Button>
+    </div>
+  ) : (
+    <div className="space-y-3">
+      {items.map((it) => (
+        <div key={it.productId} className="jimat-card p-3">
+          <div className="flex gap-3">
+            <div className="w-16 h-16 rounded-xl bg-muted overflow-hidden flex items-center justify-center shrink-0">
+              {it.image ? (
+                <img src={it.image} alt={it.name} className="w-full h-full object-cover" />
+              ) : null}
+            </div>
 
-        {items.length === 0 ? (
-          <div className="jimat-card p-4">
-            <p className="text-sm text-muted-foreground">Your cart is empty.</p>
-            <Button className="mt-3" onClick={() => navigate("/products")}>
-              Browse products
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {items.map((it) => (
-              <div key={it.productId} className="jimat-card p-3">
-                <div className="flex gap-3">
-                  <div className="w-16 h-16 rounded-xl bg-muted overflow-hidden flex items-center justify-center shrink-0">
-                    {it.image ? (
-                      <img src={it.image} alt={it.name} className="w-full h-full object-cover" />
-                    ) : null}
-                  </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground line-clamp-2">{it.name}</p>
+                  {it.unitLabel ? (
+                    <p className="text-xs text-muted-foreground mt-0.5">{it.unitLabel}</p>
+                  ) : null}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => removeItem(it.productId)}
+                  aria-label={`Remove ${it.name}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground line-clamp-2">{it.name}</p>
-                        {it.unitLabel ? (
-                          <p className="text-xs text-muted-foreground mt-0.5">{it.unitLabel}</p>
-                        ) : null}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0"
-                        onClick={() => removeItem(it.productId)}
-                        aria-label={`Remove ${it.name}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <p className="text-sm font-bold text-primary">{formatMYR(it.unitPrice)}</p>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setQuantity(it.productId, it.quantity - 1)}
-                          aria-label="Decrease quantity"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </Button>
-                        <span className="text-sm w-6 text-center">{it.quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setQuantity(it.productId, it.quantity + 1)}
-                          aria-label="Increase quantity"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Line total: {formatMYR(it.unitPrice * it.quantity)}
-                    </p>
-                  </div>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <p className="text-sm font-bold text-primary">{formatMYR(it.unitPrice)}</p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setQuantity(it.productId, it.quantity - 1)}
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm w-6 text-center">{it.quantity}</span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setQuantity(it.productId, it.quantity + 1)}
+                    aria-label="Increase quantity"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
 
-        <div className="jimat-card p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Delivery Method</h3>
-          <div className="flex gap-2">
-            <Button type="button" variant="default" className="flex-1">
-              Self pickup (default)
-            </Button>
-            <Button type="button" variant="outline" className="flex-1" disabled>
-              Delivery (disabled)
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Delivery is currently unavailable. Your order will be prepared for self pickup.
-          </p>
-        </div>
-
-        <div className="jimat-card p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Payment Method</h3>
-          <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as any)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select payment method" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pay_in_store">Pay in store</SelectItem>
-              <SelectItem
-                value="jimatshop_coins"
-                disabled={!user || (shopperId && !isCoinLoading && !coinsSufficientIfSelected)}
-              >
-                JiMATShop Coins
-              </SelectItem>
-              <SelectItem value="jimatshop_coins_platform" disabled={!user}>
-                JiMATShop Coins (Platform)
-              </SelectItem>
-              <SelectItem value="billplz" disabled={!user}>
-                Billplz
-              </SelectItem>
-            </SelectContent>
-          </Select>
-
-          {paymentMethod === "jimatshop_coins" ? (
-            <p className="text-xs text-muted-foreground">
-              Coins will be deducted from your JiMATShop coin balance when you place the order.
-            </p>
-          ) : paymentMethod === "jimatshop_coins_platform" ? (
-            <p className="text-xs text-muted-foreground">
-              Coins will be deducted from your platform JiMATShop coin balance when you place the order.
-            </p>
-          ) : paymentMethod === "billplz" ? (
-            <p className="text-xs text-muted-foreground">
-              You'll be redirected to Billplz to complete payment after placing the order.
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Pay at the shop counter when you pick up your order.
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            {user ? (
-              isShopperLoading ? (
-                "Loading shopper profile..."
-              ) : isShopperError ? (
-                <span className="text-destructive">
-                  {shopperError instanceof Error
-                    ? shopperError.message
-                    : "Couldn't load your shopper profile."}
-                </span>
-              ) : shopperId ? (
-                isCoinLoading || isPlatformCoinLoading ? (
-                  "Loading coin balance..."
-                ) : (
-                  <>
-                    JiMATShop coins available: <span className="font-semibold">{formatMYR(totalCoinBalance)}</span>
-                    <span className="block mt-1">
-                      Platform coins available: <span className="font-semibold">{formatMYR(platformCoinBalance)}</span>
-                      {paymentMethod === "jimatshop_coins_platform" && !platformCoinsSufficient ? (
-                        <span className="text-destructive"> (insufficient)</span>
-                      ) : null}
-                    </span>
-                    {checkoutBuyerIds.length > 1 ? (
-                      <span className="block mt-1">
-                        {checkoutBuyerIds.map((buyerId) => (
-                          <span key={buyerId} className="block">
-                            {buyerNameById.get(buyerId) || buyerId.slice(0, 8)}:{" "}
-                            <span className="font-semibold">{formatMYR(coinBalanceByBuyer.get(buyerId) ?? 0)}</span>
-                          </span>
-                        ))}
-                      </span>
-                    ) : null}
-                    {paymentMethod === "jimatshop_coins" && !coinsSufficient ? (
-                      <span className="text-destructive"> (insufficient)</span>
-                    ) : null}
-                  </>
-                )
-              ) : (
-                "Shopper profile not found."
-              )
-            ) : (
-              "Sign in to view your JiMATShop coin balance."
-            )}
-          </p>
-          {user && isShopperError ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => void refetchShopperId()}
-            >
-              Retry
-            </Button>
-          ) : null}
-        </div>
-
-        <div className="jimat-card p-4 space-y-2">
-          <Label htmlFor="notes">Notes (optional)</Label>
-          <Textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Any special instructions?"
-          />
-        </div>
-
-        <div className="jimat-card p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Items ({itemCount})
-            </p>
-            <p className="text-sm font-semibold text-foreground">{formatMYR(subtotal)}</p>
-          </div>
-
-          <Button className="w-full mt-4" onClick={onCheckout} disabled={!canCheckout}>
-            {submitting ? "Placing order..." : `Place order · ${formatMYR(subtotal)}`}
-          </Button>
-          {!canCheckout && !submitting && checkoutBlockers.length > 0 ? (
-            <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
-              <p className="text-xs font-medium text-destructive">Cannot place order yet:</p>
-              <ul className="mt-1 list-disc pl-4 space-y-0.5">
-                {checkoutBlockers.map((reason) => (
-                  <li key={reason} className="text-xs text-destructive/90">
-                    {reason}
-                  </li>
-                ))}
-              </ul>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Line total: {formatMYR(it.unitPrice * it.quantity)}
+              </p>
             </div>
-          ) : null}
+          </div>
         </div>
-      </main>
-
-      <BottomNav />
+      ))}
     </div>
+  );
+
+  const deliveryMethodCard = (
+    <div className="jimat-card p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-foreground">Delivery Method</h3>
+      <div className="flex gap-2">
+        <Button type="button" variant="default" className="flex-1">
+          Self pickup (default)
+        </Button>
+        <Button type="button" variant="outline" className="flex-1" disabled>
+          Delivery (disabled)
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Delivery is currently unavailable. Your order will be prepared for self pickup.
+      </p>
+    </div>
+  );
+
+  const paymentMethodCard = (
+    <div className="jimat-card p-4 space-y-3">
+      <h3 className="text-sm font-semibold text-foreground">Payment Method</h3>
+      <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as any)}>
+        <SelectTrigger>
+          <SelectValue placeholder="Select payment method" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="pay_in_store">Pay in store</SelectItem>
+          <SelectItem
+            value="jimatshop_coins"
+            disabled={!user || (shopperId && !isCoinLoading && !coinsSufficientIfSelected)}
+          >
+            JiMATShop Coins
+          </SelectItem>
+          <SelectItem value="jimatshop_coins_platform" disabled={!user}>
+            JiMATShop Coins (Platform)
+          </SelectItem>
+          <SelectItem value="billplz" disabled={!user}>
+            Billplz
+          </SelectItem>
+        </SelectContent>
+      </Select>
+
+      {paymentMethod === "jimatshop_coins" ? (
+        <p className="text-xs text-muted-foreground">
+          Coins will be deducted from your JiMATShop coin balance when you place the order.
+        </p>
+      ) : paymentMethod === "jimatshop_coins_platform" ? (
+        <p className="text-xs text-muted-foreground">
+          Coins will be deducted from your platform JiMATShop coin balance when you place the order.
+        </p>
+      ) : paymentMethod === "billplz" ? (
+        <p className="text-xs text-muted-foreground">
+          You'll be redirected to Billplz to complete payment after placing the order.
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Pay at the shop counter when you pick up your order.
+        </p>
+      )}
+      <p className="text-xs text-muted-foreground">
+        {user ? (
+          isShopperLoading ? (
+            "Loading shopper profile..."
+          ) : isShopperError ? (
+            <span className="text-destructive">
+              {shopperError instanceof Error
+                ? shopperError.message
+                : "Couldn't load your shopper profile."}
+            </span>
+          ) : shopperId ? (
+            isCoinLoading || isPlatformCoinLoading ? (
+              "Loading coin balance..."
+            ) : (
+              <>
+                JiMATShop coins available: <span className="font-semibold">{formatMYR(totalCoinBalance)}</span>
+                <span className="block mt-1">
+                  Platform coins available: <span className="font-semibold">{formatMYR(platformCoinBalance)}</span>
+                  {paymentMethod === "jimatshop_coins_platform" && !platformCoinsSufficient ? (
+                    <span className="text-destructive"> (insufficient)</span>
+                  ) : null}
+                </span>
+                {checkoutBuyerIds.length > 1 ? (
+                  <span className="block mt-1">
+                    {checkoutBuyerIds.map((buyerId) => (
+                      <span key={buyerId} className="block">
+                        {buyerNameById.get(buyerId) || buyerId.slice(0, 8)}:{" "}
+                        <span className="font-semibold">{formatMYR(coinBalanceByBuyer.get(buyerId) ?? 0)}</span>
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
+                {paymentMethod === "jimatshop_coins" && !coinsSufficient ? (
+                  <span className="text-destructive"> (insufficient)</span>
+                ) : null}
+              </>
+            )
+          ) : (
+            "Shopper profile not found."
+          )
+        ) : (
+          "Sign in to view your JiMATShop coin balance."
+        )}
+      </p>
+      {user && isShopperError ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => void refetchShopperId()}
+        >
+          Retry
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  const notesCard = (
+    <div className="jimat-card p-4 space-y-2">
+      <Label htmlFor="notes">Notes (optional)</Label>
+      <Textarea
+        id="notes"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Any special instructions?"
+      />
+    </div>
+  );
+
+  const summaryCard = (
+    <div className="jimat-card p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Items ({itemCount})
+        </p>
+        <p className="text-sm font-semibold text-foreground">{formatMYR(subtotal)}</p>
+      </div>
+
+      <Button className="w-full" onClick={onCheckout} disabled={!canCheckout}>
+        {submitting ? "Placing order..." : `Place order · ${formatMYR(subtotal)}`}
+      </Button>
+      {!canCheckout && !submitting && checkoutBlockers.length > 0 ? (
+        <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+          <p className="text-xs font-medium text-destructive">Cannot place order yet:</p>
+          <ul className="mt-1 list-disc pl-4 space-y-0.5">
+            {checkoutBlockers.map((reason) => (
+              <li key={reason} className="text-xs text-destructive/90">
+                {reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <ResponsivePage
+      mobile={
+        <div className="min-h-screen bg-background pb-24">
+          <Header />
+          <main className="px-4 py-4 space-y-4">
+            {checkoutTitle}
+            {locationAlert}
+            {cartItemsList}
+            {items.length > 0 && (
+              <>
+                {deliveryMethodCard}
+                {paymentMethodCard}
+                {notesCard}
+                {summaryCard}
+              </>
+            )}
+          </main>
+          <BottomNav />
+        </div>
+      }
+      tablet={
+        <div className="min-h-screen bg-background pb-28">
+          <Header />
+          <TabletContainer>
+            <main className="py-6 space-y-6">
+              {checkoutTitle}
+              <div className="grid grid-cols-12 gap-8 items-start">
+                {/* Left Panel */}
+                <div className="col-span-8 space-y-4">
+                  {locationAlert}
+                  {cartItemsList}
+                  {items.length > 0 && (
+                    <>
+                      {deliveryMethodCard}
+                      {paymentMethodCard}
+                      {notesCard}
+                    </>
+                  )}
+                </div>
+
+                {/* Right Panel */}
+                <div className="col-span-4 sticky top-20">
+                  {items.length > 0 && summaryCard}
+                </div>
+              </div>
+            </main>
+          </TabletContainer>
+          <BottomNav />
+        </div>
+      }
+    />
   );
 }
 
