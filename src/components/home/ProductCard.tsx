@@ -1,8 +1,6 @@
-import { Plus, Heart } from "lucide-react";
+import { Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useCart } from "@/lib/cart/CartProvider";
 
 interface ProductCardProps {
   id: string;
@@ -28,7 +26,6 @@ export const ProductCard = ({
   variant = "mobile",
 }: ProductCardProps) => {
   const navigate = useNavigate();
-  const { addItem } = useCart();
   const discount = originalPrice
     ? Math.round(((originalPrice - price) / originalPrice) * 100)
     : 0;
@@ -94,26 +91,6 @@ export const ProductCard = ({
                 </span>
               )}
             </div>
-            <Button
-              size="icon"
-              className={isTablet ? "h-9 w-9 rounded-full" : "h-8 w-8 rounded-full"}
-              onClick={(e) => {
-                e.stopPropagation();
-                addItem(
-                  {
-                    productId: id,
-                    name,
-                    image,
-                    unitLabel: unit,
-                    unitPrice: price,
-                  },
-                  1,
-                );
-              }}
-              aria-label={`Add ${name} to cart`}
-            >
-              <Plus className={isTablet ? "w-5 h-5" : "w-4 h-4"} />
-            </Button>
           </div>
         </div>
       </div>

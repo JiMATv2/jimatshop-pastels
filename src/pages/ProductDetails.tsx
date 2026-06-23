@@ -14,6 +14,14 @@ import { useNearbyBuyerIds } from "@/lib/shop/useNearbyBuyerIds";
 import { InventoryCard } from "@/components/inventory/InventoryCard";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { 
   ArrowLeft, 
   Heart, 
@@ -70,6 +78,7 @@ export default function ProductDetails() {
   const [error, setError] = useState<string | null>(null);
   const { buyerIds, outlets } = useNearbyBuyerIds();
   const [outletSort, setOutletSort] = useState<"price" | "distance">("price");
+  const [isChooseOutletOpen, setIsChooseOutletOpen] = useState(false);
 
   useEffect(() => {
     if (!productId) {
@@ -328,14 +337,11 @@ export default function ProductDetails() {
   }
 
   const handleAddToCart = () => {
-    // Prefer an in-stock inventory (if present) to ensure we use the correct outlet and price.
-    const firstInventory =
-      inventories.find((inv) => inv.stock_level > 0) ??
-      inventories[0] ??
-      null;
+    setIsChooseOutletOpen(true);
+  };
 
-    const unitPrice = getInventoryUnitPrice(firstInventory);
-    
+  const handleSelectOutletAndAdd = (inv: MobileInventory) => {
+    const unitPrice = getInventoryUnitPrice(inv);
     addItem(
       {
         productId: product.id,
@@ -343,12 +349,12 @@ export default function ProductDetails() {
         image: product.image,
         unitLabel: product.unit,
         unitPrice,
-        // Include buyer info if available from inventory
-        buyerId: firstInventory?.buyer_id,
-        buyerInventoryId: firstInventory?.inventory_id,
+        buyerId: inv.buyer_id,
+        buyerInventoryId: inv.inventory_id,
       },
       quantity
     );
+    setIsChooseOutletOpen(false);
   };
 
   const decreaseQuantity = () => {
@@ -670,6 +676,7 @@ export default function ProductDetails() {
           className="w-full h-12 text-base gap-2 " 
           onClick={handleAddToCart}
           disabled={!hasStock}
+          data-testid="add-to-cart-button"
         >
           <ShoppingCart className="w-5 h-5" />
           Add to Cart · {formatMYR(effectiveUnitPrice * quantity)}
@@ -677,6 +684,63 @@ export default function ProductDetails() {
         </div>
 
       </div>
+
+      <Dialog open={isChooseOutletOpen} onOpenChange={setIsChooseOutletOpen}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose Outlet</DialogTitle>
+            <DialogDescription>
+              Select which outlet/seller to buy this item from:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {sortedInventories.map((inv) => {
+              const distanceLabel = formatKm(outletDistanceMap.get(inv.buyer_id));
+              const unitPrice = getInventoryUnitPrice(inv);
+              const isOutOfStock = inv.stock_level <= 0;
+              return (
+                <div
+                  key={inv.inventory_id}
+                  className={cn(
+                    "flex flex-col p-3 rounded-xl border transition-colors",
+                    isOutOfStock ? "opacity-60 bg-muted/20" : "bg-card hover:bg-muted/30"
+                  )}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm truncate">{inv.buyer_name}</div>
+                      {inv.buyer_address && (
+                        <div className="text-xs text-muted-foreground truncate mt-0.5 max-w-[250px]">
+                          {inv.buyer_address}
+                        </div>
+                      )}
+                      <div className="flex gap-2 items-center mt-1.5">
+                        <span className={`text-xs ${!isOutOfStock ? "text-green-600 font-medium" : "text-red-600"}`}>
+                          {!isOutOfStock ? `Stock: ${inv.stock_level}` : "Out of stock"}
+                        </span>
+                        {distanceLabel && (
+                          <span className="text-[11px] text-muted-foreground">· {distanceLabel}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-primary text-sm">{formatMYR(unitPrice)}</div>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full mt-3 h-8 text-xs font-semibold"
+                    disabled={isOutOfStock}
+                    onClick={() => handleSelectOutletAndAdd(inv)}
+                    data-testid={`select-outlet-btn-${inv.buyer_id}`}
+                  >
+                    Select & Add
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <BottomNav />
     </div>
