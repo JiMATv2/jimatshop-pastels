@@ -202,17 +202,10 @@ export async function fetchMobileProductById(
     headers["Authorization"] = `Bearer ${cfg.apiToken}`;
   }
 
-  const query = new URLSearchParams();
-  if (params.source) query.set("source", params.source);
-  if (params.buyer_user_id) query.set("buyer_user_id", params.buyer_user_id);
-  if (params.buyer_ids && params.buyer_ids.length > 0) {
-    query.set("buyer_ids", JSON.stringify(params.buyer_ids));
-  }
-
-  const qs = query.toString();
-  const res = await fetch(`${cfg.baseUrl}/product/${productId}${qs ? `?${qs}` : ""}`, {
-    method: "GET",
+  const res = await fetch(`${cfg.baseUrl}/product/${productId}`, {
+    method: "POST",
     headers,
+    body: JSON.stringify(params),
   });
 
   const json = await res.json().catch(() => null);
