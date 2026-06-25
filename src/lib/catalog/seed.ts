@@ -26,11 +26,9 @@ export async function seedCatalogIfEmpty() {
   await ensureCatalogSchema();
   const db = await getDb();
 
-  const countRes = await db.query(
-    `SELECT COUNT(*) as count FROM products;`,
-  );
-  const count = Number((countRes.values?.[0] as any)?.count ?? 0);
-  if (count > 0) return;
+  // Always sync the local products table to the current SEED_PRODUCTS list.
+  // This clears any previously seeded mock/demo products when the catalog is empty.
+  await db.execute(`DELETE FROM products;`, true);
 
   const set = SEED_PRODUCTS.map((p: ProductRow) => ({
     statement: `INSERT INTO products (id, name, price, original_price, unit, image, badge, section)
@@ -47,7 +45,9 @@ export async function seedCatalogIfEmpty() {
     ],
   }));
 
-  await db.executeSet(set, true);
+  if (set.length > 0) {
+    await db.executeSet(set, true);
+  }
 }
 
 export async function getProductsBySection(section: ProductSectionKey) {

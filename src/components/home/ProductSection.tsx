@@ -4,7 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { MapPin } from "lucide-react";
 import {
   fetchMobileProducts,
   getMobileProductsClientConfig,
@@ -186,6 +188,21 @@ export const ProductSection = ({ title, products, variant = "mobile", onMockProd
               </div>
             </div>
           ))
+        ) : productList.length === 0 ? (
+          <div className={isTablet ? "col-span-4" : "col-span-3 md:col-span-4 lg:col-span-5"}>
+            <div className="jimat-card p-6 md:p-8 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 mb-3">
+                <MapPin className="h-6 w-6 text-primary" />
+              </div>
+              <h4 className="text-base font-semibold text-foreground mb-1">No products nearby</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Set your location to discover products available around you.
+              </p>
+              <Button className="w-full" onClick={onMockProductClick}>
+                Set Location
+              </Button>
+            </div>
+          </div>
         ) : (
           productList.map((product, index) => (
             <ProductCard
