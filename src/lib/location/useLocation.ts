@@ -87,6 +87,22 @@ export function useLatestLocation(): {
     loadLocation();
   }, [loadLocation]);
 
+  // Keep other mounted consumers in sync when the location is updated from anywhere
+  // in the app (e.g. the "use default location" prompt on the home page).
+  useEffect(() => {
+    const handleUpdate = () => {
+      loadLocation();
+    };
+
+    window.addEventListener("jimatshop-location-updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+
+    return () => {
+      window.removeEventListener("jimatshop-location-updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, [loadLocation]);
+
   return {
     location,
     coordinates: location?.coordinates ?? null,

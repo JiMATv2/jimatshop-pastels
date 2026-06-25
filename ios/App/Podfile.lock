@@ -11,6 +11,8 @@ PODS:
     - Capacitor
   - CapacitorBrowser (8.0.3):
     - Capacitor
+  - CapacitorCommunityAppleSignIn (7.1.0):
+    - Capacitor
   - CapacitorCommunitySqlite (7.0.3):
     - Capacitor
     - SQLCipher
@@ -159,6 +161,7 @@ DEPENDENCIES:
   - "Capacitor (from `../../node_modules/.pnpm/@capacitor+ios@8.3.0_@capacitor+core@8.3.0/node_modules/@capacitor/ios`)"
   - "CapacitorApp (from `../../node_modules/.pnpm/@capacitor+app@8.1.0_@capacitor+core@8.3.0/node_modules/@capacitor/app`)"
   - "CapacitorBrowser (from `../../node_modules/.pnpm/@capacitor+browser@8.0.3_@capacitor+core@8.3.0/node_modules/@capacitor/browser`)"
+  - "CapacitorCommunityAppleSignIn (from `../../node_modules/.pnpm/@capacitor-community+apple-sign-in@7.1.0_@capacitor+core@8.3.0/node_modules/@capacitor-community/apple-sign-in`)"
   - "CapacitorCommunitySqlite (from `../../node_modules/.pnpm/@capacitor-community+sqlite@7.0.3_@capacitor+core@8.3.0/node_modules/@capacitor-community/sqlite`)"
   - "CapacitorCordova (from `../../node_modules/.pnpm/@capacitor+ios@8.3.0_@capacitor+core@8.3.0/node_modules/@capacitor/ios`)"
   - "CapacitorGeolocation (from `../../node_modules/.pnpm/@capacitor+geolocation@8.2.0_@capacitor+core@8.3.0/node_modules/@capacitor/geolocation`)"
@@ -166,7 +169,7 @@ DEPENDENCIES:
   - "CapacitorPreferences (from `../../node_modules/.pnpm/@capacitor+preferences@8.0.1_@capacitor+core@8.3.0/node_modules/@capacitor/preferences`)"
   - "CapacitorPushNotifications (from `../../node_modules/.pnpm/@capacitor+push-notifications@8.0.3_@capacitor+core@8.3.0/node_modules/@capacitor/push-notifications`)"
   - "CapacitorStatusBar (from `../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.3.0/node_modules/@capacitor/status-bar`)"
-  - "CodetrixStudioCapacitorGoogleAuth (from `../../node_modules/.pnpm/@codetrix-studio+capacitor-google-auth@3.4.0-rc.4_@capacitor+core@8.3.0/node_modules/@codetrix-studio/capacitor-google-auth`)"
+  - "CodetrixStudioCapacitorGoogleAuth (from `../../node_modules/.pnpm/@codetrix-studio+capacitor-google-auth@3.4.0-rc.4_patch_hash=1d9076c6e837234572ebf2c57c_80ac2c733ce95d1b2c8ddf1972651743/node_modules/@codetrix-studio/capacitor-google-auth`)"
   - Firebase/Core
   - Firebase/Messaging
   - GoogleSignIn (= 7.1.0)
@@ -202,6 +205,8 @@ EXTERNAL SOURCES:
     :path: "../../node_modules/.pnpm/@capacitor+app@8.1.0_@capacitor+core@8.3.0/node_modules/@capacitor/app"
   CapacitorBrowser:
     :path: "../../node_modules/.pnpm/@capacitor+browser@8.0.3_@capacitor+core@8.3.0/node_modules/@capacitor/browser"
+  CapacitorCommunityAppleSignIn:
+    :path: "../../node_modules/.pnpm/@capacitor-community+apple-sign-in@7.1.0_@capacitor+core@8.3.0/node_modules/@capacitor-community/apple-sign-in"
   CapacitorCommunitySqlite:
     :path: "../../node_modules/.pnpm/@capacitor-community+sqlite@7.0.3_@capacitor+core@8.3.0/node_modules/@capacitor-community/sqlite"
   CapacitorCordova:
@@ -217,13 +222,14 @@ EXTERNAL SOURCES:
   CapacitorStatusBar:
     :path: "../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.3.0/node_modules/@capacitor/status-bar"
   CodetrixStudioCapacitorGoogleAuth:
-    :path: "../../node_modules/.pnpm/@codetrix-studio+capacitor-google-auth@3.4.0-rc.4_@capacitor+core@8.3.0/node_modules/@codetrix-studio/capacitor-google-auth"
+    :path: "../../node_modules/.pnpm/@codetrix-studio+capacitor-google-auth@3.4.0-rc.4_patch_hash=1d9076c6e837234572ebf2c57c_80ac2c733ce95d1b2c8ddf1972651743/node_modules/@codetrix-studio/capacitor-google-auth"
 
 SPEC CHECKSUMS:
   AppAuth: d4f13a8fe0baf391b2108511793e4b479691fb73
   Capacitor: 22e541237135648c9aa736232bb4d2eec35fddcb
   CapacitorApp: 449ffe26375e96f8aaaee625ac6e01e5c57c8650
   CapacitorBrowser: c987c73d09d8bd3b5ec13f06338b1e14d5d2be69
+  CapacitorCommunityAppleSignIn: 271cb2860576fd2961508bbfa7a82117d93eadca
   CapacitorCommunitySqlite: 4813d82ad33001e612a39d313cb5d28066cbafda
   CapacitorCordova: 2e1e2bb93b2f365309dc4ff18b72b9a69a7814a9
   CapacitorGeolocation: b36f6287bfc9f2eefa04dc900496f2c8ae666136
@@ -251,6 +257,6 @@ SPEC CHECKSUMS:
   SQLCipher: eb79c64049cb002b4e9fcb30edb7979bf4706dfc
   ZIPFoundation: dfd3d681c4053ff7e2f7350bc4e53b5dba3f5351
 
-PODFILE CHECKSUM: 1d14edb7bfa99f89485aa2d07429af31984da8be
+PODFILE CHECKSUM: 074da4ed869b79c603f76d30ee1619f6fac4fd64
 
 COCOAPODS: 1.16.2

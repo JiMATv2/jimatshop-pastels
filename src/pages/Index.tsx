@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -11,10 +11,13 @@ import { NearbyOutlets } from "@/components/home/NearbyOutlets";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { Link } from "react-router-dom";
 import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
+import { MockProductLocationModal } from "@/components/location/MockProductLocationModal";
 
 const Index = () => {
   const navigate = useNavigate();
   const { hasSeenOnboarding, isLoading } = useOnboarding();
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const handleMockProductClick = () => setLocationModalOpen(true);
 
   useEffect(() => {
     if (!isLoading && !hasSeenOnboarding) {
@@ -34,13 +37,14 @@ const Index = () => {
   }
 
   return (
-    <ResponsivePage
+    <>
+      <ResponsivePage
       mobile={
         <div className="min-h-screen bg-background pb-24">
           <Header />
           <main>
-            <ProductSection title="🔥 Hot Deals" products="featured" />
-            <ProductSection title="⭐ Popular Items" products="popular" />
+            <ProductSection title="🔥 Hot Deals" products="featured" onMockProductClick={handleMockProductClick} />
+            <ProductSection title="⭐ Popular Items" products="popular" onMockProductClick={handleMockProductClick} />
             <NearbyOutlets />
             <HeroBanner />
             <CategoryGrid />
@@ -58,16 +62,16 @@ const Index = () => {
               {/** md–lg: stacked professional layout */}
               <div className="block lg:hidden space-y-4">
                 <CategoryGrid variant="tablet" />
-                <ProductSection title="🔥 Hot Deals" products="featured" variant="tablet" />
-                <ProductSection title="⭐ Popular Items" products="popular" variant="tablet" />
+                <ProductSection title="🔥 Hot Deals" products="featured" variant="tablet" onMockProductClick={handleMockProductClick} />
+                <ProductSection title="⭐ Popular Items" products="popular" variant="tablet" onMockProductClick={handleMockProductClick} />
                 <NearbyOutlets variant="tablet" />
               </div>
 
               {/** lg+: two-column layout */}
               <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
                 <div className="lg:col-span-8 space-y-4">
-                  <ProductSection title="🔥 Hot Deals" products="featured" variant="tablet" />
-                  <ProductSection title="⭐ Popular Items" products="popular" variant="tablet" />
+                  <ProductSection title="🔥 Hot Deals" products="featured" variant="tablet" onMockProductClick={handleMockProductClick} />
+                  <ProductSection title="⭐ Popular Items" products="popular" variant="tablet" onMockProductClick={handleMockProductClick} />
                 </div>
                 <div className="lg:col-span-4 space-y-4">
                   <CategoryGrid variant="tablet" />
@@ -80,6 +84,11 @@ const Index = () => {
         </div>
       }
     />
+      <MockProductLocationModal
+        open={locationModalOpen}
+        onOpenChange={setLocationModalOpen}
+      />
+    </>
   );
 };
 

@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { cn } from "@/lib/utils";
 import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
+import { MockProductLocationModal } from "@/components/location/MockProductLocationModal";
 import {
   Dialog,
   DialogContent,
@@ -77,9 +78,11 @@ export default function ProductDetails() {
   const [inventoriesLoading, setInventoriesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { buyerIds, outlets } = useNearbyBuyerIds();
+  const { buyerIds, outlets, isLoading: nearbyLoading, hasLocation } = useNearbyBuyerIds();
   const [outletSort, setOutletSort] = useState<"price" | "distance">("price");
   const [isChooseOutletOpen, setIsChooseOutletOpen] = useState(false);
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const [locationChecked, setLocationChecked] = useState(false);
 
   useEffect(() => {
     if (!productId) {
@@ -134,7 +137,7 @@ export default function ProductDetails() {
     };
 
     loadProduct();
-  }, [productId]);
+  }, [productId, buyerIds.join(",")]);
 
   useEffect(() => {
     if (!productId || buyerIds.length === 0) return;
@@ -155,6 +158,15 @@ export default function ProductDetails() {
 
     loadInventories();
   }, [productId, buyerIds.join(",")]);
+
+  // Prompt for location if the user lands here without one. Seed/mock product
+  // details should still load behind the modal so the page isn't blank.
+  useEffect(() => {
+    if (!nearbyLoading && !hasLocation && !locationChecked) {
+      setLocationModalOpen(true);
+      setLocationChecked(true);
+    }
+  }, [nearbyLoading, hasLocation, locationChecked]);
 
   useEffect(() => {
     if (!user) {
@@ -825,6 +837,11 @@ export default function ProductDetails() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <MockProductLocationModal
+        open={locationModalOpen}
+        onOpenChange={setLocationModalOpen}
+      />
     </>
   );
 }

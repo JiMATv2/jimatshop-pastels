@@ -1,6 +1,7 @@
 import { ProductCard } from "./ProductCard";
 import { getProductsBySection } from "@/lib/catalog/seed";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
@@ -25,6 +26,7 @@ interface ProductSectionProps {
   title: string;
   products: "featured" | "popular";
   variant?: "mobile" | "tablet";
+  onMockProductClick?: () => void;
 }
 
 function toUiProduct(p: MobileProduct): Product {
@@ -50,9 +52,13 @@ function toUiProduct(p: MobileProduct): Product {
   };
 }
 
-export const ProductSection = ({ title, products, variant = "mobile" }: ProductSectionProps) => {
+export const ProductSection = ({ title, products, variant = "mobile", onMockProductClick }: ProductSectionProps) => {
   const cfg = getMobileProductsClientConfig();
   const { buyerIds, isLoading: buyerIdsLoading, hasLocation } = useNearbyBuyerIds();
+  // Track whether the currently displayed products came from the API or the local seed
+  // catalog. We can't safely infer this from location state alone because the local
+  // catalog is also used on error or when no nearby buyers are found.
+  const [dataSource, setDataSource] = useState<"api" | "local" | null>(null);
   const { data: productList = [], isLoading, error } = useQuery({
     queryKey: ["mobile-products", products, buyerIds],
     queryFn: async () => {
@@ -77,9 +83,13 @@ export const ProductSection = ({ title, products, variant = "mobile" }: ProductS
       };
 
       // If token isn't configured, keep local seed catalog behavior (offline/dev friendly).
-      if (!cfg.apiToken) return loadLocal();
+      if (!cfg.apiToken) {
+        setDataSource("local");
+        return loadLocal();
+      }
       // Buyer-inventory requires nearby buyer shops (from location).
       if (!hasLocation || !buyerIds || buyerIds.length === 0) {
+        setDataSource("local");
         console.debug("[ProductSection] No nearby buyers, using local catalog", {
           hasLocation,
           buyerIdsCount: buyerIds?.length ?? 0,
@@ -111,8 +121,10 @@ export const ProductSection = ({ title, products, variant = "mobile" }: ProductS
             : resp.data.filter((p) => p.is_fast_moving);
 
         const picked = filtered.length ? filtered : resp.data;
+        setDataSource("api");
         return picked.map(toUiProduct).slice(0, 12);
       } catch (e) {
+        setDataSource("local");
         console.warn("Mobile products API failed; falling back to local catalog", e);
         return loadLocal();
       }
@@ -122,6 +134,20 @@ export const ProductSection = ({ title, products, variant = "mobile" }: ProductS
   });
 
 
+
+  // The local seed catalog (e.g. "Fresh Red Apples") is mock/demo data. Any time we
+  // render those products we should prompt the user to set a location first.
+  const isMockCatalog = dataSource === "local";
+
+  console.debug("[ProductSection] render", {
+    title,
+    variant,
+    dataSource,
+    isMockCatalog,
+    hasLocation,
+    buyerIdsCount: buyerIds.length,
+    apiTokenConfigured: Boolean(cfg.apiToken),
+  });
 
   const isTablet = variant === "tablet";
 
@@ -162,7 +188,14 @@ export const ProductSection = ({ title, products, variant = "mobile" }: ProductS
           ))
         ) : (
           productList.map((product, index) => (
-            <ProductCard key={product.id} {...product} delay={index * 100} variant={variant} />
+            <ProductCard
+              key={product.id}
+              {...product}
+              delay={index * 100}
+              variant={variant}
+              isMock={isMockCatalog}
+              onMockClick={onMockProductClick}
+            />
           ))
         )}
       </div>

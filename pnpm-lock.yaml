@@ -4,10 +4,18 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@codetrix-studio/capacitor-google-auth':
+    hash: 1d9076c6e837234572ebf2c57c44c19ba2e8a6c1674f687a16e2a4212c261094
+    path: patches/@codetrix-studio__capacitor-google-auth.patch
+
 importers:
 
   .:
     dependencies:
+      '@capacitor-community/apple-sign-in':
+        specifier: ^7.1.0
+        version: 7.1.0(@capacitor/core@8.3.0)
       '@capacitor-community/sqlite':
         specifier: ^7.0.2
         version: 7.0.3(@capacitor/core@8.3.0)
@@ -46,7 +54,7 @@ importers:
         version: 8.0.2(@capacitor/core@8.3.0)
       '@codetrix-studio/capacitor-google-auth':
         specifier: ^3.4.0-rc.4
-        version: 3.4.0-rc.4(@capacitor/core@8.3.0)
+        version: 3.4.0-rc.4(patch_hash=1d9076c6e837234572ebf2c57c44c19ba2e8a6c1674f687a16e2a4212c261094)(@capacitor/core@8.3.0)
       '@hookform/resolvers':
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.72.1(react@18.3.1))
@@ -268,6 +276,11 @@ packages:
   '@babel/runtime@7.29.2':
     resolution: {integrity: sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==}
     engines: {node: '>=6.9.0'}
+
+  '@capacitor-community/apple-sign-in@7.1.0':
+    resolution: {integrity: sha512-df7cA7vfvvvilTtpJKeVvxO31W+py5t3HK9233GBD5MvgAgtGvCqeQ3pI0noNkVsKPF9B1g/po8Mph6s4bVSmw==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
 
   '@capacitor-community/sqlite@7.0.3':
     resolution: {integrity: sha512-aKOCM3RglhF9Q2XA7NMyT923tc+dY9ANLzB+FgKy6Q6jxJIHuJ6YRZbFHJKicBjheCOP1k7HpPIdnZ05GpsGVg==}
@@ -2047,6 +2060,9 @@ packages:
   '@types/react@18.3.28':
     resolution: {integrity: sha512-z9VXpC7MWrhfWipitjNdgCauoMLRdIILQsAEV+ZesIzBq/oUlxk0m3ApZuMFCXdnS4U7KrI+l3WRUEGQ8K1QKw==}
 
+  '@types/scriptjs@0.0.2':
+    resolution: {integrity: sha512-GFrUgzGYfNX3VWZwMyzr0JrBwzLv5Kes4BQBvo6hXdRy14/GBbpCiVwwB7v1o2xIEvFf+9GyznmYhuesQQjSag==}
+
   '@types/slice-ansi@4.0.0':
     resolution: {integrity: sha512-+OpjSaq85gvlZAYINyzKpLeiFkSC4EsC6IIiT6v6TLSU5k5U83fHGj9Lel8oKEXM0HqgrMVCjXPDPVICtxF7EQ==}
 
@@ -3143,6 +3159,9 @@ packages:
   scheduler@0.23.2:
     resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
 
+  scriptjs@2.5.9:
+    resolution: {integrity: sha512-qGVDoreyYiP1pkQnbnFAUIS5AjenNwwQBdl7zeos9etl+hYKWahjRTfzAZZYBv5xNHx7vNKCmaLDQZ6Fr2AEXg==}
+
   semver@7.7.4:
     resolution: {integrity: sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA==}
     engines: {node: '>=10'}
@@ -3455,6 +3474,12 @@ snapshots:
 
   '@babel/runtime@7.29.2': {}
 
+  '@capacitor-community/apple-sign-in@7.1.0(@capacitor/core@8.3.0)':
+    dependencies:
+      '@capacitor/core': 8.3.0
+      '@types/scriptjs': 0.0.2
+      scriptjs: 2.5.9
+
   '@capacitor-community/sqlite@7.0.3(@capacitor/core@8.3.0)':
     dependencies:
       '@capacitor/core': 8.3.0
@@ -3525,7 +3550,7 @@ snapshots:
 
   '@capacitor/synapse@1.0.4': {}
 
-  '@codetrix-studio/capacitor-google-auth@3.4.0-rc.4(@capacitor/core@8.3.0)':
+  '@codetrix-studio/capacitor-google-auth@3.4.0-rc.4(patch_hash=1d9076c6e837234572ebf2c57c44c19ba2e8a6c1674f687a16e2a4212c261094)(@capacitor/core@8.3.0)':
     dependencies:
       '@capacitor/core': 8.3.0
 
@@ -5181,6 +5206,8 @@ snapshots:
       '@types/prop-types': 15.7.15
       csstype: 3.2.3
 
+  '@types/scriptjs@0.0.2': {}
+
   '@types/slice-ansi@4.0.0': {}
 
   '@types/ws@8.18.1':
@@ -6347,6 +6374,8 @@ snapshots:
   scheduler@0.23.2:
     dependencies:
       loose-envify: 1.4.0
+
+  scriptjs@2.5.9: {}
 
   semver@7.7.4: {}
 

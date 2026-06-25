@@ -3,3 +3,5 @@ allowBuilds:
   '@swc/core': true
   esbuild: true
   protobufjs: true
+patchedDependencies:
+  '@codetrix-studio/capacitor-google-auth': patches/@codetrix-studio__capacitor-google-auth.patch

@@ -273,21 +273,61 @@ class SupabaseProxy {
       }
       return { data: { user: null }, error: null };
     },
-    signInWithIdToken: async (options: { provider: string; token: string }) => {
+    signInWithIdToken: async (options: { provider: string; token: string; fullName?: string }) => {
+      const providerPath = options.provider === "apple" ? "apple-buyer" : "google";
+      const endpoint = `${EX_SUPABASE_ENDPOINT}/supabase/auth/${providerPath}`;
+      const body: Record<string, string> = { idToken: options.token };
+      if (options.fullName) body.fullName = options.fullName;
+
+      console.log(`[auth][proxy] signInWithIdToken start`, {
+        provider: options.provider,
+        endpoint,
+        hasFullName: !!options.fullName,
+        tokenLength: options.token.length,
+        tokenPrefix: options.token.slice(0, 20) + "...",
+      });
+
       try {
-        const response = await fetch(`${EX_SUPABASE_ENDPOINT}/supabase/auth/google`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: options.token }),
+        const response = await fetch(endpoint, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
         });
-        const result = await response.json();
+        console.log(`[auth][proxy] signInWithIdToken HTTP response`, {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+        });
+
+        let result: any;
+        try {
+          result = await response.json();
+        } catch (parseErr: any) {
+          console.error(`[auth][proxy] signInWithIdToken failed to parse JSON response`, parseErr);
+          return { data: { user: null, session: null }, error: { message: `Invalid JSON from ${options.provider} login: ${parseErr.message}` } };
+        }
+
+        console.log(`[auth][proxy] signInWithIdToken result`, {
+          hasData: !!result.data,
+          hasSession: !!result.data?.session,
+          hasUser: !!result.data?.user,
+          hasError: !!result.error,
+          error: result.error ?? null,
+        });
+
         if (!response.ok || result.error) {
-          return { data: { user: null, session: null }, error: result.error || { message: 'Google login failed' } };
+          console.error(`[auth][proxy] signInWithIdToken backend error`, { status: response.status, error: result.error });
+          return { data: { user: null, session: null }, error: result.error || { message: `${options.provider} login failed` } };
         }
         if (result.data?.session) {
           this.persistSession(result.data.session, 'SIGNED_IN');
         }
         return { data: result.data, error: null };
       } catch (error: any) {
-        return { data: { user: null, session: null }, error: { message: error.message || 'Network error during Google login' } };
+        console.error(`[auth][proxy] signInWithIdToken network/fetch error`, {
+          message: error.message,
+          name: error.name,
+          stack: error.stack,
+        });
+        return { data: { user: null, session: null }, error: { message: error.message || `Network error during ${options.provider} login` } };
       }
     }
   };

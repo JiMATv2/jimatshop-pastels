@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getGoogleIdToken } from "@/lib/auth/googleIdentity";
 import { isMobilePlatform, signInWithGoogleNative } from "@/lib/auth/mobileAuth";
+import { signInWithAppleNative } from "@/lib/auth/appleAuth";
+import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/lib/supabase/client";
 import { shopLoginWithGoogleIdToken } from "@/lib/api/jimatshopSession";
 import { getCurrentLocation } from "@/lib/geolocation/geolocation";
@@ -145,6 +147,114 @@ export const Header = () => {
       console.error("[auth] email sign-in failed", e);
       toast.error(msg);
     } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const onAppleLogin = async () => {
+    console.log("[auth][Header] onAppleLogin started");
+    setAuthSubmitting(true);
+    try {
+      console.log("[auth][Header] calling signInWithAppleNative");
+      const { identityToken, email, fullName } = await signInWithAppleNative();
+
+      console.log("[auth][Header] signInWithAppleNative returned", {
+        hasEmail: !!email,
+        email: email ?? null,
+        hasFullName: !!fullName,
+        tokenLength: identityToken.length,
+        tokenPrefix: identityToken.slice(0, 20) + "...",
+      });
+
+      setAuthOpen(false);
+
+      console.log("[auth][Header] calling supabase.auth.signInWithIdToken");
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: identityToken,
+        fullName: fullName || undefined,
+      });
+
+      console.log("[auth][Header] signInWithIdToken returned", {
+        hasData: !!data,
+        hasUser: !!data?.user,
+        hasSession: !!data?.session,
+        error: error ?? null,
+      });
+
+      if (error) throw error;
+
+      const userEmail = data.user?.email ?? email ?? undefined;
+      const userName =
+        (data.user?.user_metadata?.full_name as string | undefined) ||
+        (data.user?.user_metadata?.name as string | undefined) ||
+        fullName ||
+        undefined;
+
+      // Link / upsert shopper profile in Supabase.
+      const { error: shopperUpsertError } = await supabase.rpc("upsert_shopper_for_auth_user", {
+        first_name:
+          (data.user?.user_metadata?.given_name as string | undefined) ||
+          (data.user?.user_metadata?.full_name as string | undefined) ||
+          (data.user?.user_metadata?.name as string | undefined) ||
+          fullName ||
+          "",
+        last_name: (data.user?.user_metadata?.family_name as string | undefined) || null,
+        email: userEmail || null,
+        phone: (data.user?.phone as string | undefined) || null,
+      });
+      if (shopperUpsertError) {
+        console.warn("[auth] upsert_shopper_for_auth_user failed", shopperUpsertError);
+      }
+
+      // Best-effort legacy API token exchange.
+      try {
+        const apiToken = await shopLoginWithGoogleIdToken({
+          idToken: identityToken,
+          email: userEmail,
+          name: userName,
+        });
+        localStorage.setItem("jimatshop_api_token", apiToken);
+      } catch {
+        // If the API URL isn't configured, skip legacy token exchange.
+      }
+
+      // Best-effort location capture.
+      try {
+        const location = await getCurrentLocation();
+        console.log("[auth] User location after Apple sign-in", {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          accuracy: location.accuracy,
+        });
+        try {
+          await saveCurrentLocation(location);
+        } catch (saveError) {
+          console.warn("[auth] Failed to save location to SQLite:", saveError);
+        }
+      } catch (locationError) {
+        console.warn("[auth] Failed to get location after Apple sign-in", locationError);
+      }
+
+      console.log("[auth][Header] Apple sign-in completed, showing success toast");
+      toast.success("Signed in");
+    } catch (e) {
+      const msg =
+        e instanceof Error
+          ? e.message
+          : typeof e === "string"
+            ? e
+            : (() => {
+                try {
+                  return JSON.stringify(e);
+                } catch {
+                  return "Apple sign-in failed";
+                }
+              })();
+      console.error("[auth][Header] Apple sign-in failed:", msg, e);
+      toast.error(msg);
+    } finally {
+      console.log("[auth][Header] onAppleLogin finished");
       setAuthSubmitting(false);
     }
   };
@@ -373,7 +483,7 @@ export const Header = () => {
                   <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                       <DialogTitle>Sign in</DialogTitle>
-                      <DialogDescription>Use email/password or continue with Google.</DialogDescription>
+                      <DialogDescription>Use email/password or continue with a social account.</DialogDescription>
                     </DialogHeader>
 
                     <form className="space-y-4" onSubmit={onEmailLogin}>
@@ -424,6 +534,17 @@ export const Header = () => {
                     >
                       Continue with Google
                     </Button>
+
+                    {isMobilePlatform() && Capacitor.getPlatform() === "ios" && (
+                      <Button
+                        className="w-full bg-black text-white hover:bg-black/90"
+                        type="button"
+                        onClick={onAppleLogin}
+                        disabled={authSubmitting}
+                      >
+                        Continue with Apple
+                      </Button>
+                    )}
                   </DialogContent>
                 </Dialog>
               </>

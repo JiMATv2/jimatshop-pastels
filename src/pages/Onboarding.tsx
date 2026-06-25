@@ -9,9 +9,11 @@ import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { getGoogleIdToken } from "@/lib/auth/googleIdentity";
 import { isMobilePlatform, signInWithGoogleNative } from "@/lib/auth/mobileAuth";
+import { signInWithAppleNative } from "@/lib/auth/appleAuth";
 import { toast } from "@/components/ui/sonner";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { ResponsivePage } from "@/components/layout/ResponsivePageShell";
+import { Capacitor } from "@capacitor/core";
 
 import { version } from "../../package.json";
 
@@ -40,9 +42,9 @@ interface LoginFormProps {
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onGoogleLogin: () => void;
+  onAppleLogin?: () => void;
   onEmailAuth: (e: React.FormEvent) => void;
   onToggleSignUp: () => void;
-  onGuestContinue: () => void;
 }
 
 function LoginForm({
@@ -53,9 +55,9 @@ function LoginForm({
   onEmailChange,
   onPasswordChange,
   onGoogleLogin,
+  onAppleLogin,
   onEmailAuth,
   onToggleSignUp,
-  onGuestContinue,
 }: LoginFormProps) {
   return (
     <div className="w-full max-w-sm space-y-4">
@@ -95,6 +97,20 @@ function LoginForm({
         </svg>
         {submitting ? "Loading..." : "Continue with Google"}
       </Button>
+
+      {onAppleLogin && (
+        <Button
+          variant="outline"
+          className="w-full h-12 gap-3 bg-black text-white hover:bg-black/90 hover:text-white border-black"
+          onClick={onAppleLogin}
+          disabled={submitting}
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.3 7.31c1.35.07 2.29.74 3.08.74.81 0 2.04-.74 3.52-.74.63.02 2.42.1 3.56 1.4-.07.04-2.12 1.28-2.1 3.83.02 3.05 2.67 4.06 2.7 4.08-.02.1-.42 1.47-1.38 2.66zM12.03 7.25c-.15-2.36 1.82-4.35 4.05-4.45.19 2.55-2.34 4.76-4.05 4.45z" />
+          </svg>
+          {submitting ? "Loading..." : "Continue with Apple"}
+        </Button>
+      )}
 
       <div className="relative py-3">
         <Separator />
@@ -147,14 +163,6 @@ function LoginForm({
           {isSignUp ? "Sign In" : "Sign Up"}
         </button>
       </p>
-
-      <Button
-        variant="ghost"
-        className="w-full text-muted-foreground md:justify-start"
-        onClick={onGuestContinue}
-      >
-        Continue as guest
-      </Button>
 
       <div className="text-center md:text-left text-xs text-muted-foreground/60 pt-4" data-testid="app-version">
         v{version}
@@ -287,9 +295,58 @@ export default function Onboarding() {
     }
   };
 
-  const handleGuestContinue = () => {
-    markOnboardingSeen();
-    navigate("/", { replace: true });
+  const handleAppleLogin = async () => {
+    console.log("[auth][Onboarding] handleAppleLogin started");
+    setSubmitting(true);
+    try {
+      console.log("[auth][Onboarding] calling signInWithAppleNative");
+      const { identityToken, email, fullName } = await signInWithAppleNative();
+
+      console.log("[auth][Onboarding] signInWithAppleNative returned", {
+        hasEmail: !!email,
+        email: email ?? null,
+        hasFullName: !!fullName,
+        tokenLength: identityToken.length,
+        tokenPrefix: identityToken.slice(0, 20) + "...",
+      });
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: identityToken,
+        fullName: fullName || undefined,
+      });
+
+      console.log("[auth][Onboarding] signInWithIdToken returned", {
+        hasData: !!data,
+        hasUser: !!data?.user,
+        hasSession: !!data?.session,
+        error: error ?? null,
+      });
+
+      if (error) throw error;
+
+      toast.success("Signed in successfully!");
+      markOnboardingSeen();
+      navigate("/", { replace: true });
+    } catch (e) {
+      const msg =
+        e instanceof Error
+          ? e.message
+          : typeof e === "string"
+            ? e
+            : (() => {
+                try {
+                  return JSON.stringify(e);
+                } catch {
+                  return "Apple sign-in failed";
+                }
+              })();
+      console.error("[auth][Onboarding] Apple login failed:", msg, e);
+      toast.error(msg);
+    } finally {
+      console.log("[auth][Onboarding] handleAppleLogin finished");
+      setSubmitting(false);
+    }
   };
 
   const loginFormProps: LoginFormProps = {
@@ -300,9 +357,10 @@ export default function Onboarding() {
     onEmailChange: setEmail,
     onPasswordChange: setPassword,
     onGoogleLogin: handleGoogleLogin,
+    onAppleLogin:
+      isMobilePlatform() && Capacitor.getPlatform() === "ios" ? handleAppleLogin : undefined,
     onEmailAuth: handleEmailAuth,
     onToggleSignUp: () => setIsSignUp((prev) => !prev),
-    onGuestContinue: handleGuestContinue,
   };
 
   if (showLogin) {

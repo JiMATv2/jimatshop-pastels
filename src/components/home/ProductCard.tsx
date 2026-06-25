@@ -12,6 +12,8 @@ interface ProductCardProps {
   badge?: "sale" | "new" | "fast";
   delay?: number;
   variant?: "mobile" | "tablet";
+  isMock?: boolean;
+  onMockClick?: () => void;
 }
 
 export const ProductCard = ({
@@ -24,6 +26,8 @@ export const ProductCard = ({
   badge,
   delay = 0,
   variant = "mobile",
+  isMock = false,
+  onMockClick,
 }: ProductCardProps) => {
   const navigate = useNavigate();
   const discount = originalPrice
@@ -31,6 +35,10 @@ export const ProductCard = ({
     : 0;
 
   const handleCardClick = () => {
+    if (isMock) {
+      onMockClick?.();
+      return;
+    }
     navigate(`/product/${id}`);
   };
 
