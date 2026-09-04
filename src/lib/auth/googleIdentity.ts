@@ -155,9 +155,8 @@ export async function getGoogleIdToken(): Promise<string> {
         auto_select: false,
       };
 
-      // Only enable FedCM if explicitly supported (avoid forcing it)
-      // This helps avoid "Provider's accounts list is empty" errors
-      if (typeof window !== "undefined" && "IdentityCredential" in window) {
+      // Only enable FedCM on HTTPS origins (FedCM fails or behaves unexpectedly on http://localhost)
+      if (typeof window !== "undefined" && "IdentityCredential" in window && window.location.protocol === "https:") {
         initConfig.use_fedcm_for_prompt = true;
       }
 
