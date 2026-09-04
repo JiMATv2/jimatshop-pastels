@@ -343,7 +343,7 @@ export const Header = () => {
         // If Google Identity Services fails, provide clear feedback
         const isUnregisteredOrigin = gsiError instanceof Error && gsiError.message.includes("unregistered_origin");
         if (isUnregisteredOrigin) {
-          toast.error("Google Sign-In Error: Domain/Origin not registered. Please add 'http://localhost:8082' to your Google Cloud Console JavaScript origins.");
+          toast.error(`Google Sign-In Error: Domain/Origin not registered. Please add '${window.location.origin}' to your Google Cloud Console JavaScript origins.`);
           throw gsiError;
         }
 

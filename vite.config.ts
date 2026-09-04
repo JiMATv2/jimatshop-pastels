@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => ({
   base: "/",
   server: {
     host: "::",
-    port: 8003,
+    port: 8083,
   },
   assetsInclude: ["**/*.wasm"],
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),

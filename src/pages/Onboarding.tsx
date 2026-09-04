@@ -269,7 +269,7 @@ export default function Onboarding() {
         const isUnregisteredOrigin = e instanceof Error && e.message.includes("unregistered_origin");
         if (isUnregisteredOrigin) {
           toast.error(
-            "Google Sign-In Error: Domain/Origin not registered. Please add 'http://localhost:8082' to your Google Cloud Console JavaScript origins.",
+            `Google Sign-In Error: Domain/Origin not registered. Please add '${window.location.origin}' to your Google Cloud Console JavaScript origins.`,
           );
           throw e;
         }
