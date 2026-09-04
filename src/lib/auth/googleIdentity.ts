@@ -212,7 +212,8 @@ export async function getGoogleIdToken(): Promise<string> {
         } else if (reason === "suppressed_by_user") {
           userMessage += "Sign-in was cancelled. Please try again.";
         } else if (reason === "unregistered_origin") {
-          userMessage += "This domain is not registered for Google sign-in.";
+          const currentOrigin = typeof window !== "undefined" ? window.location.origin : "";
+          userMessage += `This domain (${currentOrigin}) is not registered under Authorized JavaScript origins in Google Cloud Console for Client ID ${clientId}.`;
         } else if (reason === "unknown_reason") {
           userMessage +=
             "Google sign-in prompt could not be displayed. This may be due to browser settings or no Google account being available.";
