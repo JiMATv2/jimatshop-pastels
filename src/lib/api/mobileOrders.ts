@@ -37,10 +37,21 @@ export type MobileCreateJimatshopOrderRequest = {
   items: MobileCreateJimatshopOrderItem[];
   shipping_address?: Record<string, unknown> | null;
   notes?: string | null;
-  payment_method?: "pay_in_store" | "jimatshop_coins" | "jimatshop_coins_platform" | "billplz";
-  /** Base for Billplz browser redirect; server appends `/orders/{id}`. */
+  payment_method?:
+    | "pay_in_store"
+    | "jimatshop_coins"
+    | "jimatshop_coins_platform"
+    | "online_banking"
+    | "billplz";
+  /** Optional gateway override (server defaults to PREFERRED_PAYMENT_GATEWAY). */
+  gateway?: "billplz" | "chipin";
+  /** Base for payment browser redirect; server appends `/orders/{id}`. */
+  redirect_base?: string;
+  /** Full redirect URL override (preferred on native deep links). */
+  redirect_url?: string;
+  /** Legacy redirect base for backwards compatibility. */
   billplz_redirect_base?: string;
-  /** Full Billplz redirect URL override (preferred on native deep links). */
+  /** Legacy redirect URL for backwards compatibility. */
   billplz_redirect_url?: string;
 };
 
@@ -52,7 +63,11 @@ export type MobileCreateJimatshopOrderResponse =
         items_count: number;
         total_amount: number;
         status: string;
+        payment_method?: string;
+        gateway?: string;
+        payment_url?: string | null;
         billplz_url?: string | null;
+        bill_id?: string | null;
       };
     }
   | {

@@ -87,9 +87,13 @@ export function getBillplzRedirectBase(): string {
   return base.replace(/\/+$/, "");
 }
 
+export const getPaymentRedirectBase = getBillplzRedirectBase;
+
 export function buildBillplzRedirectUrl(orderId: string): string {
   return `${getBillplzRedirectBase()}/orders/${orderId}`;
 }
+
+export const buildPaymentRedirectUrl = buildBillplzRedirectUrl;
 
 export function parsePaymentReturnDeepLink(
   raw: string,

@@ -4,6 +4,9 @@ export function formatPaymentMethodLabel(method: string | null | undefined): str
 
   switch (method.toLowerCase()) {
     case "billplz":
+    case "online_banking":
+    case "online_payment":
+    case "chipin":
       return "Online Banking";
     case "jimatshop_coins":
     case "jimatshop_coins_platform":

@@ -4,8 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { resolveShopperId } from "@/lib/api/shopper";
+import { getMobileOrdersClientConfig } from "@/lib/api/mobileOrders";
 import { supabase } from "@/lib/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -83,40 +84,78 @@ export default function OrderDetails() {
   const { user } = useAuth();
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const handledBillplzReturn = useRef(false);
+  const queryClient = useQueryClient();
+  const handledPaymentReturn = useRef(false);
 
   const id = orderId ?? "";
 
   useEffect(() => {
-    if (handledBillplzReturn.current) return;
+    if (handledPaymentReturn.current || !id) return;
 
     const billplzPaid =
       searchParams.get("billplz[paid]") ?? searchParams.get("billplz%5Bpaid%5D");
-    if (billplzPaid == null) return;
+    const rawStatus = (
+      searchParams.get("status") ||
+      searchParams.get("payment_status") ||
+      ""
+    ).toLowerCase();
 
-    handledBillplzReturn.current = true;
+    const isPaidParam =
+      billplzPaid === "true" ||
+      rawStatus === "paid" ||
+      rawStatus === "completed" ||
+      rawStatus === "successful";
 
-    if (billplzPaid === "true") {
+    const isFailedParam =
+      billplzPaid === "false" ||
+      rawStatus === "failed" ||
+      rawStatus === "cancelled";
+
+    if (billplzPaid == null && !rawStatus) return;
+
+    handledPaymentReturn.current = true;
+
+    if (isPaidParam) {
       toast({
         title: "Payment received",
-        description: "Your Billplz payment was successful. We're processing your order.",
+        description: "Your payment was successful. We're processing your order.",
       });
-    } else {
+
+      // Synchronize order status with ex_supabase
+      const cfg = getMobileOrdersClientConfig();
+      fetch(`${cfg.baseUrl}/supabase/payments/check_chipin_status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${cfg.apiToken}`,
+        },
+        body: JSON.stringify({ order_id: id }),
+      })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["order-details", user?.id, id] });
+        })
+        .catch(() => {});
+    } else if (isFailedParam) {
       toast({
         title: "Payment not completed",
-        description: "Billplz payment was not completed. You can retry from your order details.",
+        description: "Payment was not completed. You can retry from your order details.",
         variant: "destructive",
       });
     }
 
     const next = new URLSearchParams(searchParams);
     for (const key of [...next.keys()]) {
-      if (key.includes("billplz")) next.delete(key);
+      if (
+        key.includes("billplz") ||
+        key === "status" ||
+        key === "payment_status" ||
+        key === "payment_type"
+      ) {
+        next.delete(key);
+      }
     }
-    next.delete("payment_type");
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, id, user?.id, queryClient]);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["order-details", user?.id, id],

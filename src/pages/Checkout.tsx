@@ -8,8 +8,8 @@ import { useCart } from "@/lib/cart/CartProvider";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ensureShopperId } from "@/lib/api/shopper";
 import { createMobileJimatshopOrder } from "@/lib/api/mobileOrders";
-import { getBillplzRedirectBase } from "@/lib/payments/billplzRedirect";
-import { openBillplzPayment } from "@/lib/payments/openBillplzPayment";
+import { getPaymentRedirectBase } from "@/lib/payments/billplzRedirect";
+import { openPaymentGateway } from "@/lib/payments/openBillplzPayment";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/client";
 import { Minus, Plus, Trash2 } from "lucide-react";
@@ -104,8 +104,10 @@ export default function Checkout() {
 
   const [notes, setNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<
-    "pay_in_store" | "jimatshop_coins" | "jimatshop_coins_platform" | "billplz"
+    "pay_in_store" | "jimatshop_coins" | "jimatshop_coins_platform" | "online_banking" | "billplz"
   >("pay_in_store");
+
+  const isOnlinePayment = paymentMethod === "online_banking" || paymentMethod === "billplz";
 
   const {
     data: shopperId,
@@ -355,12 +357,12 @@ export default function Checkout() {
         return;
       }
 
-      // Billplz redirect can only handle a single bill URL cleanly.
-      // For now, require single-shop checkout when Billplz is selected.
-      if (paymentMethod === "billplz" && ordersToCreate.length > 1) {
+      // Online payment redirect can only handle a single bill URL cleanly.
+      // For now, require single-shop checkout when online banking is selected.
+      if (isOnlinePayment && ordersToCreate.length > 1) {
         toast({
-          title: "Billplz checkout",
-          description: "Please checkout one shop at a time when paying by Billplz.",
+          title: "Online checkout",
+          description: "Please checkout one shop at a time when paying via online banking.",
           variant: "destructive",
         });
         return;
@@ -376,8 +378,11 @@ export default function Checkout() {
             shipping_address: null,
             notes: notes.trim() || null,
             payment_method: paymentMethod,
-            ...(paymentMethod === "billplz"
-              ? { billplz_redirect_base: getBillplzRedirectBase() }
+            ...(isOnlinePayment
+              ? {
+                  redirect_base: getPaymentRedirectBase(),
+                  billplz_redirect_base: getPaymentRedirectBase(),
+                }
               : {}),
           }),
         ),
@@ -404,26 +409,35 @@ export default function Checkout() {
 
       // Get successful order IDs
       const successfulOrders = orderResults
-        .filter((r): r is PromiseFulfilledResult<{ success: true; data: { jimatshop_order_id: string; billplz_url?: string | null } }> =>
-          r.status === "fulfilled" && r.value.success,
+        .filter(
+          (
+            r,
+          ): r is PromiseFulfilledResult<{
+            success: true;
+            data: {
+              jimatshop_order_id: string;
+              payment_url?: string | null;
+              billplz_url?: string | null;
+            };
+          }> => r.status === "fulfilled" && r.value.success,
         )
         .map((r) => r.value.data);
 
       clear();
 
-      // If Billplz is selected and backend returned a bill URL, redirect to payment.
-      if (paymentMethod === "billplz") {
-        const billUrl = successfulOrders?.[0]?.billplz_url as string | null | undefined;
-        if (billUrl) {
+      // If Online Banking is selected and backend returned a payment URL, redirect to payment.
+      if (isOnlinePayment) {
+        const paymentUrl = successfulOrders?.[0]?.payment_url || successfulOrders?.[0]?.billplz_url;
+        if (paymentUrl) {
           const orderId = successfulOrders[0].jimatshop_order_id;
-          toast({ title: "Redirecting to Billplz", description: "Complete your payment to confirm the order." });
-          await openBillplzPayment(billUrl, orderId);
+          toast({ title: "Redirecting to payment", description: "Complete your payment to confirm the order." });
+          await openPaymentGateway(paymentUrl, orderId);
           return;
         }
-        // If billUrl is missing, backend did not generate a bill URL (treat as an error, but keep the order created).
+        // If payment URL is missing, backend did not generate a payment URL (treat as an error, but keep the order created).
         toast({
-          title: "Billplz checkout",
-          description: "Billplz URL is missing. Please try again or contact support.",
+          title: "Online checkout",
+          description: "Payment URL is missing. Please try again or contact support.",
           variant: "destructive",
         });
       }
@@ -583,8 +597,8 @@ export default function Checkout() {
           <SelectItem value="jimatshop_coins_platform" disabled={!user}>
             JiMATShop Coins (Platform)
           </SelectItem>
-          <SelectItem value="billplz" disabled={!user}>
-            Billplz
+          <SelectItem value="online_banking" disabled={!user}>
+            Online Banking (FPX)
           </SelectItem>
         </SelectContent>
       </Select>
@@ -597,9 +611,9 @@ export default function Checkout() {
         <p className="text-xs text-muted-foreground">
           Coins will be deducted from your platform JiMATShop coin balance when you place the order.
         </p>
-      ) : paymentMethod === "billplz" ? (
+      ) : isOnlinePayment ? (
         <p className="text-xs text-muted-foreground">
-          You'll be redirected to Billplz to complete payment after placing the order.
+          You'll be redirected to complete secure online banking payment after placing the order.
         </p>
       ) : (
         <p className="text-xs text-muted-foreground">
