@@ -54,8 +54,14 @@ export function ProductCard({
         ) : null}
         <div className="aspect-square bg-muted rounded-xl mb-3 flex items-center justify-center overflow-hidden">
           <img
-            src={coverImageUrl || "https://via.placeholder.com/400"}
+            src={coverImageUrl || "/placeholder.svg"}
             alt={productName}
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (target.src !== `${window.location.origin}/placeholder.svg` && !target.src.endsWith("/placeholder.svg")) {
+                target.src = "/placeholder.svg";
+              }
+            }}
             className="w-full h-full object-cover"
           />
         </div>

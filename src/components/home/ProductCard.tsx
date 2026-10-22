@@ -75,8 +75,14 @@ export const ProductCard = ({
         {/* Image */}
         <div className={isTablet ? "aspect-square bg-muted rounded-2xl mb-4 flex items-center justify-center overflow-hidden" : "aspect-square bg-muted rounded-xl mb-3 flex items-center justify-center overflow-hidden"}>
           <img
-            src={image}
+            src={image || "/placeholder.svg"}
             alt={name}
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (target.src !== `${window.location.origin}/placeholder.svg` && !target.src.endsWith("/placeholder.svg")) {
+                target.src = "/placeholder.svg";
+              }
+            }}
             className="w-full h-full object-cover"
           />
         </div>
