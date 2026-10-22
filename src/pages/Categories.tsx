@@ -31,15 +31,15 @@ export default function Categories() {
   return (
     <div className="min-h-screen bg-background pb-24">
       <Header />
-      <main className="px-4 py-4">
+      <main className="px-4 py-4 max-w-5xl mx-auto">
         <div className="flex items-baseline justify-between gap-3 mb-4">
           <h2 className="text-lg font-semibold text-foreground">Categories</h2>
           <span className="text-xs text-muted-foreground">Browse all categories</span>
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-4 gap-3">
-            {Array.from({ length: 12 }).map((_, i) => (
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+            {Array.from({ length: 16 }).map((_, i) => (
               <div key={i} className="jimat-card p-3 flex flex-col items-center gap-2">
                 <Skeleton className="h-8 w-8 rounded-md" />
                 <Skeleton className="h-3 w-16" />
@@ -51,7 +51,7 @@ export default function Categories() {
         ) : categories.length === 0 ? (
           <div className="text-sm text-muted-foreground">No categories available.</div>
         ) : (
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
             {categories.map((category, index) => {
               const initial = category.name?.trim()?.charAt(0)?.toUpperCase() ?? "?";
               const search = new URLSearchParams({

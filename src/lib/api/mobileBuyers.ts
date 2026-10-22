@@ -3,6 +3,9 @@ import { getMobileProductsClientConfig } from "@/lib/api/mobileProducts";
 export type MobileBuyerShop = {
   id: string;
   business_name: string;
+  outlet_name?: string | null;
+  email?: string | null;
+  contact_name?: string | null;
   city: string | null;
   state: string | null;
   address: string | null;

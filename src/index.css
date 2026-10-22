@@ -159,6 +159,22 @@
     font-size: 0.8rem;
   }
 
+  @media (min-width: 768px) {
+    html {
+      font-size: 1rem;
+    }
+
+    body:has(.desktop-side-nav) {
+      padding-left: 5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    body:has(.desktop-side-nav) {
+      padding-left: 15rem;
+    }
+  }
+
   body {
     min-height: 100%;
   }

@@ -248,7 +248,7 @@ export default function Chat() {
     return (
       <div className="min-h-screen bg-background pb-24">
         <Header />
-        <main className="max-w-md mx-auto px-4 py-8 text-center">
+        <main className="max-w-md md:max-w-2xl mx-auto px-4 py-8 text-center">
           <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h1 className="text-lg font-semibold mb-2">Messages</h1>
           <p className="text-muted-foreground text-sm mb-4">Sign in to chat with shops about your orders.</p>
@@ -264,7 +264,7 @@ export default function Chat() {
   return (
     <div className="min-h-screen bg-background pb-24 flex flex-col">
       <Header />
-      <main className="max-w-md mx-auto w-full flex-1 flex flex-col min-h-0">
+      <main className="max-w-md md:max-w-2xl mx-auto w-full flex-1 flex flex-col min-h-0">
         {listView ? (
           <>
             <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">

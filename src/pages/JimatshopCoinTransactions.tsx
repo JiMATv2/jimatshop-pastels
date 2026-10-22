@@ -98,7 +98,7 @@ export default function JimatshopCoinTransactions() {
     <div className="min-h-screen bg-background pb-24">
       <Header />
 
-      <main className="px-4 py-4 space-y-4">
+      <main className="px-4 py-4 space-y-4 max-w-5xl mx-auto">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Back">

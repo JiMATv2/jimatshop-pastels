@@ -61,7 +61,7 @@ export default function JimatshopCoins() {
     <div className="min-h-screen bg-background pb-24">
       <Header />
 
-      <main className="px-4 py-4 space-y-4">
+      <main className="px-4 py-4 space-y-4 max-w-5xl mx-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">JiMATShop Coins</h2>
           {!user ? <span className="text-xs text-muted-foreground">Sign in to view</span> : null}

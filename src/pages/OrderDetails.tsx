@@ -83,6 +83,7 @@ function safeString(v: unknown): string | null {
 export default function OrderDetails() {
   const { user } = useAuth();
   const { orderId } = useParams<{ orderId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const handledPaymentReturn = useRef(false);

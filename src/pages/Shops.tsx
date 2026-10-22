@@ -76,6 +76,8 @@ export default function Shops() {
         address?: string | null;
         city?: string | null;
         state?: string | null;
+        email?: string | null;
+        contact_name?: string | null;
         distance_in_km?: number | null;
         product_count?: number | null;
         shop_photo_url?: string | null;
@@ -87,9 +89,12 @@ export default function Shops() {
       if (!s.id) continue;
       byId.set(String(s.id), {
         id: String(s.id),
-        name: s.business_name || "Outlet",
+        name: s.business_name || s.outlet_name || "Outlet",
+        address: s.address ?? null,
         city: s.city ?? null,
         state: s.state ?? null,
+        email: s.email ?? null,
+        contact_name: s.contact_name ?? null,
         distance_in_km: typeof s.distance_in_km === "number" ? s.distance_in_km : null,
         product_count: typeof s.product_count === "number" ? s.product_count : 0,
         shop_photo_url: s.shop_photo_url ?? null,
@@ -104,11 +109,13 @@ export default function Shops() {
       const distance = typeof outlet.distance_in_km === "number" ? outlet.distance_in_km : null;
       const name = outlet.name || existing?.name || "Outlet";
       const address = outlet.address ?? existing?.address ?? null;
+      const email = outlet.email ?? existing?.email ?? null;
       if (existing) {
         byId.set(outletId, {
           ...existing,
           name,
           address,
+          email,
           distance_in_km: distance ?? existing.distance_in_km ?? null,
         });
       } else {
@@ -116,6 +123,7 @@ export default function Shops() {
           id: outletId,
           name,
           address,
+          email,
           distance_in_km: distance,
           product_count: 0,
         });
@@ -126,7 +134,15 @@ export default function Shops() {
 
     if (search) {
       const lower = search.toLowerCase();
-      list = list.filter((item) => item.name.toLowerCase().includes(lower));
+      list = list.filter(
+        (item) =>
+          item.name.toLowerCase().includes(lower) ||
+          (item.city && item.city.toLowerCase().includes(lower)) ||
+          (item.state && item.state.toLowerCase().includes(lower)) ||
+          (item.address && item.address.toLowerCase().includes(lower)) ||
+          (item.email && item.email.toLowerCase().includes(lower)) ||
+          (item.contact_name && item.contact_name.toLowerCase().includes(lower)),
+      );
     }
 
     list.sort((a, b) => {
@@ -230,7 +246,7 @@ export default function Shops() {
     <div className="min-h-screen bg-background pb-24">
       <Header />
 
-      <main className="px-4 py-4">
+      <main className="px-4 py-4 max-w-5xl mx-auto">
         <div className="flex items-baseline justify-between gap-3 mb-3">
           <h2 className="text-lg font-semibold text-foreground">Buyer Shops</h2>
           <span className="text-xs text-muted-foreground">Browse all shops</span>
@@ -269,7 +285,7 @@ export default function Shops() {
         </div>
 
         {locationLoading || nearbyLoading || isLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-4 sm:space-y-0">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="jimat-card p-3 flex gap-3 items-center">
                 <Skeleton className="h-14 w-14 rounded-xl" />
@@ -286,7 +302,7 @@ export default function Shops() {
         ) : mergedShops.length === 0 ? (
           <p className="text-sm text-muted-foreground">No shops found.</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 sm:grid sm:grid-cols-2 sm:gap-4 sm:space-y-0">
             {mergedShops.map((s) => {
               const subtitle = s.address || [s.city, s.state].filter(Boolean).join(", ");
               const img = s.shop_photo_url || s.signboard_photo_url || null;

@@ -69,7 +69,7 @@ const JimatshopCampaignDetails = () => {
   }
 
   return (
-    <div className="space-y-6 px-4 py-5">
+    <div className="space-y-6 px-4 py-5 max-w-5xl mx-auto">
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-bold text-foreground">
