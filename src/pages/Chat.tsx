@@ -78,7 +78,14 @@ export default function Chat() {
 
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      const viewport = (messagesEndRef.current.closest('[data-radix-scroll-area-viewport]') ||
+        messagesEndRef.current.parentElement) as HTMLElement | null;
+      if (viewport) {
+        viewport.scrollTo({
+          top: viewport.scrollHeight,
+          behavior: 'smooth',
+        });
+      }
     }
   }, [messages, selectedRoom]);
 

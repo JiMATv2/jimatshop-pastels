@@ -32,7 +32,7 @@ function ChatMessageComposerInner({ disabled, roomId, onSend }: ChatMessageCompo
   }, [roomId]);
 
   useEffect(() => {
-    if (!disabled && roomId && inputRef.current) inputRef.current.focus();
+    if (!disabled && roomId && inputRef.current) inputRef.current.focus({ preventScroll: true });
   }, [disabled, roomId]);
 
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
