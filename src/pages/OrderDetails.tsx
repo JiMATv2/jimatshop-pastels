@@ -269,7 +269,7 @@ export default function OrderDetails() {
     <div className="flex items-center gap-3 mb-4">
       <button
         type="button"
-        onClick={() => navigate(-1)}
+        onClick={() => navigate("/orders")}
         className="p-2 rounded-xl hover:bg-muted transition-colors"
         aria-label="Back"
       >
