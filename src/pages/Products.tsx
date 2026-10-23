@@ -11,13 +11,15 @@ import {
 import { ProductCard } from "@/components/product/ProductCard";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useNearbyBuyerIds } from "@/lib/shop/useNearbyBuyerIds";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { toast } from "@/hooks/use-toast";
 import { notificationService } from "@/lib/notifications/notificationService";
 import { supabase } from "@/lib/supabase/client";
 import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
+import { ArrowLeft, ChevronRight, Store } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type SectionKey = "featured" | "popular";
 
@@ -26,6 +28,7 @@ function parseSection(v: string | null): SectionKey {
 }
 
 export default function Products() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const section = useMemo(
@@ -290,65 +293,116 @@ export default function Products() {
     return map;
   }, [promoResp?.buyer_promos]);
 
+  const handleShopClick = (buyerId: string) => {
+    navigate(`/products?buyer_id=${buyerId}`);
+  };
+
   const shopDetailsCard = buyerIdParam ? (
-    <section className="jimat-card p-3 mb-4">
-      <div className="flex items-start gap-3">
-        <img
-          src={selectedBuyerShop?.shop_photo_url || selectedBuyerShop?.signboard_photo_url || "/placeholder.svg"}
-          alt={selectedBuyerShop?.business_name || selectedBuyerOutlet?.name || "Shop"}
-          className="h-12 w-12 rounded-xl object-cover bg-muted flex-shrink-0"
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-foreground truncate">
-                {selectedBuyerShop?.business_name || selectedBuyerOutlet?.name || "Shop"}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1 truncate">
-                {selectedBuyerShop?.address || selectedBuyerOutlet?.address || "—"}
-              </div>
-              {typeof selectedBuyerOutlet?.distance_in_km === "number" ? (
-                <div className="text-xs font-medium text-primary mt-1">
-                  {selectedBuyerOutlet.distance_in_km.toFixed(1)} km away
+    <div className="mb-4">
+      <button
+        type="button"
+        onClick={() => {
+          const params = new URLSearchParams(searchParams);
+          params.delete("buyer_id");
+          navigate({
+            pathname: "/products",
+            search: params.toString() ? `?${params.toString()}` : "",
+          });
+        }}
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline mb-2 cursor-pointer"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        <span>Back to all nearby stores</span>
+      </button>
+      <section className="jimat-card p-3">
+        <div className="flex items-start gap-3">
+          <img
+            src={selectedBuyerShop?.shop_photo_url || selectedBuyerShop?.signboard_photo_url || "/placeholder.svg"}
+            alt={selectedBuyerShop?.business_name || selectedBuyerOutlet?.name || "Shop"}
+            className="h-12 w-12 rounded-xl object-cover bg-muted flex-shrink-0"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-foreground truncate">
+                  {selectedBuyerShop?.business_name || selectedBuyerOutlet?.name || "Shop"}
                 </div>
-              ) : null}
+                <div className="text-xs text-muted-foreground mt-1 truncate">
+                  {selectedBuyerShop?.address || selectedBuyerOutlet?.address || "—"}
+                </div>
+                {typeof selectedBuyerOutlet?.distance_in_km === "number" ? (
+                  <div className="text-xs font-medium text-primary mt-1">
+                    {selectedBuyerOutlet.distance_in_km.toFixed(1)} km away
+                  </div>
+                ) : null}
+              </div>
+              <Button
+                size="sm"
+                variant={isFollowing ? "secondary" : "default"}
+                className="shrink-0"
+                onClick={handleFollow}
+                disabled={Boolean(isFollowing) || isFollowSaving || isFollowLoading}
+              >
+                {isFollowing ? "Following" : isFollowSaving ? "Following…" : "Follow"}
+              </Button>
             </div>
-            <Button
-              size="sm"
-              variant={isFollowing ? "secondary" : "default"}
-              className="shrink-0"
-              onClick={handleFollow}
-              disabled={Boolean(isFollowing) || isFollowSaving || isFollowLoading}
-            >
-              {isFollowing ? "Following" : isFollowSaving ? "Following…" : "Follow"}
-            </Button>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   ) : (
-    <section className="jimat-card p-3 mb-4">
+    <section
+      className={cn(
+        "jimat-card p-3 mb-4 transition-all duration-200",
+        nearestOutlet && "cursor-pointer hover:border-primary/50 hover:bg-muted/40 active:bg-muted group"
+      )}
+      onClick={() => {
+        if (nearestOutlet?.id) {
+          handleShopClick(String(nearestOutlet.id));
+        }
+      }}
+      role={nearestOutlet ? "button" : undefined}
+      tabIndex={nearestOutlet ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (nearestOutlet?.id && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          handleShopClick(String(nearestOutlet.id));
+        }
+      }}
+    >
       <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-semibold text-foreground">Nearest shop</div>
-        {nearestOutlet && typeof nearestOutlet.distance_in_km === "number" ? (
-          <div className="text-xs font-medium text-primary whitespace-nowrap">
-            {nearestOutlet.distance_in_km.toFixed(1)} km
-          </div>
-        ) : null}
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <Store className="h-4 w-4 text-primary shrink-0" />
+          <span>Nearest shop</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {nearestOutlet && typeof nearestOutlet.distance_in_km === "number" ? (
+            <div className="text-xs font-medium text-primary whitespace-nowrap">
+              {nearestOutlet.distance_in_km.toFixed(1)} km
+            </div>
+          ) : null}
+          {nearestOutlet && (
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+          )}
+        </div>
       </div>
       {buyerIdsLoading ? (
         <div className="text-xs text-muted-foreground mt-1">Finding nearby buyers…</div>
       ) : !hasLocation ? (
         <div className="text-xs text-muted-foreground mt-1">Location not set.</div>
       ) : nearestOutlet ? (
-        <>
-          <div className="text-sm font-medium text-foreground mt-2 truncate">
+        <div className="mt-2">
+          <div className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
             {nearestOutlet.name || "Buyer"}
           </div>
-          <div className="text-xs text-muted-foreground mt-1 truncate">
+          <div className="text-xs text-muted-foreground mt-0.5 truncate">
             {nearestOutlet.address || "—"}
           </div>
-        </>
+          <div className="mt-2 flex items-center gap-1 text-xs font-medium text-primary">
+            <span>Visit store</span>
+            <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        </div>
       ) : (
         <div className="text-xs text-muted-foreground mt-1">No buyers found within 20km.</div>
       )}
@@ -358,14 +412,24 @@ export default function Products() {
   const nearbyOutletsSection = !buyerIdParam ? (
     <section className="jimat-card p-3">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-sm font-semibold text-foreground">
-          Nearby buyer outlets (20km)
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <Store className="h-4 w-4 text-primary shrink-0" />
+          <span>Nearby buyer outlets (20km)</span>
         </div>
-        {!buyerIdsLoading && buyerIds.length > 0 && (
-          <div className="text-xs text-muted-foreground">
-            {buyerIds.length} {buyerIds.length === 1 ? "outlet" : "outlets"}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {!buyerIdsLoading && buyerIds.length > 0 && (
+            <div className="text-xs text-muted-foreground">
+              {buyerIds.length} {buyerIds.length === 1 ? "outlet" : "outlets"}
+            </div>
+          )}
+          <Link
+            to="/shops"
+            className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
+          >
+            <span>View all</span>
+            <ChevronRight className="h-3 w-3" />
+          </Link>
+        </div>
       </div>
       {!hasLocation ? (
         <div className="text-xs text-muted-foreground mt-1">Location not set.</div>
@@ -378,26 +442,47 @@ export default function Products() {
       ) : (
         <>
           <div className="mt-2 space-y-2">
-            {outlets.slice(0, 6).map((o) => (
-              <div key={String(o.id)} className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-foreground truncate">
-                    {o.name || "Buyer"}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {o.address || "—"}
-                  </div>
-                  {typeof o.lat === "number" && typeof o.lng === "number" ? (
-                    <div className="text-[11px] text-muted-foreground">
-                      {o.lat.toFixed(6)}, {o.lng.toFixed(6)}
+            {outlets.slice(0, 6).map((o) => {
+              const outletId = String(o.id);
+              return (
+                <div
+                  key={outletId}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleShopClick(outletId)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleShopClick(outletId);
+                    }
+                  }}
+                  className="flex items-start justify-between gap-3 p-2.5 -mx-1 rounded-lg cursor-pointer hover:bg-muted/60 active:bg-muted transition-all group border border-transparent hover:border-border"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors flex items-center gap-1.5">
+                      <Store className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                      <span className="truncate">{o.name || "Buyer"}</span>
                     </div>
-                  ) : null}
+                    <div className="text-xs text-muted-foreground truncate mt-0.5">
+                      {o.address || "—"}
+                    </div>
+                    {typeof o.lat === "number" && typeof o.lng === "number" ? (
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        {o.lat.toFixed(6)}, {o.lng.toFixed(6)}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                    {typeof o.distance_in_km === "number" ? (
+                      <span className="text-xs font-medium text-primary whitespace-nowrap">
+                        {o.distance_in_km.toFixed(1)} km
+                      </span>
+                    ) : null}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                  </div>
                 </div>
-                <div className="text-xs font-medium text-primary whitespace-nowrap">
-                  {typeof o.distance_in_km === "number" ? `${o.distance_in_km.toFixed(1)} km` : ""}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {items.length > 0 ? (
             <div className="mt-3 pt-3 border-t">
