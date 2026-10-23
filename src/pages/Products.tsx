@@ -18,7 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import { notificationService } from "@/lib/notifications/notificationService";
 import { supabase } from "@/lib/supabase/client";
 import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
-import { ArrowLeft, ChevronRight, Store } from "lucide-react";
+import { ArrowLeft, ChevronRight, LayoutGrid, PackageSearch, Store, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SectionKey = "featured" | "popular";
@@ -297,6 +297,113 @@ export default function Products() {
     navigate(`/products?buyer_id=${buyerId}`);
   };
 
+  const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
+    queryKey: ["all-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("product_categories")
+        .select("id,name,image_url,parent_id")
+        .is("parent_id", null)
+        .order("name", { ascending: true });
+
+      if (error) throw error;
+      return (data ?? []).filter((category: any) => category?.name) as Array<{
+        id: string;
+        name: string;
+        image_url: string | null;
+      }>;
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const handleCategorySelect = (categoryName: string | null) => {
+    const params = new URLSearchParams(searchParams);
+    if (!categoryName || categoryName.toLowerCase() === categoryFilter.toLowerCase()) {
+      params.delete("category");
+    } else {
+      params.set("category", categoryName);
+    }
+    setPage(1);
+    navigate({
+      pathname: "/products",
+      search: params.toString() ? `?${params.toString()}` : "",
+    });
+  };
+
+  const categoryFilterBar = (
+    <div className="mb-4">
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <button
+          type="button"
+          onClick={() => handleCategorySelect(null)}
+          className={cn(
+            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 shrink-0 cursor-pointer",
+            !categoryFilter
+              ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+              : "bg-card border border-border/80 text-foreground hover:bg-muted/60 active:scale-95"
+          )}
+        >
+          <LayoutGrid className="h-3.5 w-3.5" />
+          <span>All</span>
+        </button>
+
+        {isCategoriesLoading
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-7 w-20 rounded-full shrink-0" />
+            ))
+          : categories.map((cat) => {
+              const isSelected = categoryFilter.toLowerCase() === cat.name.toLowerCase();
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => handleCategorySelect(cat.name)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 shrink-0 cursor-pointer",
+                    isSelected
+                      ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                      : "bg-card border border-border/80 text-foreground hover:bg-muted/60 active:scale-95"
+                  )}
+                >
+                  <span className="h-4 w-4 rounded-full bg-white dark:bg-muted flex items-center justify-center p-0.5 shrink-0 overflow-hidden shadow-xs">
+                    {cat.image_url ? (
+                      <img
+                        src={cat.image_url}
+                        alt={cat.name}
+                        className="h-full w-full object-contain"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="text-[10px] font-bold text-foreground">
+                        {cat.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </span>
+                  <span>{cat.name}</span>
+                  {isSelected && (
+                    <X className="h-3 w-3 ml-0.5 opacity-80 hover:opacity-100" />
+                  )}
+                </button>
+              );
+            })}
+      </div>
+      {categoryFilter && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground mt-2 px-0.5">
+          <span>
+            Filtered by: <strong className="text-foreground">{categoryFilter}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={() => handleCategorySelect(null)}
+            className="text-primary hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
+          >
+            Clear filter
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   const shopDetailsCard = buyerIdParam ? (
     <div className="mb-4">
       <button
@@ -514,6 +621,42 @@ export default function Products() {
             </div>
           </div>
         ))
+      ) : items.length === 0 ? (
+        <div className="col-span-full py-12 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted mb-3 text-muted-foreground">
+            <PackageSearch className="h-6 w-6" />
+          </div>
+          <h4 className="text-sm font-semibold text-foreground mb-1">
+            {categoryFilter
+              ? `No products found in "${categoryFilter}"`
+              : searchQuery
+              ? `No products found for "${searchQuery}"`
+              : "No products available"}
+          </h4>
+          <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-4">
+            {categoryFilter
+              ? "This shop may not have items in this category right now."
+              : "Check back later or browse other nearby shops."}
+          </p>
+          {(categoryFilter || searchQuery) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const params = new URLSearchParams(searchParams);
+                params.delete("category");
+                params.delete("q");
+                setPage(1);
+                navigate({
+                  pathname: "/products",
+                  search: params.toString() ? `?${params.toString()}` : "",
+                });
+              }}
+            >
+              Clear filters
+            </Button>
+          )}
+        </div>
       ) : (
         items.map((product, idx) => {
           const productId = String(product.id);
@@ -608,6 +751,7 @@ export default function Products() {
           <main className="px-4 py-4">
             <h2 className="text-lg font-semibold text-foreground mb-4">{title}</h2>
             {shopDetailsCard}
+            {categoryFilterBar}
             {renderProductsGrid("grid-cols-3", 12)}
             {paginationControls}
             {error && <p className="mt-3 text-xs text-muted-foreground">Failed to load inventories.</p>}
@@ -631,6 +775,7 @@ export default function Products() {
                 </div>
                 {/* Right Panel */}
                 <div className="col-span-8 space-y-4">
+                  {categoryFilterBar}
                   {renderProductsGrid("grid-cols-5", 20)}
                   {paginationControls}
                   {error && <p className="mt-3 text-xs text-muted-foreground">Failed to load inventories.</p>}
