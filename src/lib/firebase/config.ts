@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 
-// Firebase configuration - hardcoded values for Lovable deployment with .env fallbacks
+// Firebase configuration with .env fallbacks
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyA6Ighi9Jq-ML4O2No5chCq-VYn5nTz5Zk",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "jimat-294609.firebaseapp.com",
