@@ -18,7 +18,14 @@ import { toast } from "@/hooks/use-toast";
 import { notificationService } from "@/lib/notifications/notificationService";
 import { supabase } from "@/lib/supabase/client";
 import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
-import { ArrowLeft, ChevronRight, LayoutGrid, PackageSearch, Store, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ArrowLeft, Check, ChevronRight, Layers, LayoutGrid, PackageSearch, Store, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SectionKey = "featured" | "popular";
@@ -330,26 +337,120 @@ export default function Products() {
     });
   };
 
-  const categoryFilterBar = (
+  const mobileCategoryDropdown = (
     <div className="mb-4">
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <Select
+            value={categoryFilter || "ALL"}
+            onValueChange={(val) => handleCategorySelect(val === "ALL" ? null : val)}
+          >
+            <SelectTrigger className="w-full bg-card rounded-xl border-border/80 h-11 px-3 text-xs font-medium shadow-xs">
+              <div className="flex items-center gap-2 truncate">
+                <span className="text-muted-foreground text-[11px] uppercase tracking-wider font-semibold">Category:</span>
+                <span className="truncate font-semibold text-foreground">
+                  {categoryFilter || "All Categories"}
+                </span>
+              </div>
+            </SelectTrigger>
+            <SelectContent className="max-h-80 z-50">
+              <SelectItem value="ALL">
+                <div className="flex items-center gap-2 text-xs font-medium py-0.5">
+                  <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+                  <span>All Categories</span>
+                </div>
+              </SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.name}>
+                  <div className="flex items-center gap-2 text-xs py-0.5">
+                    {cat.image_url ? (
+                      <span className="h-4 w-4 rounded-full bg-white dark:bg-muted p-0.5 shrink-0 flex items-center justify-center overflow-hidden shadow-2xs">
+                        <img
+                          src={cat.image_url}
+                          alt={cat.name}
+                          className="h-full w-full object-contain"
+                          loading="lazy"
+                        />
+                      </span>
+                    ) : (
+                      <span className="h-4 w-4 rounded-full bg-muted text-[9px] flex items-center justify-center font-bold shrink-0">
+                        {cat.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="truncate">{cat.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {categoryFilter && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleCategorySelect(null)}
+            className="h-11 px-3 text-xs text-muted-foreground hover:text-foreground shrink-0 rounded-xl cursor-pointer"
+          >
+            <X className="h-3.5 w-3.5 mr-1" />
+            Clear
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  const desktopCategoryChips = (
+    <section className="jimat-card p-3.5 space-y-3">
+      <div className="flex items-center justify-between border-b border-border/60 pb-2">
+        <div className="flex items-center gap-2">
+          <Layers className="h-4 w-4 text-primary" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categories</span>
+        </div>
+        {categoryFilter && (
+          <button
+            type="button"
+            onClick={() => handleCategorySelect(null)}
+            className="text-xs text-primary hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1.5 max-h-[520px] overflow-y-auto no-scrollbar pr-0.5">
         <button
           type="button"
           onClick={() => handleCategorySelect(null)}
           className={cn(
-            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 shrink-0 cursor-pointer",
+            "w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer text-left",
             !categoryFilter
-              ? "bg-primary text-primary-foreground shadow-sm font-semibold"
-              : "bg-card border border-border/80 text-foreground hover:bg-muted/60 active:scale-95"
+              ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+              : "bg-muted/40 hover:bg-muted text-foreground border border-border/50"
           )}
         >
-          <LayoutGrid className="h-3.5 w-3.5" />
-          <span>All</span>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span
+              className={cn(
+                "h-5 w-5 rounded-md flex items-center justify-center shrink-0",
+                !categoryFilter
+                  ? "bg-primary-foreground/20 text-primary-foreground"
+                  : "bg-background text-muted-foreground"
+              )}
+            >
+              <LayoutGrid className="h-3 w-3" />
+            </span>
+            <span className="truncate">All Categories</span>
+          </div>
+          {!categoryFilter && <Check className="h-3.5 w-3.5 shrink-0" />}
         </button>
 
         {isCategoriesLoading
-          ? Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-7 w-20 rounded-full shrink-0" />
+          ? Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-2 px-3 py-2">
+                <Skeleton className="h-5 w-5 rounded-md shrink-0" />
+                <Skeleton className="h-4 w-28" />
+              </div>
             ))
           : categories.map((cat) => {
               const isSelected = categoryFilter.toLowerCase() === cat.name.toLowerCase();
@@ -359,49 +460,42 @@ export default function Products() {
                   type="button"
                   onClick={() => handleCategorySelect(cat.name)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 shrink-0 cursor-pointer",
+                    "w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer text-left group",
                     isSelected
-                      ? "bg-primary text-primary-foreground shadow-sm font-semibold"
-                      : "bg-card border border-border/80 text-foreground hover:bg-muted/60 active:scale-95"
+                      ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                      : "bg-muted/40 hover:bg-muted text-foreground border border-border/50"
                   )}
                 >
-                  <span className="h-4 w-4 rounded-full bg-white dark:bg-muted flex items-center justify-center p-0.5 shrink-0 overflow-hidden shadow-xs">
-                    {cat.image_url ? (
-                      <img
-                        src={cat.image_url}
-                        alt={cat.name}
-                        className="h-full w-full object-contain"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <span className="text-[10px] font-bold text-foreground">
-                        {cat.name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </span>
-                  <span>{cat.name}</span>
-                  {isSelected && (
-                    <X className="h-3 w-3 ml-0.5 opacity-80 hover:opacity-100" />
-                  )}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className={cn(
+                        "h-5 w-5 rounded-md flex items-center justify-center p-0.5 shrink-0 bg-white dark:bg-muted shadow-2xs overflow-hidden",
+                        isSelected && "ring-1 ring-primary-foreground/30"
+                      )}
+                    >
+                      {cat.image_url ? (
+                        <img
+                          src={cat.image_url}
+                          alt={cat.name}
+                          className="h-full w-full object-contain"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="text-[9px] font-bold text-foreground">
+                          {cat.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </span>
+                    <span className="truncate">{cat.name}</span>
+                  </div>
+                  {isSelected ? (
+                    <X className="h-3.5 w-3.5 shrink-0 opacity-80 group-hover:opacity-100" />
+                  ) : null}
                 </button>
               );
             })}
       </div>
-      {categoryFilter && (
-        <div className="flex items-center justify-between text-xs text-muted-foreground mt-2 px-0.5">
-          <span>
-            Filtered by: <strong className="text-foreground">{categoryFilter}</strong>
-          </span>
-          <button
-            type="button"
-            onClick={() => handleCategorySelect(null)}
-            className="text-primary hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
-          >
-            Clear filter
-          </button>
-        </div>
-      )}
-    </div>
+    </section>
   );
 
   const shopDetailsCard = buyerIdParam ? (
@@ -751,7 +845,7 @@ export default function Products() {
           <main className="px-4 py-4">
             <h2 className="text-lg font-semibold text-foreground mb-4">{title}</h2>
             {shopDetailsCard}
-            {categoryFilterBar}
+            {mobileCategoryDropdown}
             {renderProductsGrid("grid-cols-3", 12)}
             {paginationControls}
             {error && <p className="mt-3 text-xs text-muted-foreground">Failed to load inventories.</p>}
@@ -771,11 +865,26 @@ export default function Products() {
                 {/* Left Panel */}
                 <div className="col-span-4 space-y-4">
                   {shopDetailsCard}
+                  {desktopCategoryChips}
                   {!buyerIdParam && nearbyOutletsSection}
                 </div>
                 {/* Right Panel */}
                 <div className="col-span-8 space-y-4">
-                  {categoryFilterBar}
+                  {categoryFilter && (
+                    <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/60 text-xs shadow-xs">
+                      <span>
+                        Filtering by category: <strong className="text-foreground">{categoryFilter}</strong>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCategorySelect(null)}
+                        className="text-primary hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Clear filter
+                      </button>
+                    </div>
+                  )}
                   {renderProductsGrid("grid-cols-5", 20)}
                   {paginationControls}
                   {error && <p className="mt-3 text-xs text-muted-foreground">Failed to load inventories.</p>}
