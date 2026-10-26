@@ -12,7 +12,8 @@ import { getPaymentRedirectBase } from "@/lib/payments/billplzRedirect";
 import { openPaymentGateway } from "@/lib/payments/openBillplzPayment";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/client";
-import { Minus, Plus, Trash2, Store, AlertCircle } from "lucide-react";
+import { Minus, Plus, Trash2, Store, AlertCircle, Coins, CheckCircle2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
@@ -103,11 +104,11 @@ export default function Checkout() {
   }, [items, primaryBuyerId]);
 
   const [notes, setNotes] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<
-    "pay_in_store" | "jimatshop_coins" | "jimatshop_coins_platform" | "online_banking" | "billplz"
-  >("pay_in_store");
-
-  const isOnlinePayment = paymentMethod === "online_banking" || paymentMethod === "billplz";
+  const [applyCoins, setApplyCoins] = useState<boolean>(true);
+  const [usePlatformCoins, setUsePlatformCoins] = useState<boolean>(false);
+  const [remainderPaymentMethod, setRemainderPaymentMethod] = useState<
+    "online_banking" | "pay_in_store"
+  >("online_banking");
 
   const {
     data: shopperId,
@@ -223,37 +224,51 @@ export default function Checkout() {
 
   const totalCoinBalance = React.useMemo(() => {
     let sum = 0;
-    for (const b of coinBalanceByBuyer.values()) sum += b;
+    checkoutBuyerIds.forEach((id) => {
+      sum += coinBalanceByBuyer.get(id) ?? 0;
+    });
     return sum;
-  }, [coinBalanceByBuyer]);
+  }, [checkoutBuyerIds, coinBalanceByBuyer]);
 
-  const coinsSufficientIfSelected = React.useMemo(() => {
-    if (subtotalByBuyer.size === 0) return false;
-    for (const [buyerId, buyerSubtotal] of subtotalByBuyer.entries()) {
-      const bal = coinBalanceByBuyer.get(buyerId) ?? 0;
-      if (bal < buyerSubtotal) return false;
+  const activeCoinsAvailable = usePlatformCoins ? platformCoinBalance : totalCoinBalance;
+
+  const { totalCoinsApplied, remainingBalance, coinsAppliedByBuyer } = React.useMemo(() => {
+    let totalApplied = 0;
+    const appliedMap = new Map<string, number>();
+
+    if (!applyCoins || activeCoinsAvailable <= 0) {
+      return { totalCoinsApplied: 0, remainingBalance: subtotal, coinsAppliedByBuyer: appliedMap };
     }
-    return true;
-  }, [subtotalByBuyer, coinBalanceByBuyer]);
 
-  const platformCoinsSufficient = React.useMemo(() => {
-    return platformCoinBalance >= subtotal && subtotal > 0;
-  }, [platformCoinBalance, subtotal]);
+    if (usePlatformCoins) {
+      let remPlat = Math.min(platformCoinBalance, subtotal);
+      totalApplied = remPlat;
+      for (const [buyerId, bSub] of subtotalByBuyer.entries()) {
+        const canUse = Math.min(remPlat, bSub);
+        appliedMap.set(buyerId, canUse);
+        remPlat -= canUse;
+      }
+    } else {
+      for (const [buyerId, bSub] of subtotalByBuyer.entries()) {
+        const bal = coinBalanceByBuyer.get(buyerId) ?? 0;
+        const applied = Math.min(bal, bSub);
+        appliedMap.set(buyerId, applied);
+        totalApplied += applied;
+      }
+    }
 
-  const coinsSufficient =
-    paymentMethod === "jimatshop_coins"
-      ? coinsSufficientIfSelected
-      : paymentMethod === "jimatshop_coins_platform"
-        ? platformCoinsSufficient
-        : true;
+    const rem = Math.max(0, subtotal - totalApplied);
+    return {
+      totalCoinsApplied: totalApplied,
+      remainingBalance: rem,
+      coinsAppliedByBuyer: appliedMap,
+    };
+  }, [applyCoins, activeCoinsAvailable, usePlatformCoins, platformCoinBalance, subtotal, subtotalByBuyer, coinBalanceByBuyer]);
+
+  const isOnlinePayment = remainingBalance > 0.001 && remainderPaymentMethod === "online_banking";
 
   const coinsBalanceLoading =
-    Boolean(user && shopperId) &&
-    (paymentMethod === "jimatshop_coins"
-      ? isCoinLoading
-      : paymentMethod === "jimatshop_coins_platform"
-        ? isPlatformCoinLoading
-        : false);
+    Boolean(user && shopperId) && (isCoinLoading || isPlatformCoinLoading);
 
   const canCheckout =
     Boolean(primaryBuyerId) &&
@@ -262,9 +277,7 @@ export default function Checkout() {
     !submitting &&
     !buyerIdsLoading &&
     !coinsBalanceLoading &&
-    hasLocation &&
-    (paymentMethod !== "jimatshop_coins" || coinsSufficientIfSelected) &&
-    (paymentMethod !== "jimatshop_coins_platform" || platformCoinsSufficient);
+    hasLocation;
 
   const checkoutBlockers = React.useMemo(() => {
     const blockers: string[] = [];
@@ -283,15 +296,6 @@ export default function Checkout() {
       blockers.push("Preparing your shopper profile...");
     } else if (coinsBalanceLoading) {
       blockers.push("Loading coin balance...");
-    } else if (paymentMethod === "jimatshop_coins" && !coinsSufficientIfSelected) {
-      blockers.push("Insufficient JiMATShop coins for this order.");
-    } else if (paymentMethod === "jimatshop_coins_platform" && !platformCoinsSufficient) {
-      const shortfall = subtotal - platformCoinBalance;
-      blockers.push(
-        shortfall > 0
-          ? `Insufficient platform coins (need ${formatMYR(shortfall)} more).`
-          : "Insufficient platform coins for this order.",
-      );
     }
 
     return blockers;
@@ -303,11 +307,6 @@ export default function Checkout() {
     primaryBuyerId,
     shopperId,
     coinsBalanceLoading,
-    paymentMethod,
-    coinsSufficientIfSelected,
-    platformCoinsSufficient,
-    subtotal,
-    platformCoinBalance,
   ]);
 
   const onCheckout = async () => {
@@ -324,22 +323,6 @@ export default function Checkout() {
     }
     if (items.length === 0) {
       toast({ title: "Your cart is empty", description: "Add items to cart before checkout." });
-      return;
-    }
-    if (paymentMethod === "jimatshop_coins" && !coinsSufficient) {
-      toast({
-        title: "Insufficient coins",
-        description: "Your JiMATShop coin balance is not enough to cover this order.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (paymentMethod === "jimatshop_coins_platform" && !platformCoinsSufficient) {
-      toast({
-        title: "Insufficient platform coins",
-        description: "Your platform JiMATShop coin balance is not enough to cover this order.",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -397,22 +380,34 @@ export default function Checkout() {
 
       // Create orders for each buyer
       const orderResults = await Promise.allSettled(
-        ordersToCreate.map(({ buyerId, items: buyerItems }) =>
-          createMobileJimatshopOrder({
+        ordersToCreate.map(({ buyerId, items: buyerItems }) => {
+          const buyerSub = subtotalByBuyer.get(buyerId) || 0;
+          const coinsToUse = applyCoins ? (coinsAppliedByBuyer.get(buyerId) || 0) : 0;
+          const shopRemaining = Math.max(0, buyerSub - coinsToUse);
+
+          const effectivePaymentMethod =
+            shopRemaining <= 0.001
+              ? (usePlatformCoins ? "jimatshop_coins_platform" : "jimatshop_coins")
+              : remainderPaymentMethod;
+
+          return createMobileJimatshopOrder({
             buyer_id: buyerId,
             shopper_id: resolvedShopperId,
             items: buyerItems.map((it) => ({ product_id: it.productId, quantity: it.quantity })),
             shipping_address: null,
             notes: notes.trim() || null,
-            payment_method: paymentMethod,
-            ...(isOnlinePayment
+            use_coins: coinsToUse > 0 && !usePlatformCoins,
+            use_platform_coins: coinsToUse > 0 && usePlatformCoins,
+            coins_amount: coinsToUse,
+            payment_method: effectivePaymentMethod,
+            ...(effectivePaymentMethod === "online_banking" && shopRemaining > 0
               ? {
                   redirect_base: getPaymentRedirectBase(),
                   billplz_redirect_base: getPaymentRedirectBase(),
                 }
               : {}),
-          }),
-        ),
+          });
+        }),
       );
 
       // Check for failures
@@ -640,137 +635,150 @@ export default function Checkout() {
   );
 
   const paymentMethodCard = (
-    <div className="jimat-card p-4 space-y-3">
+    <div className="jimat-card p-4 space-y-4">
       <h3 className="text-sm font-semibold text-foreground">Payment Method</h3>
-      <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as any)}>
-        <SelectTrigger>
-          <SelectValue placeholder="Select payment method" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="pay_in_store">Pay in store</SelectItem>
-          <SelectItem
-            value="jimatshop_coins"
-            disabled={!user || Boolean(shopperId && !isCoinLoading && !coinsSufficientIfSelected)}
-          >
-            JiMATShop Coins
-          </SelectItem>
-          <SelectItem
-            value="jimatshop_coins_platform"
-            disabled={!user || Boolean(shopperId && !isPlatformCoinLoading && !platformCoinsSufficient)}
-          >
-            JiMATShop Coins (Platform)
-          </SelectItem>
-          <SelectItem value="online_banking" disabled={!user}>
-            Online Banking (FPX)
-          </SelectItem>
-        </SelectContent>
-      </Select>
 
-      {paymentMethod === "jimatshop_coins" ? (
-        <p className="text-xs text-muted-foreground">
-          Coins will be deducted from your outlet JiMATShop coin balance when you place the order.
-        </p>
-      ) : paymentMethod === "jimatshop_coins_platform" ? (
-        <p className="text-xs text-muted-foreground">
-          Coins will be deducted from your platform JiMATShop coin balance when you place the order.
-        </p>
-      ) : isOnlinePayment ? (
-        <p className="text-xs text-muted-foreground">
-          You'll be redirected to complete secure online banking payment after placing the order.
-        </p>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          Pay at the shop counter when you pick up your order.
-        </p>
-      )}
+      {/* JiMATShop Coins deduction card */}
+      {user && shopperId && (
+        <div className="rounded-xl border border-border/60 bg-muted/20 p-3.5 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5 font-semibold text-sm text-foreground">
+                <Coins className="w-4 h-4 text-primary" />
+                <span>Apply JiMATShop Coins</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {activeCoinsAvailable > 0
+                  ? `Deduct coins from your available balance (${formatMYR(activeCoinsAvailable)})`
+                  : "No coins available for the items in your cart"}
+              </p>
+            </div>
+            <Switch
+              checked={applyCoins && activeCoinsAvailable > 0}
+              onCheckedChange={(val) => setApplyCoins(val)}
+              disabled={activeCoinsAvailable <= 0}
+              aria-label="Toggle apply JiMATShop coins"
+            />
+          </div>
 
-      <div className="text-xs text-muted-foreground">
-        {!user ? (
-          "Sign in to view your JiMATShop coin balance."
-        ) : isShopperLoading ? (
-          "Loading shopper profile..."
-        ) : isShopperError ? (
-          <span className="text-destructive">
-            {shopperError instanceof Error
-              ? shopperError.message
-              : "Couldn't load your shopper profile."}
-          </span>
-        ) : shopperId ? (
-          isCoinLoading || isPlatformCoinLoading ? (
-            "Loading coin balance..."
-          ) : (
-            <div className="space-y-2 pt-1">
-              {checkoutBuyerIds.length > 1 ? (
-                <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs text-amber-700 dark:text-amber-300 space-y-1">
-                  <div className="flex items-center gap-1.5 font-semibold">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>Multi-shop order ({checkoutBuyerIds.length} shops)</span>
+          {/* Breakdown per outlet */}
+          {checkoutBuyerIds.length > 0 && (
+            <div className="space-y-1.5 pt-2 border-t border-border/40 text-xs">
+              <div className="font-medium text-muted-foreground pb-0.5">
+                {checkoutBuyerIds.length > 1 ? "Outlet Coin Balances:" : "Shop Coin Balance:"}
+              </div>
+              {checkoutBuyerIds.map((buyerId) => {
+                const bal = coinBalanceByBuyer.get(buyerId) ?? 0;
+                const req = subtotalByBuyer.get(buyerId) ?? 0;
+                const name = buyerNameById.get(buyerId) || buyerId.slice(0, 8);
+                const applied = applyCoins && !usePlatformCoins ? (coinsAppliedByBuyer.get(buyerId) ?? 0) : 0;
+                return (
+                  <div key={buyerId} className="flex items-center justify-between py-0.5">
+                    <span className="truncate pr-2 text-foreground font-medium">{name}:</span>
+                    <span className="shrink-0 text-right">
+                      <span className="font-semibold text-foreground">{formatMYR(bal)}</span>
+                      {applied > 0 ? (
+                        <span className="text-green-600 dark:text-green-400 font-semibold ml-1.5">
+                          (-{formatMYR(applied)} applied)
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground ml-1.5">(subtotal {formatMYR(req)})</span>
+                      )}
+                    </span>
                   </div>
-                  <p className="text-[11px] opacity-90">
-                    JiMATShop coins are outlet-specific. To pay with coins, each shop in this order must have sufficient coin balance.
-                  </p>
-                </div>
-              ) : null}
+                );
+              })}
 
-              <div className="space-y-1.5 pt-1">
-                <div className="text-xs font-semibold text-foreground">
-                  {checkoutBuyerIds.length > 1 ? "Outlet Coins (for this order):" : "JiMATShop Coins Available:"}
-                </div>
-                {checkoutBuyerIds.map((buyerId) => {
-                  const bal = coinBalanceByBuyer.get(buyerId) ?? 0;
-                  const req = subtotalByBuyer.get(buyerId) ?? 0;
-                  const ok = bal >= req;
-                  const name = buyerNameById.get(buyerId) || buyerId.slice(0, 8);
-                  return (
-                    <div key={buyerId} className="flex items-center justify-between text-xs py-0.5">
-                      <span className="truncate pr-2 font-medium">{name}:</span>
-                      <span className="shrink-0 text-right">
-                        <span className="font-semibold">{formatMYR(bal)}</span>
-                        <span className="text-muted-foreground"> (order {formatMYR(req)})</span>
-                        {!ok ? (
-                          <span className="text-destructive font-medium ml-1.5">· insufficient</span>
-                        ) : (
-                          <span className="text-green-600 dark:text-green-400 font-medium ml-1.5">· sufficient</span>
-                        )}
-                      </span>
-                    </div>
-                  );
-                })}
-
-                <div className="pt-2 border-t border-border/40 flex items-center justify-between text-xs">
+              {platformCoinBalance > 0 && (
+                <div className="flex items-center justify-between pt-1 border-t border-border/20 text-xs">
                   <span className="font-medium text-foreground">Platform Coins:</span>
                   <span className="shrink-0">
-                    <span className="font-semibold">{formatMYR(platformCoinBalance)}</span>
-                    {!platformCoinsSufficient ? (
-                      <span className="text-destructive font-medium ml-1.5">· insufficient</span>
-                    ) : (
-                      <span className="text-green-600 dark:text-green-400 font-medium ml-1.5">· sufficient</span>
+                    <span className="font-semibold text-foreground">{formatMYR(platformCoinBalance)}</span>
+                    {applyCoins && usePlatformCoins && totalCoinsApplied > 0 && (
+                      <span className="text-green-600 dark:text-green-400 font-semibold ml-1.5">
+                        (-{formatMYR(totalCoinsApplied)} applied)
+                      </span>
                     )}
                   </span>
                 </div>
-              </div>
-
-              {!coinsSufficientIfSelected && !platformCoinsSufficient ? (
-                <p className="text-[11px] text-muted-foreground italic pt-1">
-                  Coin payment unavailable for this cart. Select "Pay in store" to pay at the counter, or remove items from outlets with insufficient coins.
-                </p>
-              ) : null}
+              )}
             </div>
-          )
-        ) : (
-          "Shopper profile not found."
-        )}
-      </div>
-      {user && isShopperError ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => void refetchShopperId()}
-        >
-          Retry
-        </Button>
+          )}
+
+          {applyCoins && totalCoinsApplied > 0 && (
+            <div className="rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2 flex items-center justify-between text-xs text-green-700 dark:text-green-400">
+              <span className="font-medium">JiMATShop Coins Applied:</span>
+              <span className="font-bold">-{formatMYR(totalCoinsApplied)}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Remaining Payment Method selection */}
+      {remainingBalance > 0.001 ? (
+        <div className="space-y-2 pt-1">
+          <Label className="text-xs font-semibold text-foreground">
+            {totalCoinsApplied > 0
+              ? `Pay Remaining Balance (${formatMYR(remainingBalance)}) via:`
+              : "Select Payment Method:"}
+          </Label>
+          <Select
+            value={remainderPaymentMethod}
+            onValueChange={(v) => setRemainderPaymentMethod(v as any)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select payment method" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="online_banking" disabled={!user}>
+                Online Banking / FPX (Billplz / Chip-in)
+              </SelectItem>
+              <SelectItem value="pay_in_store">Pay at Shop Counter (Cash / In-store)</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {remainderPaymentMethod === "online_banking" ? (
+            <p className="text-xs text-muted-foreground">
+              {totalCoinsApplied > 0
+                ? `You'll be redirected to complete online banking for the remaining ${formatMYR(remainingBalance)}.`
+                : "You'll be redirected to complete secure online banking payment."}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {totalCoinsApplied > 0
+                ? `Pay the remaining ${formatMYR(remainingBalance)} at the shop counter when picking up.`
+                : "Pay at the shop counter when you pick up your order."}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3 flex items-center gap-2 text-xs text-green-700 dark:text-green-400">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span className="font-medium">
+            100% covered by JiMATShop Coins. No additional payment required!
+          </span>
+        </div>
+      )}
+
+      {!user ? (
+        <p className="text-xs text-muted-foreground">Sign in to view your JiMATShop coin balance.</p>
+      ) : isShopperLoading ? (
+        <p className="text-xs text-muted-foreground">Loading shopper profile...</p>
+      ) : isShopperError ? (
+        <div className="space-y-2">
+          <p className="text-xs text-destructive">
+            {shopperError instanceof Error ? shopperError.message : "Couldn't load your shopper profile."}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => void refetchShopperId()}
+          >
+            Retry
+          </Button>
+        </div>
       ) : null}
     </div>
   );
@@ -789,15 +797,29 @@ export default function Checkout() {
 
   const summaryCard = (
     <div className="jimat-card p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Items ({itemCount})
-        </p>
-        <p className="text-sm font-semibold text-foreground">{formatMYR(subtotal)}</p>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Subtotal ({itemCount} items)</span>
+          <span className="font-semibold text-foreground">{formatMYR(subtotal)}</span>
+        </div>
+        {totalCoinsApplied > 0 && (
+          <div className="flex items-center justify-between text-sm text-green-600 dark:text-green-400">
+            <span>JiMATShop Coins</span>
+            <span className="font-semibold">-{formatMYR(totalCoinsApplied)}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between text-base font-bold pt-2 border-t">
+          <span className="text-foreground">Total to Pay</span>
+          <span className="text-primary">{formatMYR(remainingBalance)}</span>
+        </div>
       </div>
 
       <Button className="w-full" onClick={onCheckout} disabled={!canCheckout}>
-        {submitting ? "Placing order..." : `Place order · ${formatMYR(subtotal)}`}
+        {submitting
+          ? "Placing order..."
+          : remainingBalance > 0.001
+            ? `Place order · Pay ${formatMYR(remainingBalance)}`
+            : "Place order · Paid with Coins"}
       </Button>
       {!canCheckout && !submitting && checkoutBlockers.length > 0 ? (
         <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">

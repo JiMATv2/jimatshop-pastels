@@ -42,7 +42,14 @@ export type MobileCreateJimatshopOrderRequest = {
     | "jimatshop_coins"
     | "jimatshop_coins_platform"
     | "online_banking"
-    | "billplz";
+    | "billplz"
+    | "split";
+  /** Optional flag to apply available JiMATShop coins and pay remainder with payment_method. */
+  use_coins?: boolean;
+  /** Optional flag to use platform coins instead of shop coins. */
+  use_platform_coins?: boolean;
+  /** Optional specific amount of coins to deduct (defaults to min(available, total)). */
+  coins_amount?: number;
   /** Optional gateway override (server defaults to PREFERRED_PAYMENT_GATEWAY). */
   gateway?: "billplz" | "chipin";
   /** Base for payment browser redirect; server appends `/orders/{id}`. */
