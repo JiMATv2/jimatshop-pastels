@@ -62,19 +62,55 @@ export type MobileCreateJimatshopOrderRequest = {
   billplz_redirect_url?: string;
 };
 
+export type MobileCreateMultiShopOrderEntry = {
+  buyer_id: string;
+  items: MobileCreateJimatshopOrderItem[];
+  use_coins?: boolean;
+  use_platform_coins?: boolean;
+  coins_amount?: number;
+  notes?: string | null;
+};
+
+export type MobileCreateMultiShopOrderRequest = {
+  shopper_id: string;
+  orders: MobileCreateMultiShopOrderEntry[];
+  shipping_address?: Record<string, unknown> | null;
+  notes?: string | null;
+  payment_method?:
+    | "pay_in_store"
+    | "jimatshop_coins"
+    | "jimatshop_coins_platform"
+    | "online_banking"
+    | "billplz"
+    | "split";
+  gateway?: "billplz" | "chipin";
+  redirect_base?: string;
+  redirect_url?: string;
+  billplz_redirect_base?: string;
+  billplz_redirect_url?: string;
+};
+
 export type MobileCreateJimatshopOrderResponse =
   | {
       success: true;
       data: {
         jimatshop_order_id: string;
-        items_count: number;
-        total_amount: number;
-        status: string;
+        jimatshop_order_ids?: string[];
+        items_count?: number;
+        total_amount: number | string;
+        status?: string;
         payment_method?: string;
         gateway?: string;
         payment_url?: string | null;
         billplz_url?: string | null;
         bill_id?: string | null;
+        orders?: Array<{
+          jimatshop_order_id: string;
+          buyer_id: string;
+          total_amount: number | string;
+          status: string;
+          payment_status: string;
+        }>;
       };
     }
   | {
@@ -84,7 +120,7 @@ export type MobileCreateJimatshopOrderResponse =
     };
 
 export async function createMobileJimatshopOrder(
-  body: MobileCreateJimatshopOrderRequest,
+  body: MobileCreateJimatshopOrderRequest | MobileCreateMultiShopOrderRequest,
   cfg: MobileOrdersClientConfig = getMobileOrdersClientConfig(),
 ): Promise<MobileCreateJimatshopOrderResponse> {
   if (!cfg.apiToken) {

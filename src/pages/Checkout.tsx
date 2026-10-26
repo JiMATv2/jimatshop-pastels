@@ -367,60 +367,101 @@ export default function Checkout() {
         return;
       }
 
-      // Online payment redirect can only handle a single bill URL cleanly.
-      // For now, require single-shop checkout when online banking is selected.
-      if (isOnlinePayment && ordersToCreate.length > 1) {
-        toast({
-          title: "Online checkout",
-          description: "Please checkout one shop at a time when paying via online banking.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Create orders for each buyer
-      const orderResults = await Promise.allSettled(
-        ordersToCreate.map(({ buyerId, items: buyerItems }) => {
+      if (ordersToCreate.length > 1) {
+        // Multi-shop checkout: create orders for all shops with a single online payment bill
+        const ordersPayload = ordersToCreate.map(({ buyerId, items: buyerItems }) => {
           const buyerSub = subtotalByBuyer.get(buyerId) || 0;
           const coinsToUse = applyCoins ? (coinsAppliedByBuyer.get(buyerId) || 0) : 0;
-          const shopRemaining = Math.max(0, buyerSub - coinsToUse);
-
-          const effectivePaymentMethod =
-            shopRemaining <= 0.001
-              ? (usePlatformCoins ? "jimatshop_coins_platform" : "jimatshop_coins")
-              : remainderPaymentMethod;
-
-          return createMobileJimatshopOrder({
+          return {
             buyer_id: buyerId,
-            shopper_id: resolvedShopperId,
             items: buyerItems.map((it) => ({ product_id: it.productId, quantity: it.quantity })),
-            shipping_address: null,
-            notes: notes.trim() || null,
             use_coins: coinsToUse > 0 && !usePlatformCoins,
             use_platform_coins: coinsToUse > 0 && usePlatformCoins,
             coins_amount: coinsToUse,
-            payment_method: effectivePaymentMethod,
-            ...(effectivePaymentMethod === "online_banking" && shopRemaining > 0
-              ? {
-                  redirect_base: getPaymentRedirectBase(),
-                  billplz_redirect_base: getPaymentRedirectBase(),
-                }
-              : {}),
-          });
-        }),
-      );
+            notes: notes.trim() || null,
+          };
+        });
 
-      // Check for failures
-      const failures = orderResults.filter(
-        (r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.success),
-      );
-      if (failures.length > 0) {
+        const effectivePaymentMethod =
+          remainingBalance <= 0.001
+            ? (usePlatformCoins ? "jimatshop_coins_platform" : "jimatshop_coins")
+            : remainderPaymentMethod;
+
+        const res = await createMobileJimatshopOrder({
+          shopper_id: resolvedShopperId,
+          orders: ordersPayload,
+          shipping_address: null,
+          notes: notes.trim() || null,
+          payment_method: effectivePaymentMethod,
+          ...(effectivePaymentMethod === "online_banking" && remainingBalance > 0
+            ? {
+                redirect_base: getPaymentRedirectBase(),
+                billplz_redirect_base: getPaymentRedirectBase(),
+              }
+            : {}),
+        });
+
+        if (!res.success) {
+          const errorMsg =
+            (res as any).message || (res as any).error || "Unable to place orders.";
+          toast({
+            title: "Checkout failed",
+            description: errorMsg,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        clear();
+
+        const data = res.data;
+        if (isOnlinePayment && (data.payment_url || data.billplz_url)) {
+          const paymentUrl = data.payment_url || data.billplz_url;
+          toast({ title: "Redirecting to payment", description: "Complete your single payment for all orders." });
+          await openPaymentGateway(paymentUrl!, data.jimatshop_order_id);
+          return;
+        }
+
+        toast({
+          title: "Orders placed",
+          description: `${ordersToCreate.length} orders created successfully.`,
+        });
+        navigate(`/orders/${data.jimatshop_order_id}`);
+        return;
+      }
+
+      // Single shop order
+      const singleOrder = ordersToCreate[0];
+      const buyerSub = subtotalByBuyer.get(singleOrder.buyerId) || 0;
+      const coinsToUse = applyCoins ? (coinsAppliedByBuyer.get(singleOrder.buyerId) || 0) : 0;
+      const shopRemaining = Math.max(0, buyerSub - coinsToUse);
+
+      const effectivePaymentMethod =
+        shopRemaining <= 0.001
+          ? (usePlatformCoins ? "jimatshop_coins_platform" : "jimatshop_coins")
+          : remainderPaymentMethod;
+
+      const singleRes = await createMobileJimatshopOrder({
+        buyer_id: singleOrder.buyerId,
+        shopper_id: resolvedShopperId,
+        items: singleOrder.items.map((it) => ({ product_id: it.productId, quantity: it.quantity })),
+        shipping_address: null,
+        notes: notes.trim() || null,
+        use_coins: coinsToUse > 0 && !usePlatformCoins,
+        use_platform_coins: coinsToUse > 0 && usePlatformCoins,
+        coins_amount: coinsToUse,
+        payment_method: effectivePaymentMethod,
+        ...(effectivePaymentMethod === "online_banking" && shopRemaining > 0
+          ? {
+              redirect_base: getPaymentRedirectBase(),
+              billplz_redirect_base: getPaymentRedirectBase(),
+            }
+          : {}),
+      });
+
+      if (!singleRes.success) {
         const errorMsg =
-          failures[0].status === "fulfilled"
-            ? (failures[0].value as { message?: string; error?: string }).message ||
-              (failures[0].value as { error?: string }).error ||
-              "Unable to place order."
-            : "Failed to create order";
+          (singleRes as any).message || (singleRes as any).error || "Unable to place order.";
         toast({
           title: "Checkout failed",
           description: errorMsg,
@@ -429,55 +470,28 @@ export default function Checkout() {
         return;
       }
 
-      // Get successful order IDs
-      const successfulOrders = orderResults
-        .filter(
-          (
-            r,
-          ): r is PromiseFulfilledResult<{
-            success: true;
-            data: {
-              jimatshop_order_id: string;
-              payment_url?: string | null;
-              billplz_url?: string | null;
-            };
-          }> => r.status === "fulfilled" && r.value.success,
-        )
-        .map((r) => r.value.data);
-
       clear();
 
-      // If Online Banking is selected and backend returned a payment URL, redirect to payment.
       if (isOnlinePayment) {
-        const paymentUrl = successfulOrders?.[0]?.payment_url || successfulOrders?.[0]?.billplz_url;
+        const paymentUrl = singleRes.data.payment_url || singleRes.data.billplz_url;
         if (paymentUrl) {
-          const orderId = successfulOrders[0].jimatshop_order_id;
+          const orderId = singleRes.data.jimatshop_order_id;
           toast({ title: "Redirecting to payment", description: "Complete your payment to confirm the order." });
           await openPaymentGateway(paymentUrl, orderId);
           return;
         }
-        // If payment URL is missing, backend did not generate a payment URL (treat as an error, but keep the order created).
         toast({
           title: "Online checkout",
           description: "Payment URL is missing. Please try again or contact support.",
           variant: "destructive",
         });
       }
-      
-      if (successfulOrders.length === 1) {
-        toast({
-          title: "Order placed",
-          description: `Order ${formatJimatshopOrderNumber(successfulOrders[0].jimatshop_order_id)} created.`,
-        });
-        navigate(`/orders/${successfulOrders[0].jimatshop_order_id}`);
-      } else {
-        toast({
-          title: "Orders placed",
-          description: `${successfulOrders.length} order(s) created successfully.`,
-        });
-        // Navigate to first order or orders list
-        navigate(`/orders/${successfulOrders[0].jimatshop_order_id}`);
-      }
+
+      toast({
+        title: "Order placed",
+        description: `Order ${formatJimatshopOrderNumber(singleRes.data.jimatshop_order_id)} created.`,
+      });
+      navigate(`/orders/${singleRes.data.jimatshop_order_id}`);
     } catch (e: any) {
       toast({
         title: "Checkout failed",
