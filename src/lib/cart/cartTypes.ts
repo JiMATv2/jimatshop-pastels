@@ -8,6 +8,7 @@ export type CartItem = {
   // Buyer/retailer information - required to ensure correct order processing
   buyerId?: string;
   buyerInventoryId?: string;
+  buyerName?: string;
 };
 
 export type CartStateV1 = {

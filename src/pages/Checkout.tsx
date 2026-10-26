@@ -12,7 +12,7 @@ import { getPaymentRedirectBase } from "@/lib/payments/billplzRedirect";
 import { openPaymentGateway } from "@/lib/payments/openBillplzPayment";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/client";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2, Store, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
@@ -28,7 +28,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { items, itemCount, subtotal, setQuantity, removeItem, clear } = useCart();
-  const { buyerIds, isLoading: buyerIdsLoading, hasLocation } = useNearbyBuyerIds();
+  const { buyerIds, outlets, isLoading: buyerIdsLoading, hasLocation } = useNearbyBuyerIds();
   const [submitting, setSubmitting] = useState(false);
   
   // Determine buyer ID(s) from cart items or fall back to nearby buyers
@@ -179,6 +179,21 @@ export default function Checkout() {
     staleTime: 15_000,
   });
 
+  const { data: buyersData = [] } = useQuery({
+    queryKey: ["checkout-buyers", checkoutBuyerIds.join(",")],
+    queryFn: async () => {
+      if (checkoutBuyerIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("buyers")
+        .select("id, business_name, address")
+        .in("id", checkoutBuyerIds);
+      if (error) return [];
+      return (data as any[]) ?? [];
+    },
+    enabled: checkoutBuyerIds.length > 0,
+    staleTime: 60_000,
+  });
+
   const coinBalanceByBuyer = React.useMemo(() => {
     const m = new Map<string, number>();
     coinBalances.forEach((c) => m.set(c.buyer_id, c.balance));
@@ -187,12 +202,24 @@ export default function Checkout() {
 
   const buyerNameById = React.useMemo(() => {
     const m = new Map<string, string>();
+    outlets.forEach((o) => {
+      const id = typeof o.id === "string" ? o.id : String(o.id);
+      if (id && o.name) m.set(id, o.name);
+    });
+    buyersData.forEach((b: any) => {
+      if (b?.id && b?.business_name) m.set(String(b.id), b.business_name);
+    });
     coinBalances.forEach((c) => {
       const name = c.buyer?.business_name;
       if (name) m.set(c.buyer_id, name);
     });
+    items.forEach((it) => {
+      if (it.buyerId && it.buyerName) {
+        if (!m.has(it.buyerId)) m.set(it.buyerId, it.buyerName);
+      }
+    });
     return m;
-  }, [coinBalances]);
+  }, [outlets, buyersData, coinBalances, items]);
 
   const totalCoinBalance = React.useMemo(() => {
     let sum = 0;
@@ -201,6 +228,7 @@ export default function Checkout() {
   }, [coinBalanceByBuyer]);
 
   const coinsSufficientIfSelected = React.useMemo(() => {
+    if (subtotalByBuyer.size === 0) return false;
     for (const [buyerId, buyerSubtotal] of subtotalByBuyer.entries()) {
       const bal = coinBalanceByBuyer.get(buyerId) ?? 0;
       if (bal < buyerSubtotal) return false;
@@ -209,9 +237,8 @@ export default function Checkout() {
   }, [subtotalByBuyer, coinBalanceByBuyer]);
 
   const platformCoinsSufficient = React.useMemo(() => {
-    if (paymentMethod !== "jimatshop_coins_platform") return true;
-    return platformCoinBalance >= subtotal;
-  }, [paymentMethod, platformCoinBalance, subtotal]);
+    return platformCoinBalance >= subtotal && subtotal > 0;
+  }, [platformCoinBalance, subtotal]);
 
   const coinsSufficient =
     paymentMethod === "jimatshop_coins"
@@ -498,67 +525,100 @@ export default function Checkout() {
       </Button>
     </div>
   ) : (
-    <div className="space-y-3">
-      {items.map((it) => (
-        <div key={it.productId} className="jimat-card p-3">
-          <div className="flex gap-3">
-            <div className="w-16 h-16 rounded-xl bg-muted overflow-hidden flex items-center justify-center shrink-0">
-              {it.image ? (
-                <img src={it.image} alt={it.name} className="w-full h-full object-cover" />
-              ) : null}
-            </div>
+    <div className="space-y-4">
+      {checkoutBuyerIds.map((buyerId) => {
+        const buyerItems = items.filter(
+          (it) => (it.buyerId || primaryBuyerId) === buyerId
+        );
+        if (buyerItems.length === 0) return null;
+        const shopName =
+          buyerNameById.get(buyerId) ||
+          buyerItems.find((it) => it.buyerName)?.buyerName ||
+          (buyerId ? `Shop ${buyerId.slice(0, 8)}` : "Shop");
+        const buyerSub = subtotalByBuyer.get(buyerId) ?? 0;
 
-            <div className="min-w-0 flex-1">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground line-clamp-2">{it.name}</p>
-                  {it.unitLabel ? (
-                    <p className="text-xs text-muted-foreground mt-0.5">{it.unitLabel}</p>
-                  ) : null}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0"
-                  onClick={() => removeItem(it.productId)}
-                  aria-label={`Remove ${it.name}`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <p className="text-sm font-bold text-primary">{formatMYR(it.unitPrice)}</p>
+        return (
+          <div key={buyerId} className="space-y-3">
+            {checkoutBuyerIds.length > 1 && (
+              <div className="flex items-center justify-between px-1 pt-1 border-b pb-2">
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setQuantity(it.productId, it.quantity - 1)}
-                    aria-label="Decrease quantity"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </Button>
-                  <span className="text-sm w-6 text-center">{it.quantity}</span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setQuantity(it.productId, it.quantity + 1)}
-                    aria-label="Increase quantity"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
+                  <Store className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">{shopName}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Subtotal: <span className="font-semibold text-foreground">{formatMYR(buyerSub)}</span>
+                </span>
+              </div>
+            )}
+
+            {buyerItems.map((it) => (
+              <div key={`${it.productId}-${it.buyerId || 'none'}`} className="jimat-card p-3">
+                <div className="flex gap-3">
+                  <div className="w-16 h-16 rounded-xl bg-muted overflow-hidden flex items-center justify-center shrink-0">
+                    {it.image ? (
+                      <img src={it.image} alt={it.name} className="w-full h-full object-cover" />
+                    ) : null}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground line-clamp-2">{it.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {checkoutBuyerIds.length > 1 && (
+                            <span className="text-[11px] text-primary font-medium">{shopName}</span>
+                          )}
+                          {it.unitLabel ? (
+                            <span className="text-xs text-muted-foreground">{it.unitLabel}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0"
+                        onClick={() => removeItem(it.productId, it.buyerId)}
+                        aria-label={`Remove ${it.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <p className="text-sm font-bold text-primary">{formatMYR(it.unitPrice)}</p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setQuantity(it.productId, it.quantity - 1, it.buyerId)}
+                          aria-label="Decrease quantity"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </Button>
+                        <span className="text-sm w-6 text-center">{it.quantity}</span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setQuantity(it.productId, it.quantity + 1, it.buyerId)}
+                          aria-label="Increase quantity"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Line total: {formatMYR(it.unitPrice * it.quantity)}
+                    </p>
+                  </div>
                 </div>
               </div>
-
-              <p className="mt-2 text-xs text-muted-foreground">
-                Line total: {formatMYR(it.unitPrice * it.quantity)}
-              </p>
-            </div>
+            ))}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -590,11 +650,14 @@ export default function Checkout() {
           <SelectItem value="pay_in_store">Pay in store</SelectItem>
           <SelectItem
             value="jimatshop_coins"
-            disabled={!user || (shopperId && !isCoinLoading && !coinsSufficientIfSelected)}
+            disabled={!user || Boolean(shopperId && !isCoinLoading && !coinsSufficientIfSelected)}
           >
             JiMATShop Coins
           </SelectItem>
-          <SelectItem value="jimatshop_coins_platform" disabled={!user}>
+          <SelectItem
+            value="jimatshop_coins_platform"
+            disabled={!user || Boolean(shopperId && !isPlatformCoinLoading && !platformCoinsSufficient)}
+          >
             JiMATShop Coins (Platform)
           </SelectItem>
           <SelectItem value="online_banking" disabled={!user}>
@@ -605,7 +668,7 @@ export default function Checkout() {
 
       {paymentMethod === "jimatshop_coins" ? (
         <p className="text-xs text-muted-foreground">
-          Coins will be deducted from your JiMATShop coin balance when you place the order.
+          Coins will be deducted from your outlet JiMATShop coin balance when you place the order.
         </p>
       ) : paymentMethod === "jimatshop_coins_platform" ? (
         <p className="text-xs text-muted-foreground">
@@ -620,50 +683,84 @@ export default function Checkout() {
           Pay at the shop counter when you pick up your order.
         </p>
       )}
-      <p className="text-xs text-muted-foreground">
-        {user ? (
-          isShopperLoading ? (
-            "Loading shopper profile..."
-          ) : isShopperError ? (
-            <span className="text-destructive">
-              {shopperError instanceof Error
-                ? shopperError.message
-                : "Couldn't load your shopper profile."}
-            </span>
-          ) : shopperId ? (
-            isCoinLoading || isPlatformCoinLoading ? (
-              "Loading coin balance..."
-            ) : (
-              <>
-                JiMATShop coins available: <span className="font-semibold">{formatMYR(totalCoinBalance)}</span>
-                <span className="block mt-1">
-                  Platform coins available: <span className="font-semibold">{formatMYR(platformCoinBalance)}</span>
-                  {paymentMethod === "jimatshop_coins_platform" && !platformCoinsSufficient ? (
-                    <span className="text-destructive"> (insufficient)</span>
-                  ) : null}
-                </span>
-                {checkoutBuyerIds.length > 1 ? (
-                  <span className="block mt-1">
-                    {checkoutBuyerIds.map((buyerId) => (
-                      <span key={buyerId} className="block">
-                        {buyerNameById.get(buyerId) || buyerId.slice(0, 8)}:{" "}
-                        <span className="font-semibold">{formatMYR(coinBalanceByBuyer.get(buyerId) ?? 0)}</span>
-                      </span>
-                    ))}
-                  </span>
-                ) : null}
-                {paymentMethod === "jimatshop_coins" && !coinsSufficient ? (
-                  <span className="text-destructive"> (insufficient)</span>
-                ) : null}
-              </>
-            )
+
+      <div className="text-xs text-muted-foreground">
+        {!user ? (
+          "Sign in to view your JiMATShop coin balance."
+        ) : isShopperLoading ? (
+          "Loading shopper profile..."
+        ) : isShopperError ? (
+          <span className="text-destructive">
+            {shopperError instanceof Error
+              ? shopperError.message
+              : "Couldn't load your shopper profile."}
+          </span>
+        ) : shopperId ? (
+          isCoinLoading || isPlatformCoinLoading ? (
+            "Loading coin balance..."
           ) : (
-            "Shopper profile not found."
+            <div className="space-y-2 pt-1">
+              {checkoutBuyerIds.length > 1 ? (
+                <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5 text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>Multi-shop order ({checkoutBuyerIds.length} shops)</span>
+                  </div>
+                  <p className="text-[11px] opacity-90">
+                    JiMATShop coins are outlet-specific. To pay with coins, each shop in this order must have sufficient coin balance.
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="space-y-1.5 pt-1">
+                <div className="text-xs font-semibold text-foreground">
+                  {checkoutBuyerIds.length > 1 ? "Outlet Coins (for this order):" : "JiMATShop Coins Available:"}
+                </div>
+                {checkoutBuyerIds.map((buyerId) => {
+                  const bal = coinBalanceByBuyer.get(buyerId) ?? 0;
+                  const req = subtotalByBuyer.get(buyerId) ?? 0;
+                  const ok = bal >= req;
+                  const name = buyerNameById.get(buyerId) || buyerId.slice(0, 8);
+                  return (
+                    <div key={buyerId} className="flex items-center justify-between text-xs py-0.5">
+                      <span className="truncate pr-2 font-medium">{name}:</span>
+                      <span className="shrink-0 text-right">
+                        <span className="font-semibold">{formatMYR(bal)}</span>
+                        <span className="text-muted-foreground"> (order {formatMYR(req)})</span>
+                        {!ok ? (
+                          <span className="text-destructive font-medium ml-1.5">· insufficient</span>
+                        ) : (
+                          <span className="text-green-600 dark:text-green-400 font-medium ml-1.5">· sufficient</span>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+
+                <div className="pt-2 border-t border-border/40 flex items-center justify-between text-xs">
+                  <span className="font-medium text-foreground">Platform Coins:</span>
+                  <span className="shrink-0">
+                    <span className="font-semibold">{formatMYR(platformCoinBalance)}</span>
+                    {!platformCoinsSufficient ? (
+                      <span className="text-destructive font-medium ml-1.5">· insufficient</span>
+                    ) : (
+                      <span className="text-green-600 dark:text-green-400 font-medium ml-1.5">· sufficient</span>
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {!coinsSufficientIfSelected && !platformCoinsSufficient ? (
+                <p className="text-[11px] text-muted-foreground italic pt-1">
+                  Coin payment unavailable for this cart. Select "Pay in store" to pay at the counter, or remove items from outlets with insufficient coins.
+                </p>
+              ) : null}
+            </div>
           )
         ) : (
-          "Sign in to view your JiMATShop coin balance."
+          "Shopper profile not found."
         )}
-      </p>
+      </div>
       {user && isShopperError ? (
         <Button
           type="button"

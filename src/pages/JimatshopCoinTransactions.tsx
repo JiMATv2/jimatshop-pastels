@@ -92,7 +92,7 @@ export default function JimatshopCoinTransactions() {
     staleTime: 15_000,
   });
 
-  const title = coin?.buyer?.business_name || (coin?.buyer_id ? `Shop ${coin.buyer_id.slice(0, 8)}` : "Coin Wallet");
+  const title = coin?.buyer?.business_name || (coin?.buyer_id ? `Shop ${coin.buyer_id.slice(0, 8)}` : "Platform Coins Wallet");
 
   return (
     <div className="min-h-screen bg-background pb-24">

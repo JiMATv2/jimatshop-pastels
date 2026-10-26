@@ -100,6 +100,7 @@ export default function InventoryDetails() {
         unitPrice,
         buyerId: inv.buyer_id,
         buyerInventoryId: inv.inventory_id,
+        buyerName: inv.buyer_name,
       },
       quantity
     );

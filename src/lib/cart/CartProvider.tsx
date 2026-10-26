@@ -8,8 +8,8 @@ type CartContextValue = {
   itemCount: number;
   subtotal: number;
   addItem: (item: Omit<CartItem, "quantity">, qty?: number) => void;
-  setQuantity: (productId: string, qty: number) => void;
-  removeItem: (productId: string) => void;
+  setQuantity: (productId: string, qty: number, buyerId?: string) => void;
+  removeItem: (productId: string, buyerId?: string) => void;
   clear: () => void;
 };
 
@@ -91,16 +91,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const setQuantity = React.useCallback((productId: string, qty: number) => {
+  const setQuantity = React.useCallback((productId: string, qty: number, buyerId?: string) => {
     const q = Math.max(0, Math.min(999, Math.floor(qty)));
     setItems((prev) => {
-      if (q <= 0) return prev.filter((p) => p.productId !== productId);
-      return prev.map((p) => (p.productId === productId ? { ...p, quantity: q } : p));
+      if (q <= 0) {
+        return prev.filter((p) =>
+          buyerId ? !(p.productId === productId && p.buyerId === buyerId) : p.productId !== productId
+        );
+      }
+      return prev.map((p) => {
+        const matches = buyerId
+          ? p.productId === productId && p.buyerId === buyerId
+          : p.productId === productId;
+        return matches ? { ...p, quantity: q } : p;
+      });
     });
   }, []);
 
-  const removeItem = React.useCallback((productId: string) => {
-    setItems((prev) => prev.filter((p) => p.productId !== productId));
+  const removeItem = React.useCallback((productId: string, buyerId?: string) => {
+    setItems((prev) =>
+      prev.filter((p) =>
+        buyerId ? !(p.productId === productId && p.buyerId === buyerId) : p.productId !== productId
+      )
+    );
   }, []);
 
   const clear = React.useCallback(() => setItems([]), []);

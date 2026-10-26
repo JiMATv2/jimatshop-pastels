@@ -101,7 +101,7 @@ export default function JimatshopCoins() {
             {data?.rows?.length ? (
               <div className="space-y-3">
                 {data.rows.map((r) => {
-                  const name = r.buyer?.business_name || (r.buyer_id ? `Shop ${r.buyer_id.slice(0, 8)}` : "Legacy / Unknown shop");
+                  const name = r.buyer?.business_name || (r.buyer_id ? `Shop ${r.buyer_id.slice(0, 8)}` : "JiMATShop Platform Coins");
                   return (
                     <button
                       key={r.id}
