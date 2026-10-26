@@ -305,8 +305,23 @@ export default function Products() {
   };
 
   const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
-    queryKey: ["all-categories"],
+    queryKey: ["product-categories", buyerIdParam ?? null],
     queryFn: async () => {
+      if (buyerIdParam) {
+        const { data, error } = await supabase.rpc("get_buyer_product_categories", {
+          buyer_id: buyerIdParam,
+        });
+        if (error) {
+          console.error("[Products] Error fetching buyer categories:", error);
+          throw error;
+        }
+        return ((data ?? []) as Array<{
+          id: string;
+          name: string;
+          image_url: string | null;
+        }>).filter((category: any) => category?.name);
+      }
+
       const { data, error } = await supabase
         .from("product_categories")
         .select("id,name,image_url,parent_id")
@@ -322,6 +337,28 @@ export default function Products() {
     },
     staleTime: 5 * 60_000,
   });
+
+  // If viewing a retailer's catalog and current categoryFilter is not in that retailer's categories,
+  // clear category filter so it doesn't leave an empty page.
+  useEffect(() => {
+    if (buyerIdParam && !isCategoriesLoading && categories.length > 0 && categoryFilter) {
+      const exists = categories.some(
+        (c) => c.name.trim().toLowerCase() === categoryFilter.trim().toLowerCase(),
+      );
+      if (!exists) {
+        const params = new URLSearchParams(searchParams);
+        params.delete("category");
+        setPage(1);
+        navigate(
+          {
+            pathname: "/products",
+            search: params.toString() ? `?${params.toString()}` : "",
+          },
+          { replace: true },
+        );
+      }
+    }
+  }, [buyerIdParam, isCategoriesLoading, categories, categoryFilter, searchParams, navigate]);
 
   const handleCategorySelect = (categoryName: string | null) => {
     const params = new URLSearchParams(searchParams);

@@ -3,7 +3,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface Category {
   id: string;
@@ -13,9 +13,20 @@ interface Category {
 
 export default function Categories() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const buyerId = searchParams.get("buyer_id");
+
   const { data: categories = [], isLoading, isError } = useQuery({
-    queryKey: ["all-categories"],
+    queryKey: ["all-categories", buyerId ?? null],
     queryFn: async () => {
+      if (buyerId) {
+        const { data, error } = await supabase.rpc("get_buyer_product_categories", {
+          buyer_id: buyerId,
+        });
+        if (error) throw error;
+        return ((data ?? []) as Category[]).filter((category) => category?.name);
+      }
+
       const { data, error } = await supabase
         .from("product_categories")
         .select("id,name,image_url,parent_id")
@@ -54,10 +65,14 @@ export default function Categories() {
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
             {categories.map((category, index) => {
               const initial = category.name?.trim()?.charAt(0)?.toUpperCase() ?? "?";
-              const search = new URLSearchParams({
+              const params = new URLSearchParams({
                 section: "featured",
                 category: category.name,
-              }).toString();
+              });
+              if (buyerId) {
+                params.set("buyer_id", buyerId);
+              }
+              const search = params.toString();
               return (
                 <button
                   key={category.id}
