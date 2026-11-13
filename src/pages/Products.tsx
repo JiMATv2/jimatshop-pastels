@@ -18,6 +18,7 @@ import { toast } from "@/hooks/use-toast";
 import { notificationService } from "@/lib/notifications/notificationService";
 import { supabase } from "@/lib/supabase/client";
 import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
+import { useDeviceSize } from "@/hooks/use-device-size";
 import {
   Select,
   SelectContent,
@@ -51,18 +52,13 @@ export default function Products() {
   const buyerIds = buyerIdParam ? [buyerIdParam] : nearbyBuyerIds;
   const [page, setPage] = useState(1);
 
-  // Detect tablet viewport
-  const [isTablet, setIsTablet] = useState(() => window.innerWidth >= 768);
+  // Responsive device size detection
+  const deviceSize = useDeviceSize();
+  const isDesktop = deviceSize === "desktop";
+  const isTablet = deviceSize === "tablet" || isDesktop;
 
-  useEffect(() => {
-    const handleResize = () => {
-      setIsTablet(window.innerWidth >= 768);
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  const limitCount = isTablet ? 20 : 12;
+  // Desktop: 10 columns x 3 rows = 30 items
+  const limitCount = isDesktop ? 30 : isTablet ? 20 : 12;
 
   // Find the specific buyer outlet info if buyer_id is provided
   const selectedBuyerOutlet = buyerIdParam 
@@ -736,7 +732,7 @@ export default function Products() {
   ) : null;
 
   const renderProductsGrid = (colsClass: string, skeletonCount: number) => (
-    <div className={`grid ${colsClass} gap-3`}>
+    <div className={`grid ${colsClass} gap-2.5`}>
       {isLoading ? (
         Array.from({ length: skeletonCount }).map((_, idx) => (
           <div key={idx} className="jimat-card">
@@ -895,18 +891,18 @@ export default function Products() {
       tablet={
         <div className="min-h-screen bg-background pb-28">
           <Header />
-          <TabletContainer>
+          <TabletContainer className="max-w-[1720px] px-4 lg:px-6">
             <main className="py-6">
               <h2 className="text-xl font-semibold text-foreground mb-6">{title}</h2>
-              <div className="grid grid-cols-12 gap-6 items-start">
-                {/* Left Panel */}
-                <div className="col-span-4 space-y-4">
+              <div className="flex flex-col lg:flex-row gap-6 items-start">
+                {/* Left Panel - Compact Sidebar */}
+                <div className="w-full lg:w-56 xl:w-64 shrink-0 space-y-4">
                   {shopDetailsCard}
                   {desktopCategoryChips}
                   {!buyerIdParam && nearbyOutletsSection}
                 </div>
-                {/* Right Panel */}
-                <div className="col-span-8 space-y-4">
+                {/* Right Panel - 10 Columns Product Grid */}
+                <div className="flex-1 min-w-0 space-y-4">
                   {categoryFilter && (
                     <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/60 text-xs shadow-xs">
                       <span>
@@ -922,7 +918,10 @@ export default function Products() {
                       </button>
                     </div>
                   )}
-                  {renderProductsGrid("grid-cols-5", 20)}
+                  {renderProductsGrid(
+                    "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-10",
+                    isDesktop ? 30 : 20
+                  )}
                   {paginationControls}
                   {error && <p className="mt-3 text-xs text-muted-foreground">Failed to load inventories.</p>}
                   {!cfg.apiToken && <p className="mt-2 text-xs text-muted-foreground">API token not configured.</p>}

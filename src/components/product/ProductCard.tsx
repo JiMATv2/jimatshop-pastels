@@ -39,11 +39,11 @@ export function ProductCard({
       className={cn("jimat-card cursor-pointer")}
       onClick={() => navigate(`/product/${productId}`)}
     >
-      <div className={cn("relative p-3", isOutOfStock && "grayscale")}>
+      <div className={cn("relative p-2.5 sm:p-3", isOutOfStock && "grayscale")}>
         {promoBadge ? (
           <span
             className={cn(
-              "absolute top-2 left-2 z-10 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+              "absolute top-2 left-2 z-10 rounded-full px-2 py-0.5 text-[10px] sm:text-xs font-semibold",
               promoBadge === "campaign" && "bg-red-100 text-red-700",
               promoBadge === "buyer_promo" && "bg-blue-100 text-blue-700",
             )}
@@ -51,7 +51,7 @@ export function ProductCard({
             PROMO
           </span>
         ) : null}
-        <div className="aspect-square bg-muted rounded-xl mb-3 flex items-center justify-center overflow-hidden">
+        <div className="aspect-square bg-muted rounded-xl mb-2 sm:mb-3 flex items-center justify-center overflow-hidden">
           <img
             src={coverImageUrl || "/placeholder.svg"}
             alt={productName}
@@ -68,28 +68,28 @@ export function ProductCard({
         </div>
 
         <div className="space-y-1">
-          <h4 className="text-sm font-medium text-foreground line-clamp-2 min-h-[2.5rem]">
+          <h4 className="text-xs sm:text-sm font-medium text-foreground line-clamp-2 min-h-[2.25rem] sm:min-h-[2.5rem] leading-snug">
             {productName}
           </h4>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
             {outletsWithStock > 0 ? `${outletsWithStock} outlet${outletsWithStock > 1 ? "s" : ""} in stock` : "Out of stock"}
           </p>
           {totalOutlets > 0 && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
               Available at {totalOutlets} outlet{totalOutlets > 1 ? "s" : ""}
             </p>
           )}
           {typeof totalQuantitySold === "number" && totalQuantitySold > 0 && (
-            <p className="text-xs text-muted-foreground">Sold: {totalQuantitySold}</p>
+            <p className="text-[11px] sm:text-xs text-muted-foreground truncate">Sold: {totalQuantitySold}</p>
           )}
 
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between pt-1.5 sm:pt-2">
             <div className="flex items-baseline gap-1">
-              <span className="text-base font-bold text-primary">
+              <span className="text-sm sm:text-base font-bold text-primary">
                 RM{Number.isFinite(displayPrice) ? displayPrice.toFixed(2) : "0.00"}
               </span>
               {showOriginalPrice && (
-                <span className="text-xs text-muted-foreground line-through">
+                <span className="text-[11px] sm:text-xs text-muted-foreground line-through">
                   RM{displayOriginalPrice?.toFixed(2)}
                 </span>
               )}
