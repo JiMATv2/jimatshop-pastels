@@ -212,4 +212,10 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Rendering containment: skip rendering off-screen sections until scrolled near viewport */
+  .contain-content {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 420px;
+  }
 }

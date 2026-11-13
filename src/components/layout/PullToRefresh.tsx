@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { ArrowDown, Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -20,12 +20,15 @@ export function PullToRefresh({
   disabled = false,
 }: PullToRefreshProps) {
   const queryClient = useQueryClient();
-  const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const indicatorRef = useRef<HTMLDivElement>(null);
+  const arrowRef = useRef<SVGSVGElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
   const startX = useRef<number | null>(null);
   const startY = useRef<number | null>(null);
   const isPulling = useRef(false);
+  const pullDistance = useRef(0);
 
   const defaultRefresh = useCallback(async () => {
     // Invalidate and refetch active React Query caches
@@ -34,6 +37,25 @@ export function PullToRefresh({
       new Promise((resolve) => setTimeout(resolve, 600)),
     ]);
   }, [queryClient]);
+
+  const updateIndicatorDom = useCallback((distance: number, pulling: boolean, refreshing: boolean) => {
+    const el = indicatorRef.current;
+    if (!el) return;
+    const progress = Math.min(1, distance / PULL_THRESHOLD);
+    const show = distance > 8 || refreshing;
+
+    el.style.transition = pulling ? "none" : "all 250ms ease-out";
+    el.style.top = `calc(var(--safe-top, env(safe-area-inset-top, 0px)) + 12px + ${distance * 0.75}px)`;
+    el.style.opacity = show ? "1" : "0";
+    el.style.transform = `translate(-50%, ${show ? "0px" : "-24px"}) scale(${0.7 + progress * 0.3})`;
+
+    if (arrowRef.current && !refreshing) {
+      arrowRef.current.style.transform = `rotate(${progress >= 1 ? 180 : progress * 180}deg)`;
+    }
+    if (textRef.current && !refreshing) {
+      textRef.current.textContent = progress >= 1 ? "Release to refresh" : "Pull down to refresh";
+    }
+  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (disabled || isRefreshing) return;
@@ -63,7 +85,8 @@ export function PullToRefresh({
     // If gesture is more horizontal than vertical, abort pull gesture
     if (diffX > 20 && diffX > diffY) {
       isPulling.current = false;
-      setPullDistance(0);
+      pullDistance.current = 0;
+      updateIndicatorDom(0, false, false);
       return;
     }
 
@@ -76,16 +99,19 @@ export function PullToRefresh({
     // If scrolled down, abort pull gesture
     if (scrollTop > 1) {
       isPulling.current = false;
-      setPullDistance(0);
+      pullDistance.current = 0;
+      updateIndicatorDom(0, false, false);
       return;
     }
 
     if (diffY > 0) {
-      // Apply progressive damping resistance curve
+      // Apply progressive damping resistance curve without re-rendering children
       const damped = Math.min(MAX_PULL, Math.pow(diffY, 0.82));
-      setPullDistance(damped);
+      pullDistance.current = damped;
+      updateIndicatorDom(damped, true, false);
     } else {
-      setPullDistance(0);
+      pullDistance.current = 0;
+      updateIndicatorDom(0, true, false);
     }
   };
 
@@ -95,9 +121,10 @@ export function PullToRefresh({
     startX.current = null;
     startY.current = null;
 
-    if (pullDistance >= PULL_THRESHOLD && !isRefreshing) {
+    if (pullDistance.current >= PULL_THRESHOLD && !isRefreshing) {
       setIsRefreshing(true);
-      setPullDistance(48); // Keep indicator visible while refreshing
+      pullDistance.current = 48; // Keep indicator visible while refreshing
+      updateIndicatorDom(48, false, true);
 
       try {
         if (onRefresh) {
@@ -112,21 +139,14 @@ export function PullToRefresh({
         console.error("[PullToRefresh] Refresh failed", err);
       } finally {
         setIsRefreshing(false);
-        setPullDistance(0);
+        pullDistance.current = 0;
+        updateIndicatorDom(0, false, false);
       }
     } else {
-      setPullDistance(0);
+      pullDistance.current = 0;
+      updateIndicatorDom(0, false, false);
     }
   };
-
-  useEffect(() => {
-    if (!isRefreshing && pullDistance > 0 && !isPulling.current) {
-      setPullDistance(0);
-    }
-  }, [isRefreshing, pullDistance]);
-
-  const progress = Math.min(1, pullDistance / PULL_THRESHOLD);
-  const showIndicator = pullDistance > 8 || isRefreshing;
 
   return (
     <div
@@ -139,17 +159,14 @@ export function PullToRefresh({
     >
       {/* Pull Indicator Pill */}
       <div
-        className={cn(
-          "absolute left-1/2 -translate-x-1/2 z-[9999] pointer-events-none transition-transform duration-200 ease-out",
-          !isPulling.current && "transition-all duration-300"
-        )}
+        ref={indicatorRef}
+        className="absolute left-1/2 -translate-x-1/2 z-[9999] pointer-events-none opacity-0"
         style={{
-          top: `calc(var(--safe-top, env(safe-area-inset-top, 0px)) + 12px + ${pullDistance * 0.75}px)`,
-          opacity: showIndicator ? 1 : 0,
-          transform: `translate(-50%, ${showIndicator ? "0px" : "-24px"}) scale(${0.7 + progress * 0.3})`,
+          top: "calc(var(--safe-top, env(safe-area-inset-top, 0px)) + 12px)",
+          transform: "translate(-50%, -24px) scale(0.7)",
         }}
       >
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/95 backdrop-blur-md border border-border shadow-lg text-xs font-medium text-foreground">
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background border border-border shadow-md text-xs font-medium text-foreground">
           {isRefreshing ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin text-primary" />
@@ -158,12 +175,10 @@ export function PullToRefresh({
           ) : (
             <>
               <ArrowDown
+                ref={arrowRef}
                 className="w-4 h-4 text-primary transition-transform duration-200"
-                style={{
-                  transform: `rotate(${progress >= 1 ? 180 : progress * 180}deg)`,
-                }}
               />
-              <span>{progress >= 1 ? "Release to refresh" : "Pull down to refresh"}</span>
+              <span ref={textRef}>Pull down to refresh</span>
             </>
           )}
         </div>

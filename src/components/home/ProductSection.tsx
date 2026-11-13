@@ -154,7 +154,7 @@ export const ProductSection = ({ title, products, variant = "mobile", onMockProd
   const isTablet = variant === "tablet";
 
   return (
-    <section className={isTablet ? "py-4" : "px-4 py-4"}>
+    <section className={isTablet ? "py-4 contain-content" : "px-4 py-4 contain-content"}>
       <div className="flex items-center justify-between mb-4">
         <h3 className={isTablet ? "text-xl font-semibold text-foreground" : "text-lg font-semibold text-foreground"}>{title}</h3>
         <Link

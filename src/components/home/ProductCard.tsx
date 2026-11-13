@@ -46,8 +46,7 @@ export const ProductCard = ({
 
   return (
     <div
-      className="jimat-card animate-slide-up cursor-pointer"
-      style={{ animationDelay: `${delay}ms` }}
+      className="jimat-card cursor-pointer"
       onClick={handleCardClick}
     >
       <div className={isTablet ? "relative p-4" : "relative p-3"}>
@@ -68,7 +67,7 @@ export const ProductCard = ({
         )}
 
         {/* Wishlist */}
-        <button className={isTablet ? "absolute top-3 right-3 z-10 p-2 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background transition-colors" : "absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background transition-colors"}>
+        <button className={isTablet ? "absolute top-3 right-3 z-10 p-2 rounded-full bg-background/95 border border-border/40 hover:bg-background transition-colors shadow-xs" : "absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/95 border border-border/40 hover:bg-background transition-colors shadow-xs"}>
           <Heart className={isTablet ? "w-5 h-5 text-muted-foreground" : "w-4 h-4 text-muted-foreground"} />
         </button>
 

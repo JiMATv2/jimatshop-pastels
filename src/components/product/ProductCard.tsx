@@ -36,8 +36,7 @@ export function ProductCard({
 
   return (
     <div
-      className={cn("jimat-card animate-slide-up cursor-pointer")}
-      style={{ animationDelay: `${delay}ms` }}
+      className={cn("jimat-card cursor-pointer")}
       onClick={() => navigate(`/product/${productId}`)}
     >
       <div className={cn("relative p-3", isOutOfStock && "grayscale")}>
