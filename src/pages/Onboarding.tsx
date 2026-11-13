@@ -368,7 +368,7 @@ export default function Onboarding() {
       <ResponsivePage
         mobile={
           <div className="min-h-screen bg-gradient-to-br from-jimat-pastelsage via-background to-jimat-pastelblue flex flex-col safe-area-top safe-area-bottom safe-area-x">
-            <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 overflow-y-auto">
+            <div className="flex-1 flex flex-col items-center justify-center px-6 pt-6 pb-[calc(3.5rem+var(--safe-bottom))] overflow-y-auto">
               <LoginForm {...loginFormProps} />
             </div>
           </div>
@@ -420,7 +420,7 @@ export default function Onboarding() {
           </div>
 
           {/* Image */}
-          <div className="relative h-[55vh] overflow-hidden">
+          <div className="relative h-[48vh] overflow-hidden">
             <img
               src={slide.image}
               alt={slide.title}
@@ -430,7 +430,7 @@ export default function Onboarding() {
           </div>
 
           {/* Content */}
-          <div className="flex-1 px-6 pt-6 pb-6 flex flex-col justify-between">
+          <div className="flex-1 px-6 pt-4 pb-[calc(3.5rem+var(--safe-bottom))] flex flex-col justify-between">
             <div>
               <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
                 <slide.Icon className="w-7 h-7 text-primary" />
@@ -440,7 +440,7 @@ export default function Onboarding() {
             </div>
 
             {/* Pagination & Next */}
-            <div className="flex items-center justify-between pt-6">
+            <div className="flex items-center justify-between pt-6 mb-2">
               <div className="flex gap-2">
                 {slides.map((_, idx) => (
                   <div
