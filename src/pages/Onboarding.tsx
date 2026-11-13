@@ -367,14 +367,14 @@ export default function Onboarding() {
     return (
       <ResponsivePage
         mobile={
-          <div className="min-h-screen bg-gradient-to-br from-jimat-pastelsage via-background to-jimat-pastelblue flex flex-col">
-            <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+          <div className="min-h-screen bg-gradient-to-br from-jimat-pastelsage via-background to-jimat-pastelblue flex flex-col safe-area-top safe-area-bottom safe-area-x">
+            <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 overflow-y-auto">
               <LoginForm {...loginFormProps} />
             </div>
           </div>
         }
         tablet={
-          <div className="min-h-screen bg-background flex">
+          <div className="min-h-screen bg-background flex safe-area-top safe-area-bottom safe-area-x">
             {/* Left: grocery background */}
             <div className="hidden md:flex md:w-1/2 lg:w-[55%] relative items-end justify-start overflow-hidden">
               <img
@@ -396,7 +396,7 @@ export default function Onboarding() {
             </div>
 
             {/* Right: login form */}
-            <div className="w-full md:w-1/2 lg:w-[45%] flex items-center justify-center px-8 py-12 safe-area-x">
+            <div className="w-full md:w-1/2 lg:w-[45%] flex items-center justify-center px-8 py-12">
               <LoginForm {...loginFormProps} />
             </div>
           </div>
@@ -411,9 +411,9 @@ export default function Onboarding() {
   return (
     <ResponsivePage
       mobile={
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen bg-background flex flex-col safe-area-bottom safe-area-x">
           {/* Skip button */}
-          <div className="absolute top-4 right-4 z-10 safe-area-top">
+          <div className="absolute top-4 right-4 z-10 safe-area-top safe-area-x">
             <Button variant="ghost" size="sm" onClick={handleSkip}>
               Skip
             </Button>
@@ -430,8 +430,8 @@ export default function Onboarding() {
           </div>
 
           {/* Content */}
-          <div className="flex-1 px-6 py-8 flex flex-col">
-            <div className="flex-1">
+          <div className="flex-1 px-6 pt-6 pb-6 flex flex-col justify-between">
+            <div>
               <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
                 <slide.Icon className="w-7 h-7 text-primary" />
               </div>
@@ -445,8 +445,9 @@ export default function Onboarding() {
                 {slides.map((_, idx) => (
                   <div
                     key={idx}
-                    className={`h-2 rounded-full transition-all ${idx === currentSlide ? "w-8 bg-primary" : "w-2 bg-muted"
-                      }`}
+                    className={`h-2 rounded-full transition-all ${
+                      idx === currentSlide ? "w-8 bg-primary" : "w-2 bg-muted"
+                    }`}
                   />
                 ))}
               </div>
@@ -459,7 +460,7 @@ export default function Onboarding() {
         </div>
       }
       tablet={
-        <div className="min-h-screen bg-background flex">
+        <div className="min-h-screen bg-background flex safe-area-top safe-area-bottom safe-area-x">
           {/* Left: grocery background */}
           <div className="hidden md:flex md:w-1/2 lg:w-[55%] relative items-end justify-start overflow-hidden">
             <img
@@ -481,7 +482,7 @@ export default function Onboarding() {
           </div>
 
           {/* Right: login form */}
-          <div className="w-full md:w-1/2 lg:w-[45%] flex items-center justify-center px-8 py-12 safe-area-x">
+          <div className="w-full md:w-1/2 lg:w-[45%] flex items-center justify-center px-8 py-12">
             <LoginForm {...loginFormProps} />
           </div>
         </div>
