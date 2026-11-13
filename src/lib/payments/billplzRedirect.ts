@@ -100,7 +100,8 @@ export function parsePaymentReturnDeepLink(
 ): { orderId: string; search: string } | null {
   try {
     const url = new URL(raw);
-    if (url.protocol !== "com.jimatbiz.shop3:" || url.hostname !== "payment-return") {
+    const validProtocol = url.protocol === "com.jimatbiz.shop3:" || url.protocol === "intent:";
+    if (!validProtocol || url.hostname !== "payment-return") {
       return null;
     }
 
