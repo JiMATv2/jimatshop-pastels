@@ -1,10 +1,13 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { PullToRefresh } from "@/components/layout/PullToRefresh";
 
 interface ResponsivePageProps {
   mobile: React.ReactNode;
   tablet: React.ReactNode;
   className?: string;
+  enablePullToRefresh?: boolean;
+  onRefresh?: () => Promise<void>;
 }
 
 /**
@@ -13,10 +16,24 @@ interface ResponsivePageProps {
  * branch at `md` and above. This lets each page keep its exact phone-sized
  * layout while providing a separate, professional tablet layout.
  */
-export function ResponsivePage({ mobile, tablet, className }: ResponsivePageProps) {
+export function ResponsivePage({
+  mobile,
+  tablet,
+  className,
+  enablePullToRefresh = true,
+  onRefresh,
+}: ResponsivePageProps) {
+  const mobileContent = enablePullToRefresh ? (
+    <PullToRefresh onRefresh={onRefresh}>
+      {mobile}
+    </PullToRefresh>
+  ) : (
+    mobile
+  );
+
   return (
     <div className={cn("min-h-screen bg-background overflow-x-hidden", className)}>
-      <div className="block md:hidden">{mobile}</div>
+      <div className="block md:hidden">{mobileContent}</div>
       <div className="hidden md:block">{tablet}</div>
     </div>
   );

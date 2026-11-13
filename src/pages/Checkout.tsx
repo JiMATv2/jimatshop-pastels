@@ -230,7 +230,21 @@ export default function Checkout() {
     return sum;
   }, [checkoutBuyerIds, coinBalanceByBuyer]);
 
-  const activeCoinsAvailable = usePlatformCoins ? platformCoinBalance : totalCoinBalance;
+  const hasShopCoins = totalCoinBalance > 0;
+  const hasPlatformCoins = platformCoinBalance > 0;
+  const anyCoinsAvailable = hasShopCoins || hasPlatformCoins;
+
+  // Auto-switch to platform coins if user has platform coins but 0 shop coins for this shop
+  useEffect(() => {
+    if (!hasShopCoins && hasPlatformCoins) {
+      setUsePlatformCoins(true);
+    } else if (hasShopCoins && !hasPlatformCoins) {
+      setUsePlatformCoins(false);
+    }
+  }, [hasShopCoins, hasPlatformCoins]);
+
+  const effectiveUsePlatformCoins = usePlatformCoins || (!hasShopCoins && hasPlatformCoins);
+  const activeCoinsAvailable = effectiveUsePlatformCoins ? platformCoinBalance : totalCoinBalance;
 
   const { totalCoinsApplied, remainingBalance, coinsAppliedByBuyer } = React.useMemo(() => {
     let totalApplied = 0;
@@ -240,7 +254,7 @@ export default function Checkout() {
       return { totalCoinsApplied: 0, remainingBalance: subtotal, coinsAppliedByBuyer: appliedMap };
     }
 
-    if (usePlatformCoins) {
+    if (effectiveUsePlatformCoins) {
       let remPlat = Math.min(platformCoinBalance, subtotal);
       totalApplied = remPlat;
       for (const [buyerId, bSub] of subtotalByBuyer.entries()) {
@@ -263,7 +277,15 @@ export default function Checkout() {
       remainingBalance: rem,
       coinsAppliedByBuyer: appliedMap,
     };
-  }, [applyCoins, activeCoinsAvailable, usePlatformCoins, platformCoinBalance, subtotal, subtotalByBuyer, coinBalanceByBuyer]);
+  }, [
+    applyCoins,
+    activeCoinsAvailable,
+    effectiveUsePlatformCoins,
+    platformCoinBalance,
+    subtotal,
+    subtotalByBuyer,
+    coinBalanceByBuyer,
+  ]);
 
   const isOnlinePayment = remainingBalance > 0.001 && remainderPaymentMethod === "online_banking";
 
@@ -375,8 +397,8 @@ export default function Checkout() {
           return {
             buyer_id: buyerId,
             items: buyerItems.map((it) => ({ product_id: it.productId, quantity: it.quantity })),
-            use_coins: coinsToUse > 0 && !usePlatformCoins,
-            use_platform_coins: coinsToUse > 0 && usePlatformCoins,
+            use_coins: coinsToUse > 0 && !effectiveUsePlatformCoins,
+            use_platform_coins: coinsToUse > 0 && effectiveUsePlatformCoins,
             coins_amount: coinsToUse,
             notes: notes.trim() || null,
           };
@@ -384,7 +406,7 @@ export default function Checkout() {
 
         const effectivePaymentMethod =
           remainingBalance <= 0.001
-            ? (usePlatformCoins ? "jimatshop_coins_platform" : "jimatshop_coins")
+            ? (effectiveUsePlatformCoins ? "jimatshop_coins_platform" : "jimatshop_coins")
             : remainderPaymentMethod;
 
         const res = await createMobileJimatshopOrder({
@@ -438,7 +460,7 @@ export default function Checkout() {
 
       const effectivePaymentMethod =
         shopRemaining <= 0.001
-          ? (usePlatformCoins ? "jimatshop_coins_platform" : "jimatshop_coins")
+          ? (effectiveUsePlatformCoins ? "jimatshop_coins_platform" : "jimatshop_coins")
           : remainderPaymentMethod;
 
       const singleRes = await createMobileJimatshopOrder({
@@ -447,8 +469,8 @@ export default function Checkout() {
         items: singleOrder.items.map((it) => ({ product_id: it.productId, quantity: it.quantity })),
         shipping_address: null,
         notes: notes.trim() || null,
-        use_coins: coinsToUse > 0 && !usePlatformCoins,
-        use_platform_coins: coinsToUse > 0 && usePlatformCoins,
+        use_coins: coinsToUse > 0 && !effectiveUsePlatformCoins,
+        use_platform_coins: coinsToUse > 0 && effectiveUsePlatformCoins,
         coins_amount: coinsToUse,
         payment_method: effectivePaymentMethod,
         ...(effectivePaymentMethod === "online_banking" && shopRemaining > 0
@@ -662,21 +684,68 @@ export default function Checkout() {
                 <span>Apply JiMATShop Coins</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                {activeCoinsAvailable > 0
-                  ? `Deduct coins from your available balance (${formatMYR(activeCoinsAvailable)})`
-                  : "No coins available for the items in your cart"}
+                {!anyCoinsAvailable
+                  ? "No coins available for the items in your cart"
+                  : effectiveUsePlatformCoins
+                    ? `Deducting platform coins (${formatMYR(platformCoinBalance)} available)`
+                    : `Deducting shop coins (${formatMYR(totalCoinBalance)} available)`}
               </p>
             </div>
             <Switch
               checked={applyCoins && activeCoinsAvailable > 0}
-              onCheckedChange={(val) => setApplyCoins(val)}
-              disabled={activeCoinsAvailable <= 0}
+              onCheckedChange={(val) => {
+                if (val && !effectiveUsePlatformCoins && !hasShopCoins && hasPlatformCoins) {
+                  setUsePlatformCoins(true);
+                }
+                setApplyCoins(val);
+              }}
+              disabled={!anyCoinsAvailable}
               aria-label="Toggle apply JiMATShop coins"
             />
           </div>
 
-          {/* Breakdown per outlet */}
-          {checkoutBuyerIds.length > 0 && (
+          {/* If customer has both Shop Coins and Platform Coins, provide clean switcher */}
+          {hasShopCoins && hasPlatformCoins && (
+            <div className="pt-2 border-t border-border/40 space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+                <span>Select Coin Source:</span>
+                <span className="text-[11px] font-semibold text-primary">
+                  {effectiveUsePlatformCoins ? "Platform Coins" : "Shop Coins"}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setUsePlatformCoins(false)}
+                  className={cn(
+                    "p-2 rounded-lg border text-left transition-all",
+                    !effectiveUsePlatformCoins
+                      ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/30"
+                      : "border-border/60 bg-background/50 text-muted-foreground hover:bg-muted/40"
+                  )}
+                >
+                  <div className="text-xs font-semibold">Shop Coins</div>
+                  <div className="text-[11px] opacity-80 mt-0.5">{formatMYR(totalCoinBalance)}</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUsePlatformCoins(true)}
+                  className={cn(
+                    "p-2 rounded-lg border text-left transition-all",
+                    effectiveUsePlatformCoins
+                      ? "border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary/30"
+                      : "border-border/60 bg-background/50 text-muted-foreground hover:bg-muted/40"
+                  )}
+                >
+                  <div className="text-xs font-semibold">Platform Coins</div>
+                  <div className="text-[11px] opacity-80 mt-0.5">{formatMYR(platformCoinBalance)}</div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Breakdown per outlet (when using Shop Coins) */}
+          {!effectiveUsePlatformCoins && checkoutBuyerIds.length > 0 && (
             <div className="space-y-1.5 pt-2 border-t border-border/40 text-xs">
               <div className="font-medium text-muted-foreground pb-0.5">
                 {checkoutBuyerIds.length > 1 ? "Outlet Coin Balances:" : "Shop Coin Balance:"}
@@ -685,7 +754,7 @@ export default function Checkout() {
                 const bal = coinBalanceByBuyer.get(buyerId) ?? 0;
                 const req = subtotalByBuyer.get(buyerId) ?? 0;
                 const name = buyerNameById.get(buyerId) || buyerId.slice(0, 8);
-                const applied = applyCoins && !usePlatformCoins ? (coinsAppliedByBuyer.get(buyerId) ?? 0) : 0;
+                const applied = applyCoins && !effectiveUsePlatformCoins ? (coinsAppliedByBuyer.get(buyerId) ?? 0) : 0;
                 return (
                   <div key={buyerId} className="flex items-center justify-between py-0.5">
                     <span className="truncate pr-2 text-foreground font-medium">{name}:</span>
@@ -706,13 +775,47 @@ export default function Checkout() {
               {platformCoinBalance > 0 && (
                 <div className="flex items-center justify-between pt-1 border-t border-border/20 text-xs">
                   <span className="font-medium text-foreground">Platform Coins:</span>
-                  <span className="shrink-0">
+                  <span className="shrink-0 text-muted-foreground">
                     <span className="font-semibold text-foreground">{formatMYR(platformCoinBalance)}</span>
-                    {applyCoins && usePlatformCoins && totalCoinsApplied > 0 && (
-                      <span className="text-green-600 dark:text-green-400 font-semibold ml-1.5">
-                        (-{formatMYR(totalCoinsApplied)} applied)
-                      </span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setUsePlatformCoins(true)}
+                      className="text-primary hover:underline ml-2 font-medium"
+                    >
+                      Use Platform Coins
+                    </button>
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Breakdown (when using Platform Coins) */}
+          {effectiveUsePlatformCoins && (
+            <div className="space-y-1.5 pt-2 border-t border-border/40 text-xs">
+              <div className="flex items-center justify-between py-0.5">
+                <span className="font-medium text-foreground">Platform Coin Balance:</span>
+                <span className="shrink-0 text-right">
+                  <span className="font-semibold text-foreground">{formatMYR(platformCoinBalance)}</span>
+                  {applyCoins && totalCoinsApplied > 0 && (
+                    <span className="text-green-600 dark:text-green-400 font-semibold ml-1.5">
+                      (-{formatMYR(totalCoinsApplied)} applied)
+                    </span>
+                  )}
+                </span>
+              </div>
+              {hasShopCoins && (
+                <div className="flex items-center justify-between pt-1 border-t border-border/20 text-xs">
+                  <span className="font-medium text-muted-foreground">Shop Coins:</span>
+                  <span className="shrink-0 text-muted-foreground">
+                    <span className="font-semibold text-foreground">{formatMYR(totalCoinBalance)}</span>
+                    <button
+                      type="button"
+                      onClick={() => setUsePlatformCoins(false)}
+                      className="text-primary hover:underline ml-2 font-medium"
+                    >
+                      Use Shop Coins
+                    </button>
                   </span>
                 </div>
               )}
@@ -721,7 +824,9 @@ export default function Checkout() {
 
           {applyCoins && totalCoinsApplied > 0 && (
             <div className="rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2 flex items-center justify-between text-xs text-green-700 dark:text-green-400">
-              <span className="font-medium">JiMATShop Coins Applied:</span>
+              <span className="font-medium">
+                {effectiveUsePlatformCoins ? "Platform Coins Applied:" : "JiMATShop Coins Applied:"}
+              </span>
               <span className="font-bold">-{formatMYR(totalCoinsApplied)}</span>
             </div>
           )}

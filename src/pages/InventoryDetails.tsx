@@ -22,6 +22,23 @@ export default function InventoryDetails() {
   const [inv, setInv] = useState<MobileInventory | null>(null);
   const [quantity, setQuantity] = useState(1);
 
+  const loadInventory = async (showSpinner = true) => {
+    if (!inventoryId) return;
+    try {
+      if (showSpinner) setLoading(true);
+      setError(null);
+      const resp = await fetchMobileInventoryById(inventoryId);
+      if (!resp.success || !resp.data) throw new Error(resp.message || "Inventory not found");
+      setInv(resp.data);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to load inventory";
+      setError(msg);
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    } finally {
+      if (showSpinner) setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!inventoryId) {
       setError("Inventory ID is required");
@@ -29,23 +46,7 @@ export default function InventoryDetails() {
       return;
     }
 
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const resp = await fetchMobileInventoryById(inventoryId);
-        if (!resp.success || !resp.data) throw new Error(resp.message || "Inventory not found");
-        setInv(resp.data);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "Failed to load inventory";
-        setError(msg);
-        toast({ title: "Error", description: msg, variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
+    loadInventory(true);
   }, [inventoryId]);
 
   if (loading) {
@@ -235,6 +236,7 @@ export default function InventoryDetails() {
 
   return (
     <ResponsivePage
+      onRefresh={() => loadInventory(false)}
       mobile={
         <div className="min-h-screen bg-background pb-bottom-nav">
           <StickyHeader>

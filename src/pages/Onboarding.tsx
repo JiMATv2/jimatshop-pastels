@@ -366,6 +366,7 @@ export default function Onboarding() {
   if (showLogin) {
     return (
       <ResponsivePage
+        enablePullToRefresh={false}
         mobile={
           <div className="min-h-screen bg-gradient-to-br from-jimat-pastelsage via-background to-jimat-pastelblue flex flex-col safe-area-top safe-area-bottom safe-area-x">
             <div className="flex-1 flex flex-col items-center justify-center px-6 pt-6 pb-[calc(3.5rem+var(--safe-bottom))] overflow-y-auto">
@@ -410,6 +411,7 @@ export default function Onboarding() {
 
   return (
     <ResponsivePage
+      enablePullToRefresh={false}
       mobile={
         <div className="min-h-screen bg-background flex flex-col safe-area-bottom safe-area-x">
           {/* Skip button */}
