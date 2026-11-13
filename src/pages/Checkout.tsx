@@ -14,7 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/client";
 import { Minus, Plus, Trash2, Store, AlertCircle, Coins, CheckCircle2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";

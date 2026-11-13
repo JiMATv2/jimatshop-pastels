@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { PullToRefresh } from "@/components/layout/PullToRefresh";
+import { useIsMobile } from "@/hooks/use-device-size";
 
 interface ResponsivePageProps {
   mobile: React.ReactNode;
@@ -12,9 +13,9 @@ interface ResponsivePageProps {
 
 /**
  * Dual-view page wrapper.
- * Renders the `mobile` branch below the `md` breakpoint and the `tablet`
- * branch at `md` and above. This lets each page keep its exact phone-sized
- * layout while providing a separate, professional tablet layout.
+ * Mounts only the `mobile` branch below the `md` breakpoint and the `tablet`
+ * branch at `md` and above. This avoids mounting duplicate DOM trees and
+ * fetching off-screen assets.
  */
 export function ResponsivePage({
   mobile,
@@ -23,6 +24,8 @@ export function ResponsivePage({
   enablePullToRefresh = true,
   onRefresh,
 }: ResponsivePageProps) {
+  const isMobile = useIsMobile();
+
   const mobileContent = enablePullToRefresh ? (
     <PullToRefresh onRefresh={onRefresh}>
       {mobile}
@@ -33,8 +36,11 @@ export function ResponsivePage({
 
   return (
     <div className={cn("min-h-screen bg-background overflow-x-hidden", className)}>
-      <div className="block md:hidden">{mobileContent}</div>
-      <div className="hidden md:block">{tablet}</div>
+      {isMobile ? (
+        <div className="block md:hidden">{mobileContent}</div>
+      ) : (
+        <div className="hidden md:block">{tablet}</div>
+      )}
     </div>
   );
 }

@@ -12,11 +12,13 @@ import { useOnboarding } from "@/hooks/useOnboarding";
 import { Link } from "react-router-dom";
 import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
 import { MockProductLocationModal } from "@/components/location/MockProductLocationModal";
+import { useIsDesktop } from "@/hooks/use-device-size";
 
 const Index = () => {
   const navigate = useNavigate();
   const { hasSeenOnboarding, isLoading } = useOnboarding();
   const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const isDesktop = useIsDesktop();
   const handleMockProductClick = () => setLocationModalOpen(true);
 
   useEffect(() => {
@@ -59,25 +61,27 @@ const Index = () => {
             <main className="space-y-4 py-4">
               <HeroBanner />
 
-              {/** md–lg: stacked professional layout */}
-              <div className="block lg:hidden space-y-4">
-                <CategoryGrid variant="tablet" />
-                <ProductSection title="🔥 Hot Deals" products="featured" variant="tablet" onMockProductClick={handleMockProductClick} />
-                <ProductSection title="⭐ Popular Items" products="popular" variant="tablet" onMockProductClick={handleMockProductClick} />
-                <NearbyOutlets variant="tablet" />
-              </div>
-
-              {/** lg+: two-column layout */}
-              <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
-                <div className="lg:col-span-8 space-y-4">
+              {isDesktop ? (
+                /** lg+: two-column layout */
+                <div className="grid lg:grid-cols-12 lg:gap-6">
+                  <div className="lg:col-span-8 space-y-4">
+                    <ProductSection title="🔥 Hot Deals" products="featured" variant="tablet" onMockProductClick={handleMockProductClick} />
+                    <ProductSection title="⭐ Popular Items" products="popular" variant="tablet" onMockProductClick={handleMockProductClick} />
+                  </div>
+                  <div className="lg:col-span-4 space-y-4">
+                    <CategoryGrid variant="tablet" />
+                    <NearbyOutlets variant="tablet" />
+                  </div>
+                </div>
+              ) : (
+                /** md–lg: stacked professional layout */
+                <div className="space-y-4">
+                  <CategoryGrid variant="tablet" />
                   <ProductSection title="🔥 Hot Deals" products="featured" variant="tablet" onMockProductClick={handleMockProductClick} />
                   <ProductSection title="⭐ Popular Items" products="popular" variant="tablet" onMockProductClick={handleMockProductClick} />
-                </div>
-                <div className="lg:col-span-4 space-y-4">
-                  <CategoryGrid variant="tablet" />
                   <NearbyOutlets variant="tablet" />
                 </div>
-              </div>
+              )}
             </main>
           </TabletContainer>
           <BottomNav />

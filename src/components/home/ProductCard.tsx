@@ -77,6 +77,8 @@ export const ProductCard = ({
           <img
             src={image || "/placeholder.svg"}
             alt={name}
+            loading="lazy"
+            decoding="async"
             onError={(e) => {
               const target = e.currentTarget;
               if (target.src !== `${window.location.origin}/placeholder.svg` && !target.src.endsWith("/placeholder.svg")) {
