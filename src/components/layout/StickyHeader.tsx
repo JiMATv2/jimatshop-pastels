@@ -10,7 +10,7 @@ export function StickyHeader({ children, className, as: Tag = "div" }: StickyHea
   return (
     <Tag
       className={cn(
-        "sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border safe-area-top",
+        "sticky top-0 z-50 w-full overflow-hidden bg-background/95 backdrop-blur-sm border-b border-border safe-area-top",
         className,
       )}
     >

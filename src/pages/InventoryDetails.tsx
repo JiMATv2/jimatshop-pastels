@@ -63,7 +63,7 @@ export default function InventoryDetails() {
     return (
       <div className="min-h-screen bg-background">
         <StickyHeader>
-          <div className="flex items-center justify-between px-4 py-3 safe-area-x">
+          <div className="flex items-center justify-between py-3 safe-area-x">
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)} data-testid="back-btn">
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -238,7 +238,7 @@ export default function InventoryDetails() {
       mobile={
         <div className="min-h-screen bg-background pb-bottom-nav">
           <StickyHeader>
-            <div className="flex items-center justify-between px-4 py-3 safe-area-x">
+            <div className="flex items-center justify-between py-3 safe-area-x">
               <Button variant="ghost" size="icon" onClick={() => navigate(-1)} data-testid="back-btn-mobile">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
@@ -246,7 +246,7 @@ export default function InventoryDetails() {
             </div>
           </StickyHeader>
 
-          <main className="px-4 py-4 space-y-6 safe-area-x mx-8">
+          <main className="py-4 space-y-6 safe-area-x max-w-md mx-auto">
             {productImage}
 
             <div className="space-y-3">
@@ -353,7 +353,7 @@ export default function InventoryDetails() {
       tablet={
         <div className="min-h-screen bg-background pb-28">
           <StickyHeader>
-            <div className="flex items-center justify-between px-4 py-3 safe-area-x">
+            <div className="flex items-center justify-between py-3 safe-area-x">
               <Button variant="ghost" size="icon" onClick={() => navigate(-1)} data-testid="back-btn-tablet">
                 <ArrowLeft className="w-5 h-5" />
               </Button>

@@ -15,7 +15,7 @@ interface ResponsivePageProps {
  */
 export function ResponsivePage({ mobile, tablet, className }: ResponsivePageProps) {
   return (
-    <div className={cn("min-h-screen bg-background", className)}>
+    <div className={cn("min-h-screen bg-background overflow-x-hidden", className)}>
       <div className="block md:hidden">{mobile}</div>
       <div className="hidden md:block">{tablet}</div>
     </div>

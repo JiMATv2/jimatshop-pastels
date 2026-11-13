@@ -479,7 +479,7 @@ export default function ProductDetails() {
 
   const productHeader = (
     <StickyHeader>
-      <div className="flex items-center justify-between px-4 py-3 safe-area-x">
+      <div className="flex items-center justify-between py-3 safe-area-x">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -702,7 +702,7 @@ export default function ProductDetails() {
         mobile={
           <div className="min-h-screen bg-background pb-bottom-nav">
             {productHeader}
-            <main className="px-4 py-4 space-y-6 safe-area-x mx-8">
+            <main className="py-4 space-y-6 safe-area-x max-w-md mx-auto">
               {productImage}
               {productInfo}
               {productDescription}

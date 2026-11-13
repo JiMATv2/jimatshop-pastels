@@ -25,7 +25,7 @@ export function CartIconButton({
     >
       <ShoppingCart className="w-5 h-5" />
       {itemCount > 0 ? (
-        <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+        <span className="absolute -top-1 right-0 min-w-5 h-5 px-1 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center pointer-events-none">
           {itemCount > 99 ? "99+" : itemCount}
         </span>
       ) : null}
