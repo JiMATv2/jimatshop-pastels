@@ -57,20 +57,22 @@ const Index = () => {
       tablet={
         <div className="min-h-screen bg-background pb-28">
           <Header />
-          <TabletContainer>
-            <main className="space-y-4 py-4">
+          <TabletContainer className="max-w-[1720px] px-4 lg:px-6">
+            <main className="space-y-6 py-4">
               <HeroBanner />
 
               {isDesktop ? (
-                /** lg+: two-column layout */
-                <div className="grid lg:grid-cols-12 lg:gap-6">
-                  <div className="lg:col-span-8 space-y-4">
-                    <ProductSection title="🔥 Hot Deals" products="featured" variant="tablet" onMockProductClick={handleMockProductClick} />
-                    <ProductSection title="⭐ Popular Items" products="popular" variant="tablet" onMockProductClick={handleMockProductClick} />
-                  </div>
-                  <div className="lg:col-span-4 space-y-4">
+                /** Desktop: compact sidebar + 10x3 product grids */
+                <div className="flex flex-col xl:flex-row gap-6 items-start">
+                  {/* Left Sidebar */}
+                  <div className="w-full xl:w-64 shrink-0 space-y-4">
                     <CategoryGrid variant="tablet" />
                     <NearbyOutlets variant="tablet" />
+                  </div>
+                  {/* Main Content Area */}
+                  <div className="flex-1 min-w-0 space-y-6">
+                    <ProductSection title="🔥 Hot Deals" products="featured" variant="desktop" onMockProductClick={handleMockProductClick} />
+                    <ProductSection title="⭐ Popular Items" products="popular" variant="desktop" onMockProductClick={handleMockProductClick} />
                   </div>
                 </div>
               ) : (

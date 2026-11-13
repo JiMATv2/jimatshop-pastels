@@ -11,7 +11,7 @@ interface ProductCardProps {
   image: string;
   badge?: "sale" | "new" | "fast";
   delay?: number;
-  variant?: "mobile" | "tablet";
+  variant?: "mobile" | "tablet" | "desktop";
   isMock?: boolean;
   onMockClick?: () => void;
 }
@@ -42,6 +42,7 @@ export const ProductCard = ({
     navigate(`/product/${id}`);
   };
 
+  const isDesktop = variant === "desktop";
   const isTablet = variant === "tablet";
 
   return (
@@ -49,12 +50,13 @@ export const ProductCard = ({
       className="jimat-card cursor-pointer"
       onClick={handleCardClick}
     >
-      <div className={isTablet ? "relative p-4" : "relative p-3"}>
+      <div className={cn("relative", isDesktop ? "p-2.5 sm:p-3" : isTablet ? "p-4" : "p-3")}>
         {/* Badge */}
         {badge && (
           <span
             className={cn(
               "jimat-badge absolute top-2 left-2 z-10",
+              isDesktop && "text-[10px] px-2 py-0.5",
               badge === "sale" && "jimat-badge-sale",
               badge === "new" && "jimat-badge-new",
               badge === "fast" && "jimat-badge-fast"
@@ -67,12 +69,22 @@ export const ProductCard = ({
         )}
 
         {/* Wishlist */}
-        <button className={isTablet ? "absolute top-3 right-3 z-10 p-2 rounded-full bg-background/95 border border-border/40 hover:bg-background transition-colors shadow-xs" : "absolute top-2 right-2 z-10 p-1.5 rounded-full bg-background/95 border border-border/40 hover:bg-background transition-colors shadow-xs"}>
-          <Heart className={isTablet ? "w-5 h-5 text-muted-foreground" : "w-4 h-4 text-muted-foreground"} />
+        <button
+          className={cn(
+            "absolute z-10 rounded-full bg-background/95 border border-border/40 hover:bg-background transition-colors shadow-xs",
+            isDesktop ? "top-2 right-2 p-1.5" : isTablet ? "top-3 right-3 p-2" : "top-2 right-2 p-1.5"
+          )}
+        >
+          <Heart className={isTablet && !isDesktop ? "w-5 h-5 text-muted-foreground" : "w-4 h-4 text-muted-foreground"} />
         </button>
 
         {/* Image */}
-        <div className={isTablet ? "aspect-square bg-muted rounded-2xl mb-4 flex items-center justify-center overflow-hidden" : "aspect-square bg-muted rounded-xl mb-3 flex items-center justify-center overflow-hidden"}>
+        <div
+          className={cn(
+            "aspect-square bg-muted rounded-xl flex items-center justify-center overflow-hidden",
+            isDesktop ? "mb-2 sm:mb-2.5" : isTablet ? "rounded-2xl mb-4" : "mb-3"
+          )}
+        >
           <img
             src={image || "/placeholder.svg"}
             alt={name}
@@ -90,18 +102,23 @@ export const ProductCard = ({
 
         {/* Info */}
         <div className="space-y-1">
-          <h4 className={isTablet ? "text-base font-medium text-foreground line-clamp-2 min-h-[2.75rem]" : "text-sm font-medium text-foreground line-clamp-2 min-h-[2.5rem]"}>
+          <h4
+            className={cn(
+              "font-medium text-foreground line-clamp-2 leading-snug",
+              isDesktop ? "text-xs sm:text-sm min-h-[2.25rem] sm:min-h-[2.5rem]" : isTablet ? "text-base min-h-[2.75rem]" : "text-sm min-h-[2.5rem]"
+            )}
+          >
             {name}
           </h4>
-          <p className={isTablet ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"}>{unit}</p>
+          <p className={cn("text-muted-foreground truncate", isDesktop ? "text-[11px] sm:text-xs" : isTablet ? "text-sm" : "text-xs")}>{unit}</p>
 
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between pt-1 sm:pt-2">
             <div className="flex items-baseline gap-1">
-              <span className={isTablet ? "text-lg font-bold text-primary" : "text-base font-bold text-primary"}>
+              <span className={cn("font-bold text-primary", isDesktop ? "text-sm sm:text-base" : isTablet ? "text-lg" : "text-base")}>
                 RM{price.toFixed(2)}
               </span>
               {originalPrice && (
-                <span className={isTablet ? "text-sm text-muted-foreground line-through" : "text-xs text-muted-foreground line-through"}>
+                <span className={cn("text-muted-foreground line-through", isDesktop ? "text-[11px] sm:text-xs" : isTablet ? "text-sm" : "text-xs")}>
                   RM{originalPrice.toFixed(2)}
                 </span>
               )}

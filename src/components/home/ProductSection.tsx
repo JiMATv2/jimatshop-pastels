@@ -27,7 +27,7 @@ interface Product {
 interface ProductSectionProps {
   title: string;
   products: "featured" | "popular";
-  variant?: "mobile" | "tablet";
+  variant?: "mobile" | "tablet" | "desktop";
   onMockProductClick?: () => void;
 }
 
@@ -57,12 +57,16 @@ function toUiProduct(p: MobileProduct): Product {
 export const ProductSection = ({ title, products, variant = "mobile", onMockProductClick }: ProductSectionProps) => {
   const cfg = getMobileProductsClientConfig();
   const { buyerIds, isLoading: buyerIdsLoading, hasLocation } = useNearbyBuyerIds();
+  const isDesktop = variant === "desktop";
+  const isTablet = variant === "tablet";
+  const itemLimit = isDesktop ? 30 : 12;
+
   // Track whether the currently displayed products came from the API or the local seed
   // catalog. We can't safely infer this from location state alone because the local
   // catalog is also used on error or when no nearby buyers are found.
   const [dataSource, setDataSource] = useState<"api" | "local" | null>(null);
   const { data: productList = [], isLoading, error } = useQuery({
-    queryKey: ["mobile-products", products, buyerIds],
+    queryKey: ["mobile-products", products, buyerIds, itemLimit],
     queryFn: async () => {
       const loadLocal = async () => {
         type LocalProductRow = {
@@ -81,7 +85,7 @@ export const ProductSection = ({ title, products, variant = "mobile", onMockProd
             originalPrice: row.originalPrice ?? undefined,
             badge: row.badge ?? undefined,
           }))
-          .slice(0, 12) as Product[];
+          .slice(0, itemLimit) as Product[];
       };
 
       // If token isn't configured, keep local seed catalog behavior (offline/dev friendly).
@@ -104,7 +108,7 @@ export const ProductSection = ({ title, products, variant = "mobile", onMockProd
         const resp = await fetchMobileProducts(
           {
             page: 1,
-            limit_count: 24,
+            limit_count: Math.max(itemLimit * 2, 40),
             search_query: "",
             category_filter: "All Categories",
             subcategory_filter: "All Subcategories",
@@ -122,9 +126,9 @@ export const ProductSection = ({ title, products, variant = "mobile", onMockProd
             ? resp.data.filter((p) => p.is_featured)
             : resp.data.filter((p) => p.is_fast_moving);
 
-        const picked = filtered.length ? filtered : resp.data;
+        const picked = filtered.length >= itemLimit ? filtered : resp.data;
         setDataSource("api");
-        return picked.map(toUiProduct).slice(0, 12);
+        return picked.map(toUiProduct).slice(0, itemLimit);
       } catch (e) {
         setDataSource("local");
         console.warn("Mobile products API failed; falling back to local catalog", e);
@@ -151,12 +155,10 @@ export const ProductSection = ({ title, products, variant = "mobile", onMockProd
     apiTokenConfigured: Boolean(cfg.apiToken),
   });
 
-  const isTablet = variant === "tablet";
-
   return (
-    <section className={isTablet ? "py-4 contain-content" : "px-4 py-4 contain-content"}>
+    <section className={isDesktop || isTablet ? "py-4 contain-content" : "px-4 py-4 contain-content"}>
       <div className="flex items-center justify-between mb-4">
-        <h3 className={isTablet ? "text-xl font-semibold text-foreground" : "text-lg font-semibold text-foreground"}>{title}</h3>
+        <h3 className={isDesktop || isTablet ? "text-xl font-semibold text-foreground" : "text-lg font-semibold text-foreground"}>{title}</h3>
         <Link
           to={`/products?section=${products}`}
           className="text-sm text-primary font-medium"
@@ -167,29 +169,30 @@ export const ProductSection = ({ title, products, variant = "mobile", onMockProd
 
       <div
         className={
-          isTablet
+          isDesktop
+            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-10 gap-2.5"
+            : isTablet
             ? "grid grid-cols-4 gap-4"
             : "grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4"
         }
       >
         {isLoading || buyerIdsLoading ? (
-          Array.from({ length: 12 }).map((_, idx) => (
+          Array.from({ length: itemLimit }).map((_, idx) => (
             <div key={idx} className="jimat-card">
-              <div className={isTablet ? "p-4 space-y-3" : "p-3 space-y-3"}>
+              <div className={isDesktop ? "p-2.5 sm:p-3 space-y-2" : isTablet ? "p-4 space-y-3" : "p-3 space-y-3"}>
                 <Skeleton className="aspect-square rounded-xl" />
                 <div className="space-y-2">
-                  <Skeleton className={isTablet ? "h-5 w-4/5" : "h-4 w-4/5"} />
-                  <Skeleton className={isTablet ? "h-4 w-2/5" : "h-3 w-2/5"} />
-                  <div className="flex items-center justify-between pt-2">
-                    <Skeleton className={isTablet ? "h-6 w-28" : "h-5 w-24"} />
-                    <Skeleton className="h-8 w-8 rounded-full" />
+                  <Skeleton className="h-4 w-4/5" />
+                  <Skeleton className="h-3 w-2/5" />
+                  <div className="flex items-center justify-between pt-1">
+                    <Skeleton className="h-5 w-20" />
                   </div>
                 </div>
               </div>
             </div>
           ))
         ) : productList.length === 0 ? (
-          <div className={isTablet ? "col-span-4" : "col-span-3 md:col-span-4 lg:col-span-5"}>
+          <div className={isDesktop ? "col-span-full" : isTablet ? "col-span-4" : "col-span-3 md:col-span-4 lg:col-span-5"}>
             <div className="jimat-card p-6 md:p-8 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 mb-3">
                 <MapPin className="h-6 w-6 text-primary" />
