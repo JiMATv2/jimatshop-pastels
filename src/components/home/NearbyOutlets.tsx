@@ -181,6 +181,8 @@ export function NearbyOutlets({ variant = "mobile" }: NearbyOutletsProps) {
                       <img
                         src="https://jimatshop.com/images/icons/store.svg"
                         alt="Store"
+                        loading="lazy"
+                        decoding="async"
                         className={isTablet ? "h-9 w-9" : "h-12 w-12"}
                       />
                     </div>
@@ -299,6 +301,8 @@ export function NearbyOutlets({ variant = "mobile" }: NearbyOutletsProps) {
                         <img
                           src="https://jimatshop.com/images/icons/store.svg"
                           alt="Store"
+                          loading="lazy"
+                          decoding="async"
                           className="h-6 w-6"
                         />
                       </div>

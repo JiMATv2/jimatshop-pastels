@@ -65,6 +65,7 @@ export const CategoryGrid = ({ variant = "mobile" }: CategoryGridProps) => {
                       alt={category.name}
                       className="h-8 w-8 object-contain"
                       loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <span className="text-lg font-semibold text-foreground">
@@ -98,6 +99,7 @@ export const CategoryGrid = ({ variant = "mobile" }: CategoryGridProps) => {
                     alt={category.name}
                     className="h-8 w-8 object-contain"
                     loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <span className="text-lg font-semibold text-foreground">{initial}</span>
