@@ -41,6 +41,8 @@ pnpm build && npx cap sync android
 # Run on Android emulator / device
 npx cap run android -l --host 10.0.2.2 --port 8080 --target Medium_Phone_API_36.1
 
+npx cap run android -l  --port 8083 --target AYKG9X3111G00502
+
 # Build APK / Bundle
 cd android && ./gradlew assembleDebug
 cd android && ./gradlew bundleRelease
