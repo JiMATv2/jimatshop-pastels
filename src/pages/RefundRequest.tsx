@@ -150,7 +150,7 @@ export default function RefundRequest() {
                   inventories.forEach(inv => {
                     inventoryMap.set(inv.id, {
                       product_id: inv.product_id,
-                      product_name: productMap.get(inv.product_id) || "Product",
+                      product_name: String(productMap.get(inv.product_id) || "Product"),
                     });
                   });
                 }

@@ -324,7 +324,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "buyers"
             referencedColumns: ["id"]
-          }
+          },
           {
             foreignKeyName: "buyer_followers_shopper_id_fkey"
             columns: ["shopper_id"]

@@ -143,8 +143,8 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         (chatRooms || []).map(async (room: Record<string, unknown>) => {
           const bp = room.buyer_profiles as Record<string, unknown> | null;
           return {
-            ...(room as ChatRoom),
-            unread_count: await getRoomUnreadCount(room as ChatRoom),
+            ...((room as unknown) as ChatRoom),
+            unread_count: await getRoomUnreadCount((room as unknown) as ChatRoom),
             buyer: bp ? formatBuyer(bp as Parameters<typeof formatBuyer>[0]) : undefined,
             chat_type: (room.chat_type as string) || 'shopper-buyer',
           };
@@ -214,7 +214,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (error) throw error;
         setMessages(
           (chatMessages || []).map((m: Record<string, unknown>) => ({
-            ...(m as ChatMessage),
+            ...((m as unknown) as ChatMessage),
             sender: { id: m.sender_id as string, email: 'N/A' },
           }))
         );
@@ -331,7 +331,7 @@ export const ChatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const mapRoom = (room: Record<string, unknown>): ChatRoom => {
         const bp = room.buyer_profiles as Record<string, unknown> | null;
         return {
-          ...(room as ChatRoom),
+          ...((room as unknown) as ChatRoom),
           buyer: bp ? formatBuyer(bp as Parameters<typeof formatBuyer>[0]) : undefined,
           chat_type: 'shopper-buyer',
         };

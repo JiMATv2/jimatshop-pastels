@@ -100,9 +100,9 @@ function OrdersList({
 
   return (
     <div className={variant === "tablet" ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : "space-y-3"}>
-      {orders.map((o) => (
+      {orders.map((o, idx) => (
         <Link
-          key={o.id}
+          key={`${o.id}-${idx}`}
           to={`/orders/${o.id}`}
           className="jimat-card p-4 block hover:shadow-md transition-shadow"
           aria-label={`View order ${formatJimatshopOrderNumber(o.id)}`}
@@ -243,8 +243,15 @@ export default function Orders() {
         jimatshop_order_items?: RawOrderItem[];
       };
 
-      return (data ?? []).map((row: RawOrderRow) => {
-        const outletName = row?.buyers?.business_name || row?.buyers?.outlet_name || null;
+      const seenIds = new Set<string>();
+      return (data ?? [])
+        .filter((row: RawOrderRow) => {
+          if (!row?.id || seenIds.has(row.id)) return false;
+          seenIds.add(row.id);
+          return true;
+        })
+        .map((row: RawOrderRow) => {
+          const outletName = row?.buyers?.business_name || row?.buyers?.outlet_name || null;
         const items = (row?.ji ?? row?.jimatshop_order_items ?? [])
           .map((item: RawOrderItem) => {
             const product = item?.bi?.p ?? item?.buyer_inventories?.products;

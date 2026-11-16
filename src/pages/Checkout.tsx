@@ -21,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNearbyBuyerIds } from "@/lib/shop/useNearbyBuyerIds";
 import { formatJimatshopOrderNumber } from "@/lib/orders/formatOrderNumber";
 import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
+import { cn } from "@/lib/utils";
 
 const formatMYR = (amount: number) =>
   new Intl.NumberFormat("ms-MY", { style: "currency", currency: "MYR" }).format(amount);
