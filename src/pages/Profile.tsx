@@ -17,11 +17,16 @@ import { useLatestLocation } from "@/lib/location/useLocation";
 import { version } from "../../package.json";
 import { ShopperWidgets } from "@/components/home/ShopperWidgets";
 import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
+import { BetaEnvironmentDialog, useSecretTapTrigger } from "@/components/dev/BetaEnvironmentDialog";
+import { isBetaMode } from "@/lib/config/configService";
 
 const Profile = () => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [betaDialogOpen, setBetaDialogOpen] = useState(false);
+  const handleSecretTap = useSecretTapTrigger(() => setBetaDialogOpen(true));
+  const betaActive = isBetaMode();
 
   const { location: sqliteLocation, refresh: refreshLocation } = useLatestLocation();
   const refreshLocationRef = useRef(refreshLocation);
@@ -354,49 +359,70 @@ const Profile = () => {
   );
 
   return (
-    <ResponsivePage
-      mobile={
-        <div className="min-h-screen bg-background pb-24">
-          <Header />
-          <main className="px-4 py-6 space-y-4">
-            {profileHeaderCard}
-            <ShopperWidgets />
-            {quickActionsCard}
-            {signOutCard}
-            <div className="text-center text-xs text-muted-foreground/60 pt-2 pb-4" data-testid="app-version">
-              v{version}
-            </div>
-          </main>
-          <BottomNav />
-        </div>
-      }
-      tablet={
-        <div className="min-h-screen bg-background pb-28">
-          <Header />
-          <TabletContainer>
-            <main className="py-6 space-y-6">
-              <div className="grid grid-cols-12 gap-8 items-start">
-                {/* Left Side: Profile info & Sign Out */}
-                <div className="col-span-4 space-y-6">
-                  {profileHeaderCard}
-                  {signOutCard}
-                  <div className="text-center text-xs text-muted-foreground/60 pt-2" data-testid="app-version">
-                    v{version}
-                  </div>
-                </div>
-
-                {/* Right Side: Widgets & Quick Actions */}
-                <div className="col-span-8 space-y-6">
-                  <ShopperWidgets />
-                  {quickActionsCard}
-                </div>
+    <>
+      <ResponsivePage
+        mobile={
+          <div className="min-h-screen bg-background pb-24">
+            <Header />
+            <main className="px-4 py-6 space-y-4">
+              {profileHeaderCard}
+              <ShopperWidgets />
+              {quickActionsCard}
+              {signOutCard}
+              <div
+                className="text-center text-xs text-muted-foreground/60 pt-2 pb-4 cursor-pointer select-none"
+                data-testid="app-version"
+                onClick={handleSecretTap}
+              >
+                v{version}
+                {betaActive && (
+                  <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-600 font-semibold">
+                    BETA
+                  </span>
+                )}
               </div>
             </main>
-          </TabletContainer>
-          <BottomNav />
-        </div>
-      }
-    />
+            <BottomNav />
+          </div>
+        }
+        tablet={
+          <div className="min-h-screen bg-background pb-28">
+            <Header />
+            <TabletContainer>
+              <main className="py-6 space-y-6">
+                <div className="grid grid-cols-12 gap-8 items-start">
+                  {/* Left Side: Profile info & Sign Out */}
+                  <div className="col-span-4 space-y-6">
+                    {profileHeaderCard}
+                    {signOutCard}
+                    <div
+                      className="text-center text-xs text-muted-foreground/60 pt-2 cursor-pointer select-none"
+                      data-testid="app-version"
+                      onClick={handleSecretTap}
+                    >
+                      v{version}
+                      {betaActive && (
+                        <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-600 font-semibold">
+                          BETA
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Side: Widgets & Quick Actions */}
+                  <div className="col-span-8 space-y-6">
+                    <ShopperWidgets />
+                    {quickActionsCard}
+                  </div>
+                </div>
+              </main>
+            </TabletContainer>
+            <BottomNav />
+          </div>
+        }
+      />
+      <BetaEnvironmentDialog open={betaDialogOpen} onOpenChange={setBetaDialogOpen} />
+    </>
   );
 };
 

@@ -7,9 +7,10 @@ import {
   readNativeSession,
   writeNativeSession,
 } from './session';
+import { getExSupabaseEndpoint, getSupabaseUrl } from '@/lib/config/configService';
 
-// Use environment variables for configuration
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? 'https://ex_supabase.jimatbiz.com';
+// Use dynamic configuration
+const supabaseUrl = getSupabaseUrl();
 const supabaseAnonKey = EX_SUPABASE_ANON_KEY;
 export const supabaseUrlvalue = supabaseUrl;
 
@@ -31,8 +32,8 @@ export const cleanupAuthState = () => {
   });
 };
 
-export const EX_SUPABASE_ENDPOINT = import.meta.env.VITE_EX_SUPABASE_API_URL || import.meta.env.VITE_EX_SUPABASE_ENDPOINT || "https://ex_supabase.jimatbiz.com";
-const QUERY_ENDPOINT = `${EX_SUPABASE_ENDPOINT}/supabase/query`;
+export const EX_SUPABASE_ENDPOINT = getExSupabaseEndpoint();
+const getQueryEndpoint = () => `${getExSupabaseEndpoint()}/supabase/query`;
 
 // [Types]
 interface Filter { method: string; column: string; value: any; }
@@ -83,7 +84,7 @@ class SupabaseQueryBuilder implements PromiseLike<SupabaseResponse> {
   returns<TData = any>() { return this as any; }
   private async execute(): Promise<SupabaseResponse> {
     try {
-      const response = await fetch(QUERY_ENDPOINT, { method: 'POST', headers: getSupabaseQueryHeaders(), body: JSON.stringify(this.descriptor) });
+      const response = await fetch(getQueryEndpoint(), { method: 'POST', headers: getSupabaseQueryHeaders(), body: JSON.stringify(this.descriptor) });
       const result = await response.json();
       if (!response.ok) { return { data: null, error: result.error || { message: `HTTP ${response.status}` }, count: null }; }
       return { data: result.data ?? null, error: result.error ?? null, count: result.count ?? null };
@@ -100,10 +101,10 @@ class SupabaseStorageProxy {
   async upload(path: string, file: File, options?: any) {
     try { const publicUrl = await uploadToNativeBackend(file, this.bucket, path); return { data: { path, publicUrl }, error: null }; } catch (err: any) { return { data: null, error: { message: err.message || 'Network error' } }; }
   }
-  getPublicUrl(path: string) { return { data: { publicUrl: `${EX_SUPABASE_ENDPOINT}/uploads/${this.bucket}/${path}` } }; }
+  getPublicUrl(path: string) { return { data: { publicUrl: `${getExSupabaseEndpoint()}/uploads/${this.bucket}/${path}` } }; }
   async list(path: string = '', options?: { limit?: number; offset?: number; sortBy?: { column?: string; order?: string }; search?: string }) {
     try {
-      const response = await fetch(`${EX_SUPABASE_ENDPOINT}/supabase/media/list`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: this.bucket, path, options }) });
+      const response = await fetch(`${getExSupabaseEndpoint()}/supabase/media/list`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: this.bucket, path, options }) });
       const result = await response.json();
       if (!response.ok) { return { data: null, error: result.error || { message: `HTTP ${response.status}` } }; }
       return { data: result.data, error: null };
@@ -111,7 +112,7 @@ class SupabaseStorageProxy {
   }
   async remove(paths: string[]) {
     try {
-      const response = await fetch(`${EX_SUPABASE_ENDPOINT}/supabase/media/remove`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: this.bucket, paths }) });
+      const response = await fetch(`${getExSupabaseEndpoint()}/supabase/media/remove`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder: this.bucket, paths }) });
       const result = await response.json();
       if (!response.ok) { return { data: null, error: result.error || { message: `HTTP ${response.status}` } }; }
       return { data: result.data, error: null };
@@ -171,7 +172,7 @@ class SupabaseProxy {
     },
     signInWithPassword: async (options: { email: string; password: string }) => {
       try {
-        const response = await fetch(`${EX_SUPABASE_ENDPOINT}/supabase/auth/login`, {
+        const response = await fetch(`${getExSupabaseEndpoint()}/supabase/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(options),
@@ -195,7 +196,7 @@ class SupabaseProxy {
     },
     signUp: async (options: any) => {
       try {
-        const response = await fetch(`${EX_SUPABASE_ENDPOINT}/supabase/auth/signup`, {
+        const response = await fetch(`${getExSupabaseEndpoint()}/supabase/auth/signup`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(options),
@@ -218,7 +219,7 @@ class SupabaseProxy {
       if (session) {
         try {
           const accessToken = session.access_token || getSupabaseApiKey();
-          const response = await fetch(`${EX_SUPABASE_ENDPOINT}/supabase/auth/update-user`, {
+          const response = await fetch(`${getExSupabaseEndpoint()}/supabase/auth/update-user`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', apikey: accessToken, 'Authorization': `Bearer ${accessToken}` },
             body: JSON.stringify({ data: attributes.data, user_id: session.user?.id })
@@ -259,7 +260,7 @@ class SupabaseProxy {
     getUser: async (token?: string) => {
       if (token) {
         try {
-          const response = await fetch(`${EX_SUPABASE_ENDPOINT}/supabase/auth/get-user`, {
+          const response = await fetch(`${getExSupabaseEndpoint()}/supabase/auth/get-user`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', apikey: token, 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({}),
@@ -275,7 +276,7 @@ class SupabaseProxy {
     },
     signInWithIdToken: async (options: { provider: string; token: string; fullName?: string }) => {
       const providerPath = options.provider === "apple" ? "apple-buyer" : "google";
-      const endpoint = `${EX_SUPABASE_ENDPOINT}/supabase/auth/${providerPath}`;
+      const endpoint = `${getExSupabaseEndpoint()}/supabase/auth/${providerPath}`;
       const body: Record<string, string> = { idToken: options.token };
       if (options.fullName) body.fullName = options.fullName;
 
@@ -356,7 +357,7 @@ class SupabaseProxy {
   functions = {
     invoke: async (functionName: string, options?: { body?: any; headers?: Record<string, string>; method?: string }) => {
       try {
-        const response = await fetch(QUERY_ENDPOINT, {
+        const response = await fetch(getQueryEndpoint(), {
           method: 'POST',
           headers: getSupabaseQueryHeaders(),
           body: JSON.stringify({ type: 'function', function: functionName, body: options?.body, headers: options?.headers, method: options?.method }),

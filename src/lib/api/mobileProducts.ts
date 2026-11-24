@@ -88,15 +88,13 @@ function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, "");
 }
 
+import { getExSupabaseEndpoint } from "@/lib/config/configService";
+
 /**
- * Vite env vars:
- * - VITE_EX_SUPABASE_API_URL (optional; defaults to https://ex_supabase.jimatbiz.com)
- * - VITE_SUPABASE_API_TOKEN (optional; if missing we can fall back to local seed catalog)
+ * Resolves active backend endpoint dynamically.
  */
 export function getMobileProductsClientConfig(): MobileProductsClientConfig {
-  const baseUrl = normalizeBaseUrl(
-    import.meta.env.VITE_EX_SUPABASE_API_URL || "https://ex_supabase.jimatbiz.com",
-  );
+  const baseUrl = normalizeBaseUrl(getExSupabaseEndpoint());
   const apiToken = import.meta.env.VITE_SUPABASE_API_TOKEN as string || "jimat_supabase_secret_2025_changeme";
 
   // Helpful for debugging config issues without leaking the actual token.

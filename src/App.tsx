@@ -31,6 +31,7 @@ import { ChatProvider } from "@/contexts/ChatContext";
 import { PushPermissionDialog } from "@/components/notifications/PushPermissionDialog";
 import Chat from "./pages/Chat";
 import { LocationPromptDialog } from "@/components/location/LocationPromptDialog";
+import { StagingModeBanner } from "@/components/dev/BetaEnvironmentDialog";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <StagingModeBanner />
             <CapacitorBackHandler />
             <PaymentReturnHandler />
             <PushPermissionDialog />

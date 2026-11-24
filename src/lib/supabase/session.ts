@@ -1,7 +1,4 @@
-const EX_SUPABASE_ENDPOINT =
-  import.meta.env.VITE_EX_SUPABASE_API_URL ||
-  import.meta.env.VITE_EX_SUPABASE_ENDPOINT ||
-  "https://ex_supabase.jimatbiz.com";
+import { getExSupabaseEndpoint } from "@/lib/config/configService";
 
 export const NATIVE_SESSION_KEY = "native_session";
 
@@ -93,7 +90,7 @@ export async function tryRefreshNativeSession(
   }
 
   try {
-    const response = await fetch(`${EX_SUPABASE_ENDPOINT}/supabase/auth/refresh`, {
+    const response = await fetch(`${getExSupabaseEndpoint()}/supabase/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

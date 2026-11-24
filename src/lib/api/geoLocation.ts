@@ -1,3 +1,5 @@
+import { getExSupabaseEndpoint } from "@/lib/config/configService";
+
 export type GeoLocationClientConfig = {
   baseUrl: string;
 };
@@ -7,14 +9,10 @@ function normalizeBaseUrl(url: string) {
 }
 
 /**
- * Vite env vars:
- * - VITE_EX_SUPABASE_API_URL (optional; defaults to https://ex_supabase.jimatbiz.com)
+ * Resolves active backend endpoint dynamically.
  */
 export function getGeoLocationClientConfig(): GeoLocationClientConfig {
-  const baseUrl = normalizeBaseUrl(
-    (import.meta.env.VITE_EX_SUPABASE_API_URL as string | undefined) ||
-      "https://ex_supabase.jimatbiz.com",
-  );
+  const baseUrl = normalizeBaseUrl(getExSupabaseEndpoint());
 
   if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console

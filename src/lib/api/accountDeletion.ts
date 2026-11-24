@@ -1,3 +1,5 @@
+import { getExSupabaseEndpoint } from "@/lib/config/configService";
+
 export type AccountDeletionResponse = {
   success: boolean;
   message?: string;
@@ -19,9 +21,7 @@ function normalizeBaseUrl(url: string) {
 }
 
 export function getAccountDeletionClientConfig(): AccountDeletionClientConfig {
-  const baseUrl = normalizeBaseUrl(
-    import.meta.env.VITE_EX_SUPABASE_API_URL || "https://ex_supabase.jimatbiz.com",
-  );
+  const baseUrl = normalizeBaseUrl(getExSupabaseEndpoint());
   const apiToken = (import.meta.env.VITE_SUPABASE_API_TOKEN as string | undefined) || undefined;
   return { baseUrl, apiToken };
 }

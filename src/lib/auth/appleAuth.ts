@@ -1,3 +1,4 @@
+import { getExSupabaseEndpoint } from "@/lib/config/configService";
 import { Capacitor } from "@capacitor/core";
 import type {
   SignInWithAppleResponse,
@@ -57,7 +58,7 @@ export async function signInWithAppleNative(): Promise<AppleSignInResult> {
 
   const options: SignInWithAppleOptions = {
     clientId: "com.jimatbiz.shop3-1",
-    redirectURI: "https://ex_supabase.jimatbiz.com/auth/apple/callback",
+    redirectURI: `${getExSupabaseEndpoint()}/auth/apple/callback`,
     scopes: "email name",
     state: randomId(16),
     nonce: randomId(16),

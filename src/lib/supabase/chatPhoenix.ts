@@ -1,5 +1,5 @@
 import { Socket, Channel } from 'phoenix';
-import { EX_SUPABASE_ENDPOINT } from './client';
+import { getExSupabaseEndpoint } from '@/lib/config/configService';
 
 function httpBaseToWsSocketUrl(httpBase: string): string {
   const trimmed = httpBase.replace(/\/$/, '');
@@ -24,7 +24,7 @@ export function subscribeChatChannel(
   topic: string,
   onPostgresChanges: (payload: ChatPostgresChangePayload) => void
 ): { disconnect: () => void } {
-  const base = import.meta.env.VITE_EX_SUPABASE_ENDPOINT || EX_SUPABASE_ENDPOINT;
+  const base = getExSupabaseEndpoint();
   const url = httpBaseToWsSocketUrl(base);
   const socket = new Socket(url, { params: {} });
   socket.connect();

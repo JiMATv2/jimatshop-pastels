@@ -1,3 +1,5 @@
+import { getExSupabaseEndpoint } from "@/lib/config/configService";
+
 export type MobileOrdersClientConfig = {
   baseUrl: string;
   apiToken?: string;
@@ -8,14 +10,10 @@ function normalizeBaseUrl(url: string) {
 }
 
 /**
- * Vite env vars:
- * - VITE_EX_SUPABASE_API_URL (optional; defaults to https://ex_supabase.jimatbiz.com)
- * - VITE_SUPABASE_API_TOKEN (required for checkout)
+ * Resolves active backend endpoint dynamically.
  */
 export function getMobileOrdersClientConfig(): MobileOrdersClientConfig {
-  const baseUrl = normalizeBaseUrl(
-    import.meta.env.VITE_EX_SUPABASE_API_URL || "https://ex_supabase.jimatbiz.com",
-  );
+  const baseUrl = normalizeBaseUrl(getExSupabaseEndpoint());
   const apiToken = import.meta.env.VITE_SUPABASE_API_TOKEN as string | undefined;
 
   if (import.meta.env.DEV) {

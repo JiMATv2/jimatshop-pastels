@@ -1,10 +1,12 @@
 
+import { getExSupabaseEndpoint } from "@/lib/config/configService";
+
 /**
  * Utility to perform native media uploads to the ex_supabase backend.
  * This bypasses Supabase Storage and uses the native /supabase/media/upload endpoint.
  */
 
-export const EX_SUPABASE_ENDPOINT = import.meta.env.VITE_EX_SUPABASE_API_URL || import.meta.env.VITE_EX_SUPABASE_ENDPOINT || "https://ex_supabase.jimatbiz.com";
+export const EX_SUPABASE_ENDPOINT = getExSupabaseEndpoint();
 
 interface NativeUploadResponse {
   data: {
@@ -38,7 +40,7 @@ export async function uploadToNativeBackend(
   }
 
   try {
-    const response = await fetch(`${EX_SUPABASE_ENDPOINT}/supabase/media/upload`, {
+    const response = await fetch(`${getExSupabaseEndpoint()}/supabase/media/upload`, {
       method: 'POST',
       body: formData,
     });

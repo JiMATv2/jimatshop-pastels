@@ -1,15 +1,18 @@
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { resolveShopperId } from "@/lib/api/shopper";
 import { getMobileOrdersClientConfig } from "@/lib/api/mobileOrders";
 import { supabase } from "@/lib/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download, FileText } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import { toast } from "@/hooks/use-toast";
 import { formatJimatshopOrderNumber } from "@/lib/orders/formatOrderNumber";
 import { formatPaymentMethodLabel } from "@/lib/orders/formatPaymentMethod";
@@ -265,34 +268,68 @@ export default function OrderDetails() {
     ].filter((s): s is string => Boolean(s && s.trim()));
   }, [data?.order?.shipping_address]);
 
+  const receiptPdfUrl = useMemo(() => {
+    if (!id) return "";
+    const cfg = getMobileOrdersClientConfig();
+    return `${cfg.baseUrl}/supabase/jimatshop/orders/${id}/receipt.pdf`;
+  }, [id]);
+
+  const handleDownloadReceipt = async () => {
+    if (!receiptPdfUrl) return;
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Browser.open({ url: receiptPdfUrl });
+      } else {
+        window.open(receiptPdfUrl, "_blank");
+      }
+    } catch {
+      window.open(receiptPdfUrl, "_blank");
+    }
+  };
+
   const orderHeader = (
-    <div className="flex items-center gap-3 mb-4">
-      <button
-        type="button"
-        onClick={() => navigate("/orders")}
-        className="p-2 rounded-xl hover:bg-muted transition-colors"
-        aria-label="Back"
-      >
-        <ArrowLeft className="w-5 h-5" />
-      </button>
-      <div className="min-w-0">
-        <h2 className="text-lg font-semibold text-foreground truncate">Order details</h2>
-        <p className="text-xs text-muted-foreground truncate">
-          {id ? formatJimatshopOrderNumber(id) : ""}
-        </p>
+    <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          type="button"
+          onClick={() => navigate("/orders")}
+          className="p-2 rounded-xl hover:bg-muted transition-colors"
+          aria-label="Back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold text-foreground truncate">Order details</h2>
+          <p className="text-xs text-muted-foreground truncate">
+            {id ? formatJimatshopOrderNumber(id) : ""}
+          </p>
+        </div>
       </div>
+      {data ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleDownloadReceipt}
+          className="gap-1.5 text-xs font-medium shrink-0 h-9"
+          data-testid="download-receipt-header-btn"
+        >
+          <Download className="w-3.5 h-3.5 text-primary" />
+          <span>Receipt PDF</span>
+        </Button>
+      ) : null}
     </div>
   );
 
   const summaryCard = data ? (
-    <div className="jimat-card p-4">
+    <div className="jimat-card p-4 space-y-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-semibold text-foreground">Summary</p>
         <Badge variant={statusVariant(data.order.status)} className="capitalize">
           {data.order.status}
         </Badge>
       </div>
-      <div className="mt-2 flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
           {new Intl.DateTimeFormat("ms-MY", {
             year: "numeric",
@@ -304,11 +341,25 @@ export default function OrderDetails() {
       </div>
 
       {data.delivery ? (
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Delivery: <span className="capitalize">{data.delivery.status}</span>
           {data.delivery.delivery_ref ? ` • Ref: ${data.delivery.delivery_ref}` : ""}
         </p>
       ) : null}
+
+      <div className="pt-2 border-t border-border/50">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleDownloadReceipt}
+          className="w-full gap-2 font-medium text-xs h-9 justify-center bg-card hover:bg-muted"
+          data-testid="download-receipt-summary-btn"
+        >
+          <FileText className="w-4 h-4 text-primary" />
+          <span>Download Receipt (PDF)</span>
+        </Button>
+      </div>
     </div>
   ) : null;
 
