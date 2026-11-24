@@ -20,6 +20,11 @@ const config: CapacitorConfig = {
       androidClientId: '552393042714-0ju9rcu6ov6v09s9rml6g4mjrg30asf8.apps.googleusercontent.com',
       forceCodeForRefreshToken: true,
     },
+    CapacitorUpdater: {
+      // Controlled programmatically via src/lib/ota/otaService.ts against active host (Prod/Staging)
+      autoUpdate: 'off',
+      statsUrl: '',
+    },
   },
 };
 

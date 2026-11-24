@@ -23,7 +23,13 @@ import {
   ENABLE_BETA_CAPABILITIES,
   ENVIRONMENTS,
 } from '@/config/resources';
-import { Server, ShieldAlert, CheckCircle2, FlaskConical } from 'lucide-react';
+import {
+  checkForOtaUpdate,
+  downloadAndApplyOtaUpdate,
+  resetToBuiltinBundle,
+} from '@/lib/ota/otaService';
+import { toast } from '@/components/ui/sonner';
+import { Server, ShieldAlert, FlaskConical, RefreshCw, RotateCcw } from 'lucide-react';
 
 interface BetaEnvironmentDialogProps {
   open: boolean;
@@ -40,6 +46,7 @@ export const BetaEnvironmentDialog: React.FC<BetaEnvironmentDialogProps> = ({
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [pinError, setPinError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [otaBusy, setOtaBusy] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -212,6 +219,67 @@ export const BetaEnvironmentDialog: React.FC<BetaEnvironmentDialogProps> = ({
               <p>
                 Changing the environment clears your local session tokens and restarts the app to bind to the selected host.
               </p>
+            </div>
+
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <p className="text-[11px] font-semibold text-foreground uppercase tracking-wider">
+                OTA Bundle Controls
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs gap-1.5"
+                  disabled={otaBusy}
+                  onClick={async () => {
+                    setOtaBusy(true);
+                    try {
+                      const res = await checkForOtaUpdate();
+                      if (res.isWeb) {
+                        toast.info('Web build updates automatically on page refresh.');
+                      } else if (res.error) {
+                        toast.error(`OTA check failed: ${res.error}`);
+                      } else if (res.available && res.downloadUrl && res.latestVersion) {
+                        toast.info(`Downloading OTA v${res.latestVersion}...`);
+                        await downloadAndApplyOtaUpdate({
+                          url: res.downloadUrl,
+                          version: res.latestVersion,
+                          checksum: res.checksum,
+                        });
+                      } else {
+                        toast.success(`Up to date (v${res.currentVersion})`);
+                      }
+                    } finally {
+                      setOtaBusy(false);
+                    }
+                  }}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${otaBusy ? 'animate-spin' : ''}`} />
+                  Pull OTA
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs gap-1.5"
+                  disabled={otaBusy}
+                  onClick={async () => {
+                    setOtaBusy(true);
+                    try {
+                      await resetToBuiltinBundle();
+                      toast.success('Reverted to built-in store bundle.');
+                    } catch (err: any) {
+                      toast.error(err?.message || 'Failed to reset bundle');
+                    } finally {
+                      setOtaBusy(false);
+                    }
+                  }}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset Bundle
+                </Button>
+              </div>
             </div>
 
             <DialogFooter className="pt-2 gap-2 sm:gap-0">

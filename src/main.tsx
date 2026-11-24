@@ -3,6 +3,7 @@ import App from "./App.tsx";
 import "./index.css";
 
 import { initAppConfig } from "./lib/config/configService";
+import { initOta } from "./lib/ota/otaService";
 import { initSqlite } from "./lib/sqlite/sqlite";
 import { seedCatalogIfEmpty } from "./lib/catalog/seed";
 import { ensureLocationSchema } from "./lib/location/storage";
@@ -11,6 +12,7 @@ import { initNativeSafeArea } from "./lib/native/safeArea";
 
 async function bootstrap() {
   await initAppConfig();
+  void initOta();
   await initNativeSafeArea();
 
   // For browser debugging, this sets up jeep-sqlite + WASM + IndexedDB store.

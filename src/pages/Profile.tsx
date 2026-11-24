@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { LogOut, Package, Heart, MapPin, Coins, BookOpen, Settings } from "lucide-react";
+import { LogOut, Package, Heart, MapPin, Coins, BookOpen, Settings, RefreshCw } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabase/client";
@@ -19,6 +19,19 @@ import { ShopperWidgets } from "@/components/home/ShopperWidgets";
 import { ResponsivePage, TabletContainer } from "@/components/layout/ResponsivePageShell";
 import { BetaEnvironmentDialog, useSecretTapTrigger } from "@/components/dev/BetaEnvironmentDialog";
 import { isBetaMode } from "@/lib/config/configService";
+import {
+  checkForOtaUpdate,
+  downloadAndApplyOtaUpdate,
+  type OtaCheckResult,
+} from "@/lib/ota/otaService";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const Profile = () => {
   const { user, loading, signOut } = useAuth();
@@ -27,6 +40,9 @@ const Profile = () => {
   const [betaDialogOpen, setBetaDialogOpen] = useState(false);
   const handleSecretTap = useSecretTapTrigger(() => setBetaDialogOpen(true));
   const betaActive = isBetaMode();
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [installingUpdate, setInstallingUpdate] = useState(false);
+  const [otaUpdateInfo, setOtaUpdateInfo] = useState<OtaCheckResult | null>(null);
 
   const { location: sqliteLocation, refresh: refreshLocation } = useLatestLocation();
   const refreshLocationRef = useRef(refreshLocation);
@@ -339,6 +355,38 @@ const Profile = () => {
             <p className="text-xs text-muted-foreground">Learn how to use JimatShop</p>
           </div>
         </Button>
+        <Separator />
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 h-auto py-3"
+          disabled={checkingUpdate}
+          data-testid="profile-check-updates-btn"
+          onClick={async () => {
+            setCheckingUpdate(true);
+            try {
+              const result = await checkForOtaUpdate();
+              if (result.isWeb) {
+                toast.info(`You're on the latest web version (v${result.currentVersion}).`);
+              } else if (result.error) {
+                toast.error(`Unable to check updates: ${result.error}`);
+              } else if (result.available && result.downloadUrl && result.latestVersion) {
+                setOtaUpdateInfo(result);
+              } else {
+                toast.success(`App is up to date (v${result.currentVersion}).`);
+              }
+            } finally {
+              setCheckingUpdate(false);
+            }
+          }}
+        >
+          <RefreshCw className={`h-5 w-5 ${checkingUpdate ? "animate-spin" : ""}`} />
+          <div className="flex-1 text-left">
+            <p className="font-medium">Check for Updates</p>
+            <p className="text-xs text-muted-foreground">
+              {checkingUpdate ? "Checking for new version..." : `Current version v${version}`}
+            </p>
+          </div>
+        </Button>
       </CardContent>
     </Card>
   );
@@ -422,6 +470,54 @@ const Profile = () => {
         }
       />
       <BetaEnvironmentDialog open={betaDialogOpen} onOpenChange={setBetaDialogOpen} />
+      <Dialog
+        open={Boolean(otaUpdateInfo?.available)}
+        onOpenChange={(open) => {
+          if (!open && !installingUpdate) setOtaUpdateInfo(null);
+        }}
+      >
+        <DialogContent className="max-w-sm w-[90vw] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Update Available (v{otaUpdateInfo?.latestVersion})</DialogTitle>
+            <DialogDescription>
+              {otaUpdateInfo?.releaseNotes ||
+                `A new version (v${otaUpdateInfo?.latestVersion}) is ready to download and install.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            {!otaUpdateInfo?.mandatory && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={installingUpdate}
+                onClick={() => setOtaUpdateInfo(null)}
+              >
+                Later
+              </Button>
+            )}
+            <Button
+              type="button"
+              disabled={installingUpdate}
+              onClick={async () => {
+                if (!otaUpdateInfo?.downloadUrl || !otaUpdateInfo?.latestVersion) return;
+                setInstallingUpdate(true);
+                try {
+                  await downloadAndApplyOtaUpdate({
+                    url: otaUpdateInfo.downloadUrl,
+                    version: otaUpdateInfo.latestVersion,
+                    checksum: otaUpdateInfo.checksum,
+                  });
+                } catch (err: any) {
+                  toast.error(err?.message || "Failed to install update");
+                  setInstallingUpdate(false);
+                }
+              }}
+            >
+              {installingUpdate ? "Downloading..." : "Update Now"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

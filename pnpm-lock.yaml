@@ -52,6 +52,9 @@ importers:
       '@capacitor/status-bar':
         specifier: ^8.0.0
         version: 8.0.2(@capacitor/core@8.3.0)
+      '@capgo/capacitor-updater':
+        specifier: 8.54.2
+        version: 8.54.2(@capacitor/core@8.3.0)
       '@codetrix-studio/capacitor-google-auth':
         specifier: ^3.4.0-rc.4
         version: 3.4.0-rc.4(patch_hash=1d9076c6e837234572ebf2c57c44c19ba2e8a6c1674f687a16e2a4212c261094)(@capacitor/core@8.3.0)
@@ -340,6 +343,11 @@ packages:
 
   '@capacitor/synapse@1.0.4':
     resolution: {integrity: sha512-/C1FUo8/OkKuAT4nCIu/34ny9siNHr9qtFezu4kxm6GY1wNFxrCFWjfYx5C1tUhVGz3fxBABegupkpjXvjCHrw==}
+
+  '@capgo/capacitor-updater@8.54.2':
+    resolution: {integrity: sha512-Tuy9xeaJeudIzz3Dp/oenvhjtC2C3+E2OcZy+zW7w5/0RieTedyI7QRX/hxI3uXsb/94G5HT4ueN3pIb9pbtRA==}
+    peerDependencies:
+      '@capacitor/core': ^8.0.0
 
   '@codetrix-studio/capacitor-google-auth@3.4.0-rc.4':
     resolution: {integrity: sha512-d548/xKrbMHHbzMYSWnlgZCLZYo2zzY7Onrh3x8ujojrb7atkNK68I6su5WgmaBt4E+R4gxBsWams4554aOFjA==}
@@ -3380,6 +3388,10 @@ snapshots:
       '@capacitor/core': 8.3.0
 
   '@capacitor/synapse@1.0.4': {}
+
+  '@capgo/capacitor-updater@8.54.2(@capacitor/core@8.3.0)':
+    dependencies:
+      '@capacitor/core': 8.3.0
 
   '@codetrix-studio/capacitor-google-auth@3.4.0-rc.4(patch_hash=1d9076c6e837234572ebf2c57c44c19ba2e8a6c1674f687a16e2a4212c261094)(@capacitor/core@8.3.0)':
     dependencies:
